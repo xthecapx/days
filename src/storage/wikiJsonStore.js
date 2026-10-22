@@ -3,17 +3,28 @@ import { pixelToGps, detectSectorName } from '../map/gpsGrid.js';
 const STORAGE_KEY = 'vecinos_rio_hato_wiki_json_v3';
 const BRIDGE_CONFIG_KEY = 'vecinos_rio_hato_github_bridge_v1';
 
+// Repositorio por defecto para lectura en vivo desde GitHub Pages
+export const DEFAULT_GITHUB_REPO = 'xthecapx/days';
+// Pega aquí la URL de tu Cloudflare Worker cuando lo crees para que todos los vecinos guarden sin configurar nada:
+export const DEFAULT_BRIDGE_URL = '';
+
 /**
  * Carga la configuración opcional del Puente GitHub Pages (Cloudflare Worker o Raw URL)
  */
 export function getBridgeConfig() {
   try {
     const raw = localStorage.getItem(BRIDGE_CONFIG_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        bridgeUrl: parsed.bridgeUrl || DEFAULT_BRIDGE_URL,
+        githubRepo: parsed.githubRepo || DEFAULT_GITHUB_REPO
+      };
+    }
   } catch (_) {}
   return {
-    bridgeUrl: '',
-    githubRepo: ''
+    bridgeUrl: DEFAULT_BRIDGE_URL,
+    githubRepo: DEFAULT_GITHUB_REPO
   };
 }
 
@@ -32,8 +43,9 @@ export function saveBridgeConfig(config) {
 export async function loadWikiStore() {
   const bridge = getBridgeConfig();
   let remoteData = null;
+  const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
-  if (bridge.githubRepo) {
+  if (!isLocalhost && bridge.githubRepo) {
     try {
       const rawUrl = `https://raw.githubusercontent.com/${bridge.githubRepo}/main/data/incidents.json?t=${Date.now()}`;
       const res = await fetch(rawUrl, { cache: 'no-store' });
