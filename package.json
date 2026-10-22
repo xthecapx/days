@@ -1,0 +1,18 @@
+{
+  "name": "vecinos-rio-del-hato-pixel-map",
+  "version": "1.0.0",
+  "description": "Monitor vecinal 100% anónimo en 2D Pixel Art para el Sendero Río del Hato y Ciudad Tierrabuena",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs"
+  },
+  "keywords": [
+    "pixel-art",
+    "seguridad-vecinal",
+    "github-pages",
+    "wiki",
+    "rio-del-hato"
+  ],
+  "license": "MIT"
+}
