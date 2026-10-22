@@ -5,8 +5,8 @@ const BRIDGE_CONFIG_KEY = 'vecinos_rio_hato_github_bridge_v1';
 
 // Repositorio por defecto para lectura en vivo desde GitHub Pages
 export const DEFAULT_GITHUB_REPO = 'xthecapx/days';
-// Pega aquí la URL de tu Cloudflare Worker cuando lo crees para que todos los vecinos guarden sin configurar nada:
-export const DEFAULT_BRIDGE_URL = '';
+// URL del puente Cloudflare Worker para commits anónimos en GitHub:
+export const DEFAULT_BRIDGE_URL = 'https://days.xthecapx.workers.dev/';
 
 /**
  * Carga la configuración opcional del Puente GitHub Pages (Cloudflare Worker o Raw URL)

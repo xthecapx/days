@@ -38,16 +38,16 @@ const SEVERITY_NAMES = {
 
 const appState = {
   store: { incidents: [], revisions: [] },
-  referenceDate: new Date(2026, 9, 22, 12, 0, 0), // 22 de octubre de 2026
+  referenceDate: new Date(2026, 9, 22, 12, 0, 0),
   decayMode: 'actual',
-  selectedPixel: { x: 65, y: 43 },
+  selectedPixel: { x: 68, y: 49 },
   hoveredPixel: null,
   selectedIncidentId: 'inc-006',
   movingIncidentId: null,
   pickingPixelForModal: false,
   showGrid: true,
   showReferenceOverlay: false,
-  alertDetailsExpanded: true,
+  alertDetailsExpanded: false,
   zoom: 1.5,
   panX: 0,
   panY: 0,
@@ -81,7 +81,7 @@ async function initApp() {
   recomputeAndRenderUI();
   updateInspectorBar(appState.selectedPixel.x, appState.selectedPixel.y);
 
-  // Centrar inicialmente en la zona de los 6 incidentes (alrededor de 68, 49) adaptado a teléfono o PC
+  // Centrar inicialmente en Hogar (68, 49) con un zoom ideal para iPhone vertical o PC
   focusSectorCluster();
   window.addEventListener('resize', () => {
     applyTransform(appState.zoom, appState.panX, appState.panY);
@@ -96,14 +96,14 @@ async function initApp() {
 }
 
 /**
- * Centra la cámara en Hogar (68, 49) y el grupo de incidentes cercanos
+ * Centra la cámara en Hogar (68, 49) mostrando todos los incidentes cercanos (#1 a #6)
  */
 function focusSectorCluster() {
   const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const coverZoom = Math.max(vw / CANVAS_WIDTH, vh / CANVAS_HEIGHT);
-  const idealZoom = Math.max(coverZoom * 1.35, 1.85);
-  centerMapOnPixel(USER_REFERENCE_PIXEL.x, USER_REFERENCE_PIXEL.y, idealZoom);
+  const isMobile = vw < 600;
+  // En iPhone vertical (393px), zoom ~1.45 muestra desde el río (y=41) hasta Exploretheworld (y=55)
+  const idealZoom = isMobile ? 1.45 : 1.75;
+  centerMapOnPixel(USER_REFERENCE_PIXEL.x, USER_REFERENCE_PIXEL.y - 1, idealZoom);
 }
 
 function recomputeAndRenderUI() {
@@ -146,6 +146,7 @@ function recomputeAndRenderUI() {
 function renderFloatingAlertCard(incidents) {
   const daysValueEl = document.getElementById('daysCounterValue');
   const daysLabelEl = document.getElementById('daysCounterLabel');
+  const compactPreviewEl = document.getElementById('alertCompactPreview');
   const latestDateEl = document.getElementById('latestIncidentDate');
   const latestDescEl = document.getElementById('latestIncidentDesc');
   const latestLocEl = document.getElementById('latestIncidentLocation');
@@ -153,11 +154,12 @@ function renderFloatingAlertCard(incidents) {
   const dockCountEl = document.getElementById('dockIncidentsCount');
 
   dockCountEl.textContent = String(incidents.length);
-  redBadgeEl.textContent = `🔴 ${appState.heatmap?.affectedPixelsCount || 0} px en alerta`;
+  redBadgeEl.textContent = `🔴 ${appState.heatmap?.affectedPixelsCount || 0} px`;
 
   if (!incidents.length) {
     daysValueEl.textContent = '--';
     daysLabelEl.textContent = 'DÍAS DESDE EL ÚLTIMO INCIDENTE';
+    compactPreviewEl.textContent = 'Sin incidentes registrados.';
     latestDescEl.textContent = 'Sin incidentes registrados.';
     return;
   }
@@ -176,18 +178,49 @@ function renderFloatingAlertCard(incidents) {
     ? 'DÍA DESDE EL ÚLTIMO INCIDENTE'
     : 'DÍAS DESDE EL ÚLTIMO INCIDENTE';
 
+  compactPreviewEl.textContent = `Último (#${latest.number}): ${latest.description}`;
   latestDateEl.textContent = latest.dateLabel || latest.date;
   latestDescEl.textContent = `#${latest.number}: ${latest.description}`;
   latestLocEl.textContent = `📍 ${latest.sector} • Píxel (${latest.pixelX}, ${latest.pixelY})`;
 
-  document.getElementById('btnFocusLatest').onclick = () => {
+  document.getElementById('btnFocusLatest').onclick = (e) => {
+    e.stopPropagation();
+    toggleAlertExpanded(false);
     focusOnIncident(latest);
   };
 }
 
-/**
- * Renderiza la lista de incidentes dentro del Drawer Flotante
- */
+function showIncidentPopup(inc) {
+  const popup = document.getElementById('selectedIncidentPopup');
+  if (!inc) {
+    popup.classList.add('hidden');
+    return;
+  }
+  document.getElementById('popupIncidentTitle').textContent =
+    `#${inc.number} • ${inc.dateLabel || inc.date} • Píxel (${inc.pixelX}, ${inc.pixelY})`;
+  document.getElementById('popupIncidentDesc').textContent = inc.description;
+  document.getElementById('btnPopupConfirm').textContent = `👍 Confirmar (${inc.confirmations || 1})`;
+
+  document.getElementById('btnPopupEdit').onclick = () => {
+    popup.classList.add('hidden');
+    openIncidentModal(inc);
+  };
+  document.getElementById('btnPopupMove').onclick = () => {
+    popup.classList.add('hidden');
+    startMovingIncidentPixel(inc);
+  };
+  document.getElementById('btnPopupConfirm').onclick = async () => {
+    const { store, syncStatus } = await confirmIncidentAnonymously(appState.store, inc.id);
+    appState.store = store;
+    updateSyncBadge(syncStatus);
+    recomputeAndRenderUI();
+    const updated = appState.store.incidents.find((i) => i.id === inc.id);
+    if (updated) showIncidentPopup(updated);
+  };
+
+  popup.classList.remove('hidden');
+}
+
 function renderIncidentsDrawer(incidents) {
   const container = document.getElementById('incidentsContainer');
   document.getElementById('tabCountIncidents').textContent = String(incidents.length);
@@ -215,7 +248,7 @@ function renderIncidentsDrawer(incidents) {
       <div class="incident-category-row">
         <span class="incident-category">${escapeHtml(inc.category)}</span>
         <span class="severity-pill ${isTranquility ? 'sev-tranquility' : `sev-${inc.severity}`}">
-          ${isTranquility ? '🟡 Tranquilidad / Ruido' : `🔴 Gravedad ${inc.severity}/5`} • Hace ${daysAgo}d
+          ${isTranquility ? '🟡 Tranquilidad' : `🔴 Gravedad ${inc.severity}/5`} • ${daysAgo}d
         </span>
       </div>
 
@@ -274,9 +307,6 @@ function renderIncidentsDrawer(incidents) {
   }
 }
 
-/**
- * Renderiza el historial de revisiones de incidents.json (Estilo Wikipedia)
- */
 function renderWikiRevisionsDrawer(revisions) {
   const container = document.getElementById('revisionsContainer');
   document.getElementById('tabCountRevisions').textContent = String(revisions.length);
@@ -299,7 +329,7 @@ function renderWikiRevisionsDrawer(revisions) {
       </div>
       <div>${escapeHtml(rev.note || '')}</div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-        <span style="color:#6ee7b7; font-size:0.68rem;">🕵️ Vecino Anónimo (Sin IP)</span>
+        <span style="color:#6ee7b7; font-size:0.68rem;">🕵️ Vecino Anónimo</span>
         ${canRevert ? '<button type="button" class="btn-pixel btn-xs btn-revert-rev">↩️ Revertir</button>' : ''}
       </div>
     `;
@@ -329,20 +359,21 @@ function focusOnIncident(inc) {
   appState.selectedIncidentId = inc.id;
   appState.selectedPixel = { x: inc.pixelX, y: inc.pixelY };
   updateInspectorBar(inc.pixelX, inc.pixelY);
-  centerMapOnPixel(inc.pixelX, inc.pixelY, Math.max(appState.zoom, 2.1));
+  centerMapOnPixel(inc.pixelX, inc.pixelY, Math.max(appState.zoom, 1.8));
+  showIncidentPopup(inc);
   recomputeAndRenderUI();
 }
 
-function centerMapOnPixel(px, py, targetZoom = 1.8) {
+function centerMapOnPixel(px, py, targetZoom = 1.6) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const z = Math.max(0.6, Math.min(5.5, targetZoom));
+  const z = Math.max(0.45, Math.min(5.5, targetZoom));
 
   const worldX = ((px + 0.5) / GRID_WIDTH) * CANVAS_WIDTH;
   const worldY = ((py + 0.5) / GRID_HEIGHT) * CANVAS_HEIGHT;
 
   const targetPanX = vw / 2 - worldX * z;
-  const targetPanY = vh * 0.54 - worldY * z; // Ligeramente debajo del centro para compensar la tarjeta superior
+  const targetPanY = vh * 0.48 - worldY * z;
 
   applyTransform(z, targetPanX, targetPanY);
 }
@@ -350,16 +381,16 @@ function centerMapOnPixel(px, py, targetZoom = 1.8) {
 function applyTransform(zoom, panX, panY) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const minZoom = Math.max(vw / CANVAS_WIDTH, vh / CANVAS_HEIGHT, 0.8);
-  const z = Math.max(minZoom, Math.min(6, zoom));
+  const z = Math.max(0.45, Math.min(5.5, zoom));
 
   const scaledW = CANVAS_WIDTH * z;
   const scaledH = CANVAS_HEIGHT * z;
 
-  const minPanX = Math.min(0, vw - scaledW);
-  const maxPanX = 0;
-  const minPanY = Math.min(0, vh - scaledH);
-  const maxPanY = 0;
+  // Permite centrar cualquier borde del mapa entre la barra superior y la barra inferior en teléfonos verticales
+  const minPanX = Math.min(vw * 0.15 - scaledW, (vw - scaledW) / 2);
+  const maxPanX = Math.max(vw * 0.85, (vw - scaledW) / 2);
+  const minPanY = Math.min(vh * 0.20 - scaledH, (vh - scaledH) / 2);
+  const maxPanY = Math.max(vh * 0.80, (vh - scaledH) / 2);
 
   appState.zoom = z;
   appState.panX = Math.min(maxPanX, Math.max(minPanX, panX));
@@ -369,7 +400,7 @@ function applyTransform(zoom, panX, panY) {
 }
 
 /**
- * Interacción Táctil (Móvil Pinch-to-Zoom + Pan) y Ratón sobre el Mapa Full-Screen
+ * Interacción Táctil (iPhone Pinch-to-Zoom + Pan + Tap) y Ratón
  */
 function bindFullScreenMapInteraction() {
   const activePointers = new Map();
@@ -395,6 +426,9 @@ function bindFullScreenMapInteraction() {
 
   mapViewport.addEventListener('pointerdown', (e) => {
     document.getElementById('layersPopover').classList.add('hidden');
+    if (appState.alertDetailsExpanded) {
+      toggleAlertExpanded(false);
+    }
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     mapViewport.setPointerCapture(e.pointerId);
 
@@ -425,7 +459,7 @@ function bindFullScreenMapInteraction() {
       const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
       if (pinchStartDist > 10) {
         const scale = dist / pinchStartDist;
-        const nextZoom = Math.max(0.6, Math.min(6, pinchStartZoom * scale));
+        const nextZoom = Math.max(0.45, Math.min(5.5, pinchStartZoom * scale));
         const midX = (pts[0].x + pts[1].x) / 2;
         const midY = (pts[0].y + pts[1].y) / 2;
         const nextPanX = midX - pinchCenterWorldX * nextZoom;
@@ -441,7 +475,7 @@ function bindFullScreenMapInteraction() {
 
     if (hovered && e.pointerType === 'mouse' && activePointers.size === 0) {
       updateHoverTooltip(e.clientX, e.clientY, hovered.x, hovered.y);
-    } else if (activePointers.size > 0) {
+    } else {
       mapHoverTooltip.classList.add('hidden');
     }
 
@@ -470,10 +504,10 @@ function bindFullScreenMapInteraction() {
       return;
     }
 
-    if (activePointers.size === 0 && movedDistance < 7) {
+    if (activePointers.size === 0 && movedDistance < 8) {
       const clicked = clientEventToPixel(e.clientX, e.clientY);
       if (clicked) {
-        await handlePixelClick(clicked.x, clicked.y, e.clientX, e.clientY);
+        await handlePixelClick(clicked.x, clicked.y);
       }
     }
   });
@@ -487,7 +521,7 @@ function bindFullScreenMapInteraction() {
     const mouseX = e.clientX;
     const mouseY = e.clientY;
     const zoomFactor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
-    const nextZoom = Math.max(0.6, Math.min(6, appState.zoom * zoomFactor));
+    const nextZoom = Math.max(0.45, Math.min(5.5, appState.zoom * zoomFactor));
 
     const worldX = (mouseX - appState.panX) / appState.zoom;
     const worldY = (mouseY - appState.panY) / appState.zoom;
@@ -499,7 +533,7 @@ function bindFullScreenMapInteraction() {
   }, { passive: false });
 }
 
-async function handlePixelClick(px, py, clientX, clientY) {
+async function handlePixelClick(px, py) {
   appState.selectedPixel = { x: px, y: py };
   updateInspectorBar(px, py);
 
@@ -511,7 +545,7 @@ async function handlePixelClick(px, py, clientX, clientY) {
 
     if (targetInc) {
       const newSector = detectSectorName(px, py);
-      const { store, syncStatus } = await saveIncidentWikiRevision(
+      const { store, syncStatus, savedIncident } = await saveIncidentWikiRevision(
         appState.store,
         {
           ...targetInc,
@@ -524,11 +558,12 @@ async function handlePixelClick(px, py, clientX, clientY) {
       appState.store = store;
       updateSyncBadge(syncStatus);
       recomputeAndRenderUI();
+      showIncidentPopup(savedIncident);
     }
     return;
   }
 
-  // 2. ¿Estamos eligiendo un píxel desde el modal?
+  // 2. ¿Estamos eligiendo un píxel desde el modal de Reporte?
   if (appState.pickingPixelForModal) {
     appState.pickingPixelForModal = false;
     document.getElementById('mapSelectionBanner').classList.add('hidden');
@@ -538,16 +573,16 @@ async function handlePixelClick(px, py, clientX, clientY) {
     return;
   }
 
-  // 3. Si toca cerca de un incidente existente, seleccionarlo y mostrar información
+  // 3. Si tocó un incidente existente, mostrar su tarjeta flotante abajo
   const clickedIncident = appState.store.incidents.find(
-    (inc) => Math.hypot(inc.pixelX - px, inc.pixelY - py) <= 1.2
+    (inc) => Math.hypot(inc.pixelX - px, inc.pixelY - py) <= 1.3
   );
   if (clickedIncident) {
     appState.selectedIncidentId = clickedIncident.id;
     recomputeAndRenderUI();
-    updateHoverTooltip(clientX, clientY, px, py);
+    showIncidentPopup(clickedIncident);
   } else {
-    updateHoverTooltip(clientX, clientY, px, py);
+    showIncidentPopup(null);
   }
 }
 
@@ -572,8 +607,6 @@ function updateHoverTooltip(clientX, clientY, px, py) {
         </div>
       `;
     }
-  } else {
-    html += `<div style="color:#94a3b8; font-size:0.66rem;">Toca "📌 Reportar aquí" abajo para asociar un evento a este píxel.</div>`;
   }
 
   mapHoverTooltip.innerHTML = html;
@@ -593,8 +626,23 @@ function startMovingIncidentPixel(inc) {
   appState.selectedIncidentId = inc.id;
   const banner = document.getElementById('mapSelectionBanner');
   document.getElementById('mapSelectionBannerText').textContent =
-    `📍 Moviendo Incidente #${inc.number}: Toca el nuevo píxel en el mapa...`;
+    `📍 Moviendo #${inc.number}: Toca el nuevo píxel en el mapa`;
   banner.classList.remove('hidden');
+}
+
+function toggleAlertExpanded(forceState) {
+  appState.alertDetailsExpanded = typeof forceState === 'boolean'
+    ? forceState
+    : !appState.alertDetailsExpanded;
+  const detailsEl = document.getElementById('alertExpandedDetails');
+  const btnEl = document.getElementById('btnToggleAlertDetails');
+  if (appState.alertDetailsExpanded) {
+    detailsEl.classList.remove('hidden');
+    btnEl.textContent = '▴';
+  } else {
+    detailsEl.classList.add('hidden');
+    btnEl.textContent = '▾';
+  }
 }
 
 function openDrawer(tab = 'incidents') {
@@ -624,25 +672,19 @@ function closeDrawer() {
 }
 
 function bindFloatingControlsEvents() {
-  // Colapsar / expandir detalles de la Alerta Superior
-  document.getElementById('btnToggleAlertDetails').addEventListener('click', () => {
-    appState.alertDetailsExpanded = !appState.alertDetailsExpanded;
-    const detailsEl = document.getElementById('alertExpandedDetails');
-    const btnEl = document.getElementById('btnToggleAlertDetails');
-    if (appState.alertDetailsExpanded) {
-      detailsEl.classList.remove('hidden');
-      btnEl.textContent = '▾';
-    } else {
-      detailsEl.classList.add('hidden');
-      btnEl.textContent = '▴';
-    }
+  document.getElementById('alertHeaderTapArea').addEventListener('click', () => {
+    toggleAlertExpanded();
   });
 
-  // Controles flotantes de Zoom y GPS
+  document.getElementById('btnCloseIncidentPopup').addEventListener('click', () => {
+    showIncidentPopup(null);
+  });
+
+  // Controles de Zoom y Hogar
   document.getElementById('btnZoomIn').addEventListener('click', () => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const nextZoom = Math.min(6, appState.zoom * 1.35);
+    const nextZoom = Math.min(5.5, appState.zoom * 1.3);
     applyTransform(
       nextZoom,
       vw / 2 - ((vw / 2 - appState.panX) / appState.zoom) * nextZoom,
@@ -653,7 +695,7 @@ function bindFloatingControlsEvents() {
   document.getElementById('btnZoomOut').addEventListener('click', () => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const nextZoom = Math.max(0.6, appState.zoom / 1.35);
+    const nextZoom = Math.max(0.45, appState.zoom / 1.3);
     applyTransform(
       nextZoom,
       vw / 2 - ((vw / 2 - appState.panX) / appState.zoom) * nextZoom,
@@ -666,6 +708,7 @@ function bindFloatingControlsEvents() {
   });
 
   document.getElementById('btnUseMyGps').addEventListener('click', () => {
+    document.getElementById('layersPopover').classList.add('hidden');
     if (!navigator.geolocation) {
       selectReferenceUserPixel();
       return;
@@ -676,7 +719,7 @@ function bindFloatingControlsEvents() {
         if (mapped.insideBounds) {
           appState.selectedPixel = { x: mapped.pixelX, y: mapped.pixelY };
           updateInspectorBar(mapped.pixelX, mapped.pixelY);
-          centerMapOnPixel(mapped.pixelX, mapped.pixelY, 2.3);
+          centerMapOnPixel(mapped.pixelX, mapped.pixelY, 2.0);
         } else {
           selectReferenceUserPixel();
         }
@@ -689,6 +732,9 @@ function bindFloatingControlsEvents() {
   // Popover de Capas
   document.getElementById('btnToggleLayersPopover').addEventListener('click', () => {
     document.getElementById('layersPopover').classList.toggle('hidden');
+  });
+  document.getElementById('btnCloseLayersPopover').addEventListener('click', () => {
+    document.getElementById('layersPopover').classList.add('hidden');
   });
 
   document.getElementById('chkShowGrid').addEventListener('change', (e) => {
@@ -713,7 +759,7 @@ function bindFloatingControlsEvents() {
     }
   });
 
-  // Botones flotantes inferiores (Drawer de Incidentes)
+  // Gaveta de Incidentes
   document.getElementById('btnOpenIncidentsDrawer').addEventListener('click', () => {
     openDrawer('incidents');
   });
@@ -731,7 +777,6 @@ function bindFloatingControlsEvents() {
     recomputeAndRenderUI();
   });
 
-  // Descargar / Importar / Restaurar incidents.json
   const triggerDownloadJson = () => {
     const jsonString = JSON.stringify(appState.store, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -773,7 +818,7 @@ function bindFloatingControlsEvents() {
 function selectReferenceUserPixel() {
   appState.selectedPixel = { x: USER_REFERENCE_PIXEL.x, y: USER_REFERENCE_PIXEL.y };
   updateInspectorBar(USER_REFERENCE_PIXEL.x, USER_REFERENCE_PIXEL.y);
-  centerMapOnPixel(USER_REFERENCE_PIXEL.x, USER_REFERENCE_PIXEL.y, 2.2);
+  centerMapOnPixel(USER_REFERENCE_PIXEL.x, USER_REFERENCE_PIXEL.y, 1.8);
 }
 
 function bindModalEvents() {
@@ -785,7 +830,7 @@ function bindModalEvents() {
   const impactSelect = document.getElementById('formImpactType');
 
   document.getElementById('btnOpenNewReport').addEventListener('click', () => {
-    openIncidentModal(null);
+    openIncidentModal(null, appState.selectedPixel);
   });
 
   document.getElementById('btnReportAtSelectedPixel').addEventListener('click', () => {
@@ -795,7 +840,6 @@ function bindModalEvents() {
   document.getElementById('btnCloseModal').addEventListener('click', closeIncidentModal);
   document.getElementById('btnCancelModal').addEventListener('click', closeIncidentModal);
 
-  // Cambiar automáticamente a Amarillo Claro si elige Ruido Excesivo / Convivencia
   categorySelect.addEventListener('change', () => {
     if (categorySelect.value.toLowerCase().includes('ruido')) {
       impactSelect.value = 'tranquilidad';
@@ -813,26 +857,12 @@ function bindModalEvents() {
     recomputeAndRenderUI();
   });
 
-  document.getElementById('formPixelX').addEventListener('input', () => {
-    const px = Number(document.getElementById('formPixelX').value) || 0;
-    const py = Number(document.getElementById('formPixelY').value) || 0;
-    setModalPixelCoordinates(px, py);
-    recomputeAndRenderUI();
-  });
-
-  document.getElementById('formPixelY').addEventListener('input', () => {
-    const px = Number(document.getElementById('formPixelX').value) || 0;
-    const py = Number(document.getElementById('formPixelY').value) || 0;
-    setModalPixelCoordinates(px, py);
-    recomputeAndRenderUI();
-  });
-
   document.getElementById('btnPickOnMapFromModal').addEventListener('click', () => {
     modalOverlay.classList.add('hidden');
     appState.pickingPixelForModal = true;
     const banner = document.getElementById('mapSelectionBanner');
     document.getElementById('mapSelectionBannerText').textContent =
-      '🎯 Toca cualquier píxel del mapa para asignarlo al incidente...';
+      '🎯 Toca cualquier píxel del mapa para asignarlo al reporte';
     banner.classList.remove('hidden');
   });
 
@@ -865,9 +895,9 @@ function bindModalEvents() {
     closeIncidentModal();
     updateInspectorBar(savedIncident.pixelX, savedIncident.pixelY);
     recomputeAndRenderUI();
+    showIncidentPopup(savedIncident);
   });
 
-  // Modal de Configuración GitHub Pages / JSON
   const bridgeOverlay = document.getElementById('bridgeModalOverlay');
   document.getElementById('btnOpenWikiTools').addEventListener('click', () => {
     const cfg = getBridgeConfig();
@@ -902,6 +932,7 @@ function openIncidentModal(existingIncident = null, defaultPixel = null) {
   const modalOverlay = document.getElementById('incidentModalOverlay');
   const titleEl = document.getElementById('modalTitle');
   const editingIdEl = document.getElementById('formEditingId');
+  showIncidentPopup(null);
 
   if (existingIncident) {
     titleEl.textContent = `✏️ Editar Incidente #${existingIncident.number}`;
@@ -946,10 +977,12 @@ function closeIncidentModal() {
 
 function setModalPixelCoordinates(px, py, customSector = null) {
   const gps = pixelToGps(px, py);
+  const sector = customSector || detectSectorName(gps.pixelX, gps.pixelY);
   document.getElementById('formPixelX').value = String(gps.pixelX);
   document.getElementById('formPixelY').value = String(gps.pixelY);
+  document.getElementById('formPixelDisplay').textContent = `Píxel (${gps.pixelX}, ${gps.pixelY}) — ${sector}`;
   document.getElementById('formGpsPreview').textContent = `GPS: ${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)}`;
-  document.getElementById('formSector').value = customSector || detectSectorName(gps.pixelX, gps.pixelY);
+  document.getElementById('formSector').value = sector;
 }
 
 function updateSyncBadge(syncStatus) {
