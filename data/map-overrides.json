@@ -1,0 +1,155 @@
+{
+  "_readme": "Ajustes manuales sobre data/map.json. Se conservan al correr npm run map:update. Solo edita este archivo para cambiar el mapa.",
+  "home": {
+    "lat": 7.004937,
+    "lng": -73.064235,
+    "label": "HOGAR"
+  },
+  "roadClass": {
+    "Avenida Calle 13 Norte": "arterial"
+  },
+  "rename": {
+    "Río Lato del Hato": "Río del Hato"
+  },
+  "hideWays": [],
+  "extraRoads": [],
+  "places": [
+    {
+      "id": "sendero",
+      "kind": "poi",
+      "icon": "🌲",
+      "color": "#15803d",
+      "lat": 7.006987,
+      "lng": -73.06163,
+      "label": "Sendero Río del Hato",
+      "lod": 1
+    },
+    {
+      "id": "zoo",
+      "kind": "poi",
+      "icon": "🦜",
+      "color": "#be185d",
+      "lat": 7.013429,
+      "lng": -73.05988,
+      "label": "Zoológico de Aves",
+      "lod": 1
+    },
+    {
+      "id": "eco",
+      "kind": "poi",
+      "icon": "🛍",
+      "color": "#2563eb",
+      "lat": 7.003924,
+      "lng": -73.058584,
+      "label": "Eco Centro Comercial",
+      "lod": 1
+    },
+    {
+      "id": "autoktonos",
+      "kind": "poi",
+      "icon": "🍴",
+      "color": "#ea580c",
+      "lat": 7.006709,
+      "lng": -73.058218,
+      "label": "Autóktonos",
+      "lod": 2
+    },
+    {
+      "id": "vet",
+      "kind": "poi",
+      "icon": "🐾",
+      "color": "#7c3aed",
+      "lat": 7.002532,
+      "lng": -73.061143,
+      "label": "Veterinaria",
+      "lod": 3
+    },
+    {
+      "id": "pradera",
+      "kind": "area",
+      "color": "#475569",
+      "lat": 7.005038,
+      "lng": -73.06492,
+      "label": "Pradera del Hato",
+      "lod": 1
+    },
+    {
+      "id": "azafran",
+      "kind": "area",
+      "color": "#475569",
+      "lat": 7.002253,
+      "lng": -73.064676,
+      "label": "Azafrán",
+      "lod": 2
+    },
+    {
+      "id": "terracota",
+      "kind": "area",
+      "color": "#475569",
+      "lat": 7.001278,
+      "lng": -73.065773,
+      "label": "Terracota",
+      "lod": 3
+    },
+    {
+      "id": "tierrabuena",
+      "kind": "area",
+      "color": "#64748b",
+      "lat": 7.001696,
+      "lng": -73.063945,
+      "label": "Ciudad Tierrabuena",
+      "lod": 2
+    }
+  ],
+  "sectors": [
+    {
+      "name": "Hogar — Pradera del Hato",
+      "lat": 7.004937,
+      "lng": -73.064235,
+      "radiusM": 35
+    },
+    {
+      "name": "Conjunto Residencial Pradera del Hato",
+      "lat": 7.005063,
+      "lng": -73.064495,
+      "radiusM": 110
+    },
+    {
+      "name": "Zoológico de Aves",
+      "lat": 7.013429,
+      "lng": -73.05988,
+      "radiusM": 140
+    }
+  ],
+  "areas": [
+    {
+      "kind": "openLand",
+      "pts": [
+        [
+          7.005316,
+          -73.062483
+        ],
+        [
+          7.006987,
+          -73.059924
+        ],
+        [
+          7.006152,
+          -73.057975
+        ],
+        [
+          7.004063,
+          -73.057731
+        ],
+        [
+          7.002949,
+          -73.060168
+        ],
+        [
+          7.004203,
+          -73.06163
+        ]
+      ]
+    }
+  ]
+}

@@ -2,8 +2,8 @@ import { GRID_WIDTH, GRID_HEIGHT } from './gpsGrid.js';
 import { WORLD_WIDTH, WORLD_HEIGHT } from './worldSize.js';
 import { createBaseMap, BASE_SCALE } from './render/baseMap.js';
 import { drawHeat, drawGrid } from './render/heat.js';
-import { drawRiverShimmer, drawActors } from './render/actors.js';
-import { drawRoadLabels, drawPlaces } from './render/labels.js';
+import { createActorLayer } from './render/actors.js';
+import { createLabelLayer } from './render/labels.js';
 import { drawIncidentMarkers, drawSelection } from './render/markers.js';
 
 /**
@@ -14,9 +14,11 @@ import { drawIncidentMarkers, drawSelection } from './render/markers.js';
  * Cada capa vive en `render/` como función (ctx, datos) → dibujo; para sumar
  * una capa nueva basta con importarla y agregarla a `frame()`.
  */
-export function createMapRenderer(canvas) {
+export function createMapRenderer(canvas, world) {
   const ctx = canvas.getContext('2d');
-  const base = createBaseMap();
+  const base = createBaseMap(world);
+  const actors = createActorLayer(world);
+  const labels = createLabelLayer(world);
   let dpr = 1;
 
   function resize(vw, vh) {
@@ -43,13 +45,13 @@ export function createMapRenderer(canvas) {
       ctx.drawImage(base, 0, 0, WORLD_WIDTH * BASE_SCALE, WORLD_HEIGHT * BASE_SCALE, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
 
-      drawRiverShimmer(ctx, phase);
+      actors.drawRiverShimmer(ctx, phase);
       drawHeat(ctx, heatmap, phase);
-      drawActors(ctx, phase);
+      actors.drawActors(ctx, phase);
       if (settings.showGrid) drawGrid(ctx, GRID_WIDTH, GRID_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
       drawSelection(ctx, selection.hovered, selection.pixel, phase);
-      drawRoadLabels(ctx, zoom);
-      drawPlaces(ctx, zoom, phase);
+      labels.drawRoadLabels(ctx, zoom);
+      labels.drawPlaces(ctx, zoom, phase);
       drawIncidentMarkers(ctx, incidents, selection.incidentId, phase, zoom);
     }
   };

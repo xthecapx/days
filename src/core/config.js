@@ -1,9 +1,7 @@
-export const ZOOM = { min: 0.45, max: 5.5 };
+export const ZOOM = { min: 0.35, max: 5.5 };
 
 /** "Hoy" dentro de la app (se puede cambiar desde el panel de capas). */
 export const REFERENCE_DATE = new Date(2026, 9, 22, 12, 0, 0);
-
-export const INITIAL_PIXEL = { x: 68, y: 49 };
 
 export const SEVERITY_NAMES = {
   1: '1 / 5 (Baja)',

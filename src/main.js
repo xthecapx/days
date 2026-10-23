@@ -6,6 +6,7 @@ import { createIncidentService } from './services/incidentService.js';
 import { createActions } from './state/actions.js';
 import { createCamera } from './map/camera.js';
 import { createMapRenderer } from './map/mapRenderer.js';
+import { loadMapData } from './map/mapData.js';
 import { mountMapInput } from './ui/mapInput.js';
 import { mountHud } from './ui/hud.js';
 import { mountSheet } from './ui/sheet.js';
@@ -24,7 +25,8 @@ async function boot() {
   const incidents = createIncidentService(store);
   const actions = createActions({ store, camera, incidents });
   const viewport = $('mapViewport');
-  const renderer = createMapRenderer($('mapCanvas'));
+  const world = await loadMapData();
+  const renderer = createMapRenderer($('mapCanvas'), world);
 
   const fit = () => {
     const vw = window.innerWidth;

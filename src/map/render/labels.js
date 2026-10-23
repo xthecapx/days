@@ -1,19 +1,14 @@
 import { TILE_SIZE } from '../worldSize.js';
 import { samplePolyline } from '../geometry.js';
-import { ROADS, RIVER } from '../data/roads.js';
-import { PLACES, ROAD_LABELS } from '../data/places.js';
+import { LABEL_STYLES } from '../data/roadStyles.js';
 
 const FONT = '"Space Grotesk", system-ui, sans-serif';
+const SKIP_NAME = /^(Salida|Entrada|Retorno|Plazoleta|Calzada)/i;
 
 function lodVisible(lod, zoom) {
   if (lod <= 1) return true;
   if (lod === 2) return zoom >= 1.4;
   return zoom >= 2.2;
-}
-
-function geometryFor(label) {
-  if (label.source === 'river') return RIVER.pts;
-  return ROADS.find((r) => r.name === label.road)?.pts;
 }
 
 /** Texto con halo claro: legible sobre cualquier fondo, sin cajas. */
@@ -28,29 +23,34 @@ function haloText(ctx, text, x, y, color, size, weight = 700) {
 }
 
 /** El tamaño en pantalla se mantiene casi constante: se compensa el zoom de la cámara. */
-function screenSize(px, zoom) {
-  return px / Math.max(0.8, Math.min(zoom, 3));
-}
+const screenSize = (px, zoom) => px / Math.max(0.8, Math.min(zoom, 3));
 
-export function drawRoadLabels(ctx, zoom) {
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const size = screenSize(11, zoom) * 1.05;
-  for (const label of ROAD_LABELS) {
-    if (!lodVisible(label.lod, zoom)) continue;
-    const pts = geometryFor(label);
-    if (!pts) continue;
-    const p = samplePolyline(pts, label.t);
-    let angle = Math.atan2(p.dy, p.dx);
-    if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI; // nunca de cabeza
-    ctx.save();
-    ctx.translate((p.x + 0.5) * TILE_SIZE, (p.y + 0.5) * TILE_SIZE);
-    ctx.rotate(angle);
-    haloText(ctx, label.text ?? label.road, 0, 0, label.color, size, 700);
-    ctx.restore();
+/** Una etiqueta por calle con nombre (dos si es muy larga), tomada de los tramos más largos. */
+function buildRoadLabels(world) {
+  const byName = new Map();
+  const add = (kind, f) => {
+    if (!f.name || SKIP_NAME.test(f.name)) return;
+    const key = `${kind}|${f.name}`;
+    if (!byName.has(key)) byName.set(key, []);
+    byName.get(key).push(f);
+  };
+  for (const r of world.roads) add(r.cls, r);
+  for (const w of world.water) add(w.kind, w);
+
+  const labels = [];
+  for (const [key, ways] of byName) {
+    const kind = key.split('|')[0];
+    const style = LABEL_STYLES[kind];
+    if (!style) continue;
+    const sorted = [...ways].sort((a, b) => b.len - a.len);
+    const total = sorted.reduce((s, w) => s + w.len, 0);
+    const picks = total > 90 && sorted.length > 1 ? sorted.slice(0, 2) : sorted.slice(0, 1);
+    for (const w of picks) {
+      if (w.len < 5) continue;
+      labels.push({ text: w.name, pts: w.pts, len: w.len, ...style });
+    }
   }
-  ctx.restore();
+  return labels.sort((a, b) => a.rank - b.rank || b.len - a.len);
 }
 
 function drawPoiPin(ctx, place, zoom) {
@@ -78,33 +78,15 @@ function drawPoiPin(ctx, place, zoom) {
   haloText(ctx, place.label, cx, cy + r + 1.5 * s, '#1f2937', 9 * s, 700);
 }
 
-export function drawPlaces(ctx, zoom, pulsePhase) {
-  ctx.save();
-  for (const place of PLACES) {
-    if (!lodVisible(place.lod, zoom)) continue;
-    if (place.kind === 'poi') {
-      drawPoiPin(ctx, place, zoom);
-    } else if (place.kind === 'area') {
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      haloText(ctx, place.label, (place.x + 0.5) * TILE_SIZE, (place.y + 0.5) * TILE_SIZE, place.color, screenSize(10, zoom), 600);
-    } else if (place.kind === 'home') {
-      drawHome(ctx, place, zoom, pulsePhase);
-    }
-  }
-  ctx.restore();
-}
-
-function drawHome(ctx, place, zoom, pulsePhase) {
+function drawHome(ctx, home, zoom, phase) {
   const s = screenSize(1, zoom);
-  const cx = (place.x + 0.5) * TILE_SIZE;
-  const cy = (place.y + 0.5) * TILE_SIZE;
-  const halo = (11 + Math.sin(pulsePhase * 3) * 1.8) * s;
+  const cx = (home.x + 0.5) * TILE_SIZE;
+  const cy = (home.y + 0.5) * TILE_SIZE;
+  const halo = (11 + Math.sin(phase * 3) * 1.8) * s;
   ctx.fillStyle = 'rgba(37, 99, 235, 0.22)';
   ctx.beginPath();
   ctx.arc(cx, cy, halo, 0, Math.PI * 2);
   ctx.fill();
-
   const r = 8 * s;
   ctx.fillStyle = '#1d4ed8';
   ctx.beginPath();
@@ -119,5 +101,54 @@ function drawHome(ctx, place, zoom, pulsePhase) {
   ctx.fillStyle = '#ffffff';
   ctx.fillText('🏠', cx, cy + 0.5 * s);
   ctx.textBaseline = 'bottom';
-  haloText(ctx, place.label, cx, cy - r - 2 * s, '#1d4ed8', 9 * s, 800);
+  haloText(ctx, home.label, cx, cy - r - 2 * s, '#1d4ed8', 9 * s, 800);
+}
+
+/** Capa de etiquetas, lugares y casa. Se construye una vez por mapa. */
+export function createLabelLayer(world) {
+  const roadLabels = buildRoadLabels(world);
+
+  return {
+    drawRoadLabels(ctx, zoom) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const size = screenSize(11, zoom) * 1.05;
+      const placed = [];
+      for (const label of roadLabels) {
+        if (!lodVisible(label.lod, zoom)) continue;
+        const width = label.text.length * size * 0.58;
+        if (label.len * TILE_SIZE < width * 1.1) continue; // la calle no alcanza para el texto
+        const p = samplePolyline(label.pts, 0.5);
+        const wx = (p.x + 0.5) * TILE_SIZE;
+        const wy = (p.y + 0.5) * TILE_SIZE;
+        if (placed.some((q) => Math.hypot(q.x - wx, q.y - wy) < (q.w + width) * 0.45)) continue;
+        placed.push({ x: wx, y: wy, w: width });
+        let angle = Math.atan2(p.dy, p.dx);
+        if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI; // nunca de cabeza
+        ctx.save();
+        ctx.translate(wx, wy);
+        ctx.rotate(angle);
+        haloText(ctx, label.text, 0, 0, label.color, size, 700);
+        ctx.restore();
+      }
+      ctx.restore();
+    },
+
+    drawPlaces(ctx, zoom, phase) {
+      ctx.save();
+      for (const place of world.places) {
+        if (!lodVisible(place.lod || 1, zoom)) continue;
+        if (place.kind === 'poi') {
+          drawPoiPin(ctx, place, zoom);
+        } else {
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          haloText(ctx, place.label, (place.x + 0.5) * TILE_SIZE, (place.y + 0.5) * TILE_SIZE, place.color || '#475569', screenSize(10, zoom), 600);
+        }
+      }
+      drawHome(ctx, world.home, zoom, phase);
+      ctx.restore();
+    }
+  };
 }

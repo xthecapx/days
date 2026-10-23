@@ -1,8 +1,10 @@
-import { GRID_WIDTH, GRID_HEIGHT, pixelToGps, detectSectorName } from '../map/gpsGrid.js';
+import { GRID_WIDTH, GRID_HEIGHT, pixelToGps } from '../map/gpsGrid.js';
+import { detectSectorName } from '../map/mapData.js';
 import { layoutMarkers, MARKER_BOX } from '../map/render/markers.js';
 import { TILE_SIZE } from '../map/worldSize.js';
 import { selectHeatmap, selectIncidents } from '../state/selectors.js';
 import { escapeHtml } from '../core/dom.js';
+import { ZOOM } from '../core/config.js';
 
 const TAP_SLOP = 8; // px de movimiento tolerado para seguir contando como "tap"
 
@@ -88,7 +90,7 @@ export function mountMapInput({ viewport, tooltip, store, camera, actions }) {
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       const z = pinch.zoom * (dist / pinch.dist);
       // Se fija el punto del mundo bajo los dedos; camera.set aplica los límites.
-      const clamped = Math.max(0.45, Math.min(5.5, z));
+      const clamped = Math.max(ZOOM.min, Math.min(ZOOM.max, z));
       camera.set(clamped, mid.x - pinch.world.x * clamped, mid.y - pinch.world.y * clamped);
       moved = 99;
       return;

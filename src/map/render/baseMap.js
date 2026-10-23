@@ -1,58 +1,118 @@
-import { GRID_WIDTH, GRID_HEIGHT, distanceToPolyline } from '../gpsGrid.js';
+import { GRID_WIDTH, GRID_HEIGHT } from '../gpsGrid.js';
 import { TILE_SIZE, WORLD_WIDTH, WORLD_HEIGHT } from '../worldSize.js';
 import { pointInPolygon, tileHash } from '../geometry.js';
-import { ROADS, TRAILS, RIVER, URBAN_POLY, OPEN_LAND_POLY, LANDMARK_BLOCKS } from '../data/roads.js';
-import { ROAD_STYLES, TERRAIN_COLORS, BUILDING_ROOFS, BUILDING_TONES } from '../data/roadStyles.js';
+import { ROAD_STYLES, ROAD_CLASS_ORDER, WATER_STYLES, TERRAIN_COLORS, BUILDING_ROOFS } from '../data/roadStyles.js';
 
-/** El mapa base se pinta una sola vez a mayor resolución para que las vías salgan nítidas. */
-export const BASE_SCALE = 3;
+/**
+ * El mapa base se pinta una sola vez en un lienzo grande. Con 200×200 tiles el
+ * lienzo mide 1600×1600 por BASE_SCALE², así que se limita a 2× (3200×3200).
+ */
+export const BASE_SCALE = 2;
 
 const T = TILE_SIZE * BASE_SCALE;
-const tc = (v) => (v + 0.5) * T; // centro del tile en píxeles del lienzo base
+const tc = (v) => (v + 0.5) * T; // coordenada de tile (continua) → píxel del lienzo base
 
-function strokePath(ctx, pts) {
+function path(ctx, pts) {
   ctx.beginPath();
   pts.forEach(([x, y], i) => (i ? ctx.lineTo(tc(x), tc(y)) : ctx.moveTo(tc(x), tc(y))));
-  ctx.stroke();
 }
 
-function strokeLayer(ctx, pts, width, color, dash = []) {
-  ctx.lineWidth = width * T;
+function stroke(ctx, pts, widthTiles, color, dash = []) {
+  ctx.lineWidth = widthTiles * T;
   ctx.strokeStyle = color;
   ctx.setLineDash(dash.map((d) => d * T * 0.5));
-  strokePath(ctx, pts);
+  path(ctx, pts);
+  ctx.stroke();
   ctx.setLineDash([]);
 }
 
-/** Distancia de cada tile al borde de la vía/río/sendero más cercano (negativa = encima). */
-function buildClearance() {
-  const clearance = new Float32Array(GRID_WIDTH * GRID_HEIGHT).fill(99);
-  const features = [
-    ...ROADS.map((r) => ({ pts: r.pts, half: ROAD_STYLES[r.cls].width / 2 })),
-    ...TRAILS.map((t) => ({ pts: t.pts, half: 0.4 })),
-    { pts: RIVER.pts, half: 1.1 }
-  ];
-  for (let y = 0; y < GRID_HEIGHT; y++) {
-    for (let x = 0; x < GRID_WIDTH; x++) {
-      let best = 99;
-      for (const f of features) {
-        const d = distanceToPolyline(x, y, f.pts) - f.half;
-        if (d < best) best = d;
-      }
-      clearance[y * GRID_WIDTH + x] = best;
+function fillPoly(ctx, pts, color) {
+  ctx.fillStyle = color;
+  path(ctx, pts);
+  ctx.closePath();
+  ctx.fill();
+}
+
+const AREA_KINDS = {
+  forest: 'forest',
+  wood: 'forest',
+  residential: 'urban',
+  industrial: 'industrial',
+  commercial: 'urban',
+  retail: 'urban',
+  openLand: 'openLand',
+  farmland: 'grass',
+  meadow: 'grass',
+  grass: 'grass',
+  park: 'park',
+  garden: 'park',
+  recreation_ground: 'park',
+  pitch: 'park'
+};
+
+/** Máscara por tile: 0 = campo, 1 = bosque, 2 = urbano, 3 = industrial, 4 = suelo abierto, 5 = parque. */
+function buildLandMask(world) {
+  const mask = new Uint8Array(GRID_WIDTH * GRID_HEIGHT);
+  const code = { grass: 0, forest: 1, urban: 2, industrial: 3, openLand: 4, park: 5 };
+  const area = (a) => (a.bbox.x1 - a.bbox.x0) * (a.bbox.y1 - a.bbox.y0);
+  const polys = world.areas
+    .filter((a) => a.pts.length > 3 && AREA_KINDS[a.kind])
+    .map((a) => ({ a, code: code[AREA_KINDS[a.kind]] }))
+    // los grandes primero para que los pequeños queden encima
+    .sort((p, q) => area(q.a) - area(p.a));
+  for (const { a, code: c } of polys) {
+    const x0 = Math.max(0, Math.floor(a.bbox.x0));
+    const x1 = Math.min(GRID_WIDTH - 1, Math.ceil(a.bbox.x1));
+    const y0 = Math.max(0, Math.floor(a.bbox.y0));
+    const y1 = Math.min(GRID_HEIGHT - 1, Math.ceil(a.bbox.y1));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) if (pointInPolygon(x, y, a.pts)) mask[y * GRID_WIDTH + x] = c;
     }
   }
+  return mask;
+}
+
+/** Distancia aproximada (en tiles) de cada tile a la vía/cauce más cercano, para no poner casas encima. */
+function buildClearance(world) {
+  const clearance = new Float32Array(GRID_WIDTH * GRID_HEIGHT).fill(99);
+  const stamp = (pts, half) => {
+    const r = Math.ceil(half + 1.6);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x1, y1] = pts[i];
+      const [x2, y2] = pts[i + 1];
+      const steps = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) * 2));
+      for (let s = 0; s <= steps; s++) {
+        const cx = x1 + ((x2 - x1) * s) / steps;
+        const cy = y1 + ((y2 - y1) * s) / steps;
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            const tx = Math.round(cx) + dx;
+            const ty = Math.round(cy) + dy;
+            if (tx < 0 || ty < 0 || tx >= GRID_WIDTH || ty >= GRID_HEIGHT) continue;
+            const d = Math.hypot(tx - cx, ty - cy) - half;
+            const idx = ty * GRID_WIDTH + tx;
+            if (d < clearance[idx]) clearance[idx] = d;
+          }
+        }
+      }
+    }
+  };
+  for (const r of world.roads) stamp(r.pts, ROAD_STYLES[r.cls].width / 2);
+  for (const w of world.water) stamp(w.pts, (w.kind === 'river' ? WATER_STYLES.river.width : WATER_STYLES.stream.width) / 2);
   return clearance;
 }
 
-function paintTerrain(ctx) {
-  const { grass, urban, openLand } = TERRAIN_COLORS;
+function paintTerrain(ctx, mask) {
+  const { grass, park, urban, industrial, openLand } = TERRAIN_COLORS;
   for (let y = 0; y < GRID_HEIGHT; y++) {
     for (let x = 0; x < GRID_WIDTH; x++) {
       const h = tileHash(x, y);
+      const m = mask[y * GRID_WIDTH + x];
       let color;
-      if (pointInPolygon(x, y, OPEN_LAND_POLY)) color = openLand;
-      else if (pointInPolygon(x, y, URBAN_POLY)) color = urban;
+      if (m === 2) color = urban;
+      else if (m === 3) color = industrial;
+      else if (m === 4) color = openLand;
+      else if (m === 5) color = park[h % park.length];
       else color = grass[h % grass.length];
       ctx.fillStyle = color;
       ctx.fillRect(x * T, y * T, T + 1, T + 1);
@@ -60,13 +120,15 @@ function paintTerrain(ctx) {
   }
 }
 
-function paintForest(ctx, clearance) {
+function paintTrees(ctx, mask, clearance) {
   for (let y = 0; y < GRID_HEIGHT; y++) {
     for (let x = 0; x < GRID_WIDTH; x++) {
-      if (pointInPolygon(x, y, URBAN_POLY) || pointInPolygon(x, y, OPEN_LAND_POLY)) continue;
+      const m = mask[y * GRID_WIDTH + x];
+      if (m === 2 || m === 3 || m === 4) continue;
       if (clearance[y * GRID_WIDTH + x] < 0.9) continue;
       const h = tileHash(x, y, 7);
-      if (h % 100 > 58) continue;
+      const density = m === 1 ? 70 : m === 5 ? 28 : 55;
+      if (h % 100 > density) continue;
       const cx = (x + 0.2 + ((h >> 3) % 60) / 100) * T;
       const cy = (y + 0.2 + ((h >> 9) % 60) / 100) * T;
       const r = T * (0.34 + ((h >> 15) % 20) / 100);
@@ -82,87 +144,76 @@ function paintForest(ctx, clearance) {
   }
 }
 
-function paintBuildings(ctx, clearance) {
+/** Casas procedurales: OSM no trae edificios aquí. Solo en suelo urbano y lejos de las vías. */
+function paintBuildings(ctx, mask, clearance) {
   for (let y = 0; y < GRID_HEIGHT; y++) {
     for (let x = 0; x < GRID_WIDTH; x++) {
-      if (!pointInPolygon(x, y, URBAN_POLY) || pointInPolygon(x, y, OPEN_LAND_POLY)) continue;
-      if (clearance[y * GRID_WIDTH + x] < 0.75) continue;
+      const m = mask[y * GRID_WIDTH + x];
+      if (m !== 2 && m !== 3) continue;
+      if (clearance[y * GRID_WIDTH + x] < 0.8) continue;
       const h = tileHash(x, y, 3);
-      if (h % 100 > 66) continue;
+      if (h % 100 > (m === 3 ? 40 : 66)) continue;
       const roof = BUILDING_ROOFS[h % BUILDING_ROOFS.length];
       const bx = x * T + T * 0.14;
       const by = y * T + T * 0.14;
-      const bw = T * 0.72;
-      const bh = T * 0.72;
+      const s = T * 0.72;
       ctx.fillStyle = 'rgba(30, 30, 40, 0.22)';
-      ctx.fillRect(bx + T * 0.08, by + T * 0.1, bw, bh);
+      ctx.fillRect(bx + T * 0.08, by + T * 0.1, s, s);
       ctx.fillStyle = roof;
-      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillRect(bx, by, s, s);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
-      ctx.fillRect(bx, by, bw, T * 0.1);
-    }
-  }
-  for (const b of LANDMARK_BLOCKS) {
-    const tone = BUILDING_TONES[b.tone];
-    const x = tc(b.x) - T / 2;
-    const y = tc(b.y) - T / 2;
-    ctx.fillStyle = 'rgba(30, 30, 40, 0.28)';
-    ctx.fillRect(x + T * 0.18, y + T * 0.2, b.w * T, b.h * T);
-    ctx.fillStyle = tone.side;
-    ctx.fillRect(x, y, b.w * T, b.h * T);
-    ctx.fillStyle = tone.roof;
-    ctx.fillRect(x + T * 0.12, y + T * 0.12, b.w * T - T * 0.24, b.h * T - T * 0.24);
-  }
-}
-
-function paintRoads(ctx) {
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  const sorted = [...ROADS].sort((a, b) => ROAD_STYLES[a.cls].order - ROAD_STYLES[b.cls].order);
-  // Primero todos los bordes, luego los rellenos: las intersecciones quedan limpias.
-  for (const r of sorted) {
-    const s = ROAD_STYLES[r.cls];
-    strokeLayer(ctx, r.pts, s.width + 0.28, s.casing);
-  }
-  for (const r of sorted) {
-    const s = ROAD_STYLES[r.cls];
-    strokeLayer(ctx, r.pts, s.width, s.fill, s.dash);
-    if (s.centerLine) {
-      ctx.lineCap = 'butt';
-      strokeLayer(ctx, r.pts, 0.1, s.centerLine, [2.2, 2.2]);
-      ctx.lineCap = 'round';
+      ctx.fillRect(bx, by, s, T * 0.1);
     }
   }
 }
 
-function paintWater(ctx) {
+function paintWater(ctx, world) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  strokeLayer(ctx, RIVER.pts, 2.1, TERRAIN_COLORS.waterEdge);
-  strokeLayer(ctx, RIVER.pts, 1.7, TERRAIN_COLORS.water);
-  strokeLayer(ctx, RIVER.pts, 0.4, TERRAIN_COLORS.waterLight);
+  for (const b of world.waterBodies) {
+    if (b.pts.length < 4) continue;
+    fillPoly(ctx, b.pts, WATER_STYLES.body.fill);
+    ctx.lineWidth = T * 0.2;
+    ctx.strokeStyle = WATER_STYLES.body.edge;
+    path(ctx, b.pts);
+    ctx.stroke();
+  }
+  const streams = world.water.filter((w) => w.kind !== 'river');
+  const rivers = world.water.filter((w) => w.kind === 'river');
+  for (const w of streams) {
+    stroke(ctx, w.pts, WATER_STYLES.stream.width + 0.2, WATER_STYLES.stream.edge);
+    stroke(ctx, w.pts, WATER_STYLES.stream.width, WATER_STYLES.stream.fill);
+  }
+  for (const w of rivers) stroke(ctx, w.pts, WATER_STYLES.river.width + 0.4, WATER_STYLES.river.edge);
+  for (const w of rivers) stroke(ctx, w.pts, WATER_STYLES.river.width, WATER_STYLES.river.fill);
+  for (const w of rivers) stroke(ctx, w.pts, 0.3, WATER_STYLES.river.core);
 }
 
-function paintTrails(ctx) {
+function paintRoads(ctx, world) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  for (const trail of TRAILS) {
-    strokeLayer(ctx, trail.pts, 0.34, TERRAIN_COLORS.trail, [1.3, 1.2]);
+  // Por clase de menor a mayor; dentro de cada clase primero bordes y luego rellenos,
+  // así las intersecciones quedan limpias y las vías grandes pasan por encima de las pequeñas.
+  for (const cls of ROAD_CLASS_ORDER) {
+    const s = ROAD_STYLES[cls];
+    const group = world.roads.filter((r) => r.cls === cls);
+    if (s.casing) for (const r of group) stroke(ctx, r.pts, s.width + 0.24, s.casing);
+    for (const r of group) stroke(ctx, r.pts, s.width, s.fill, s.dash);
   }
 }
 
-export function createBaseMap() {
+export function createBaseMap(world) {
   const canvas = document.createElement('canvas');
   canvas.width = WORLD_WIDTH * BASE_SCALE;
   canvas.height = WORLD_HEIGHT * BASE_SCALE;
   const ctx = canvas.getContext('2d');
 
-  const clearance = buildClearance();
-  paintTerrain(ctx);
-  paintForest(ctx, clearance);
-  paintBuildings(ctx, clearance);
-  paintWater(ctx); // el río va debajo: las vías lo cruzan como puentes
-  paintRoads(ctx);
-  paintTrails(ctx);
+  const mask = buildLandMask(world);
+  const clearance = buildClearance(world);
+  paintTerrain(ctx, mask);
+  paintTrees(ctx, mask, clearance);
+  paintBuildings(ctx, mask, clearance);
+  paintWater(ctx, world); // el agua va debajo: las vías la cruzan como puentes
+  paintRoads(ctx, world);
   return canvas;
 }

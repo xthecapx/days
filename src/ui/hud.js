@@ -1,5 +1,6 @@
 import { $, setHidden } from '../core/dom.js';
-import { pixelToGps, detectSectorName } from '../map/gpsGrid.js';
+import { pixelToGps } from '../map/gpsGrid.js';
+import { detectSectorName } from '../map/mapData.js';
 import { calculateDaysSince } from '../map/heatmapEngine.js';
 import { selectHeatmap, selectIncidents, selectLatestIncident, findIncident } from '../state/selectors.js';
 

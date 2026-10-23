@@ -1,4 +1,4 @@
-import { detectSectorName } from '../map/gpsGrid.js';
+import { detectSectorName } from '../map/mapData.js';
 import {
   loadWikiStore,
   saveIncidentWikiRevision,

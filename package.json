@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node server.mjs",
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "map:update": "node scripts/update-map.mjs"
   },
   "keywords": [
     "pixel-art",

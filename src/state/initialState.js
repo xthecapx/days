@@ -1,4 +1,4 @@
-import { REFERENCE_DATE, INITIAL_PIXEL } from '../core/config.js';
+import { REFERENCE_DATE } from '../core/config.js';
 
 /**
  * Forma del estado de la app:
@@ -19,7 +19,7 @@ export function createInitialState() {
       referenceDate: REFERENCE_DATE,
       showGrid: false
     },
-    selection: { pixel: { ...INITIAL_PIXEL }, incidentId: 'inc-006', hovered: null },
+    selection: { pixel: { x: 0, y: 0 }, incidentId: 'inc-006', hovered: null },
     mode: { type: 'browse' },
     ui: { sheet: null, popupIncidentId: null, alertExpanded: false, settingsOpen: false },
     draft: null

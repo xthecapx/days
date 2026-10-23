@@ -1,6 +1,7 @@
-import { CATEGORIES, DEFAULT_CATEGORY, INITIAL_PIXEL } from '../core/config.js';
+import { CATEGORIES, DEFAULT_CATEGORY } from '../core/config.js';
 import { toIsoDate } from '../core/dom.js';
-import { USER_REFERENCE_PIXEL, detectSectorName, gpsToPixel, pixelToGps } from '../map/gpsGrid.js';
+import { gpsToPixel, pixelToGps } from '../map/gpsGrid.js';
+import { detectSectorName, getWorld } from '../map/mapData.js';
 import { isTranquilityIncident } from '../map/heatmapEngine.js';
 import { findIncident } from './selectors.js';
 
@@ -17,8 +18,9 @@ export function createActions({ store, camera, incidents }) {
 
   // ----- Cámara / selección -------------------------------------------------
   function goHome(zoom) {
-    camera.focusTile(USER_REFERENCE_PIXEL.x, USER_REFERENCE_PIXEL.y - 1, zoom ?? (isMobile() ? 1.45 : 1.75));
-    store.patch('selection', { pixel: { ...INITIAL_PIXEL } });
+    const { home } = getWorld();
+    camera.focusTile(home.x, home.y - 1, zoom ?? (isMobile() ? 1.45 : 1.75));
+    store.patch('selection', { pixel: { x: home.x, y: home.y } });
   }
 
   function selectPixel(x, y) {
@@ -34,8 +36,9 @@ export function createActions({ store, camera, incidents }) {
 
   function locateMe() {
     const fallback = () => {
-      selectPixel(USER_REFERENCE_PIXEL.x, USER_REFERENCE_PIXEL.y);
-      camera.focusTile(USER_REFERENCE_PIXEL.x, USER_REFERENCE_PIXEL.y, 1.8);
+      const { home } = getWorld();
+      selectPixel(home.x, home.y);
+      camera.focusTile(home.x, home.y, 1.8);
     };
     if (!navigator.geolocation) return fallback();
     navigator.geolocation.getCurrentPosition(

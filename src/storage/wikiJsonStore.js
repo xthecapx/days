@@ -1,4 +1,5 @@
-import { pixelToGps, detectSectorName } from '../map/gpsGrid.js';
+import { pixelToGps, gpsToPixel } from '../map/gpsGrid.js';
+import { detectSectorName } from '../map/mapData.js';
 
 const STORAGE_KEY = 'vecinos_rio_hato_wiki_json_v3';
 const BRIDGE_CONFIG_KEY = 'vecinos_rio_hato_github_bridge_v1';
@@ -86,8 +87,18 @@ export async function loadWikiStore() {
   return normalizeStore(remoteData || { incidents: [], revisions: [] });
 }
 
+/**
+ * lat/lng es la fuente de verdad del incidente; el tile se recalcula en cada carga
+ * para que cambiar la grilla o el área del mapa nunca mueva un incidente.
+ */
+function anchorToGrid(inc) {
+  if (!Number.isFinite(inc.lat) || !Number.isFinite(inc.lng)) return inc;
+  const { pixelX, pixelY, insideBounds } = gpsToPixel(inc.lat, inc.lng);
+  return insideBounds ? { ...inc, pixelX, pixelY } : inc;
+}
+
 function normalizeStore(data) {
-  const incidents = Array.isArray(data.incidents) ? data.incidents : [];
+  const incidents = (Array.isArray(data.incidents) ? data.incidents : []).map(anchorToGrid);
   incidents.sort((a, b) => (a.number || 0) - (b.number || 0));
   const revisions = Array.isArray(data.revisions) ? data.revisions : [];
   return {
