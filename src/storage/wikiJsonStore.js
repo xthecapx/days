@@ -1,7 +1,9 @@
 import { pixelToGps, gpsToPixel } from '../map/gpsGrid.js';
 import { detectSectorName } from '../map/mapData.js';
 
-const STORAGE_KEY = 'vecinos_rio_hato_wiki_json_v3';
+// v4: las copias v3 (que ganaban sobre el repositorio) se ignoran y se borran al cargar.
+const STORAGE_KEY = 'vecinos_rio_hato_wiki_json_v4';
+const LEGACY_STORAGE_KEYS = ['vecinos_rio_hato_wiki_json_v3'];
 const BRIDGE_CONFIG_KEY = 'vecinos_rio_hato_github_bridge_v1';
 
 // Repositorio por defecto para lectura en vivo desde GitHub Pages
@@ -42,6 +44,11 @@ export function saveBridgeConfig(config) {
  * Carga el estado de data/incidents.json (desde GitHub Raw / archivo del repositorio + caché local)
  */
 export async function loadWikiStore() {
+  for (const key of LEGACY_STORAGE_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch (_) {}
+  }
   const bridge = getBridgeConfig();
   let remoteData = null;
   const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -67,24 +74,22 @@ export async function loadWikiStore() {
     }
   }
 
-  let localData = null;
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      localData = JSON.parse(saved);
-    }
-  } catch (_) {}
-
-  if (remoteData && (!localData || (remoteData.revisions?.length || 0) >= (localData.revisions?.length || 0))) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteData));
+  // El archivo del repositorio es la fuente de verdad. La copia guardada en el navegador solo
+  // sirve de respaldo sin conexión; nunca gana sobre el repositorio, así nadie tiene que
+  // "restaurar" tras una publicación y los PR aprobados se ven en la siguiente carga.
+  if (remoteData) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteData));
+    } catch (_) {}
     return normalizeStore(remoteData);
   }
 
-  if (localData) {
-    return normalizeStore(localData);
-  }
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return normalizeStore(JSON.parse(saved));
+  } catch (_) {}
 
-  return normalizeStore(remoteData || { incidents: [], revisions: [] });
+  return normalizeStore({ incidents: [], revisions: [] });
 }
 
 /**
