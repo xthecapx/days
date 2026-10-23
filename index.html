@@ -3,348 +3,219 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#090d16" />
   <title>Días Desde el Último Incidente — Sendero Río del Hato</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./src/style.css" />
+  <link rel="stylesheet" href="./src/styles/base.css" />
+  <link rel="stylesheet" href="./src/styles/hud.css" />
+  <link rel="stylesheet" href="./src/styles/sheets.css" />
 </head>
 <body>
-  <!-- MAPA 2D PIXEL ART EN PANTALLA COMPLETA -->
-  <div id="mapViewport" class="fullscreen-map-viewport">
-    <div id="mapTransformLayer" class="map-transform-layer">
-      <canvas id="pixelMapCanvas" width="960" height="640"></canvas>
-    </div>
-
-    <!-- Tooltip solo para escritorio (en móvil se usa la barra inferior y tarjeta compacta) -->
+  <!-- MAPA (lienzo del tamaño de la pantalla; la cámara se dibuja dentro) -->
+  <div id="mapViewport" class="map-viewport">
+    <canvas id="mapCanvas"></canvas>
     <div id="mapHoverTooltip" class="map-tooltip hidden"></div>
   </div>
 
-  <!-- ZONA SUPERIOR: ALERTA DEL SECTOR COMPACTA Y SIN SOLAPAR CONTROLES -->
-  <header id="floatingAlertCard" class="floating-alert-card" aria-label="Alerta del sector: Días desde el último incidente">
-    <div class="alert-top-strip"></div>
-
-    <div class="alert-main-row" id="alertHeaderTapArea">
-      <div class="alert-counter-block">
-        <span id="daysCounterValue" class="alert-digits">01</span>
+  <!-- BARRA SUPERIOR: contador -->
+  <header id="alertCard" class="alert-card" aria-label="Días desde el último incidente">
+    <button id="alertToggle" class="alert-row" type="button" aria-expanded="false">
+      <span id="daysValue" class="alert-digits">--</span>
+      <span class="alert-text">
+        <span id="daysLabel" class="alert-headline">DÍAS DESDE EL ÚLTIMO INCIDENTE</span>
+        <span id="alertPreview" class="alert-preview"></span>
+      </span>
+      <span id="alertChevron" class="alert-chevron" aria-hidden="true">▾</span>
+    </button>
+    <div id="alertDetails" class="alert-details hidden">
+      <p id="latestDate" class="alert-details-date"></p>
+      <p id="latestDesc" class="alert-details-desc"></p>
+      <div class="alert-details-foot">
+        <span id="latestLocation"></span>
+        <button id="btnFocusLatest" class="btn btn-sm btn-ghost" type="button">Ver en mapa →</button>
       </div>
-
-      <div class="alert-title-block">
-        <div class="alert-badges-inline">
-          <span class="anon-mini-badge">🛡️ ANÓNIMO</span>
-          <span id="statRedPixelsBadge" class="red-pixels-mini-badge">🔴 86 px</span>
-        </div>
-        <h1 id="daysCounterLabel" class="alert-headline">DÍA DESDE EL ÚLTIMO INCIDENTE</h1>
-        <p id="alertCompactPreview" class="alert-compact-preview">
-          Último (#6): Persona robada y apuñalada...
-        </p>
-      </div>
-
-      <button id="btnToggleAlertDetails" class="btn-toggle-alert" type="button" aria-label="Ver detalles del último incidente">
-        ▾
-      </button>
-    </div>
-
-    <!-- Detalles desplegables (ocultos por defecto en móvil para dejar libre el mapa) -->
-    <div id="alertExpandedDetails" class="alert-expanded-details hidden">
-      <div class="latest-event-box">
-        <div class="latest-event-top">
-          <span class="pulse-dot"></span>
-          <span class="latest-tag">ÚLTIMO REPORTE</span>
-          <span id="latestIncidentDate" class="latest-date">21 de octubre</span>
-        </div>
-        <p id="latestIncidentDesc" class="latest-desc">
-          #6: Persona robada y apuñalada pidiendo ayuda en el sector.
-        </p>
-        <div class="latest-event-footer">
-          <span id="latestIncidentLocation">📍 Sendero Río del Hato • Píxel (65, 43)</span>
-          <button id="btnFocusLatest" class="btn-link-pixel" type="button">Ver en mapa →</button>
-        </div>
+      <div class="alert-details-stats">
+        <span class="chip chip-green">🛡️ Anónimo</span>
+        <span id="redPixels" class="chip chip-red">🔴 0 px</span>
       </div>
     </div>
   </header>
 
-  <!-- BANNER DE MODO SELECCIÓN DE PÍXEL EN EL MAPA -->
-  <div id="mapSelectionBanner" class="floating-selection-banner hidden">
-    <span id="mapSelectionBannerText">🎯 Toca cualquier píxel del mapa para elegir la ubicación</span>
-    <button id="btnCancelMovePixel" class="btn-pixel btn-xs" type="button">Cancelar</button>
+  <!-- BANNER DE MODO (mover / elegir píxel) -->
+  <div id="modeBanner" class="mode-banner hidden">
+    <span id="modeBannerText"></span>
+    <button id="btnCancelMode" class="btn btn-sm" type="button">Cancelar</button>
   </div>
 
-  <!-- MINI TARJETA FLOTANTE CUANDO SE TOCA UN INCIDENTE EN EL MAPA (MÓVIL Y PC) -->
-  <div id="selectedIncidentPopup" class="floating-incident-popup hidden">
-    <div class="popup-header">
-      <span id="popupIncidentTitle" class="popup-title">#6 • 21 de octubre</span>
-      <button id="btnCloseIncidentPopup" class="btn-close-sm" type="button">✕</button>
-    </div>
-    <p id="popupIncidentDesc" class="popup-desc"></p>
-    <div class="popup-actions">
-      <button id="btnPopupEdit" class="btn-pixel btn-xs" type="button">✏️ Editar</button>
-      <button id="btnPopupMove" class="btn-pixel btn-xs" type="button">📍 Mover Píxel</button>
-      <button id="btnPopupConfirm" class="btn-pixel btn-xs" type="button">👍 Confirmar</button>
-    </div>
+  <!-- CONTROLES DEL MAPA -->
+  <div id="mapControls" class="map-controls" aria-label="Controles del mapa">
+    <button id="btnZoomIn" class="fab" type="button" aria-label="Acercar">＋</button>
+    <button id="btnZoomOut" class="fab" type="button" aria-label="Alejar">－</button>
+    <button id="btnLocate" class="fab" type="button" aria-label="Mi ubicación">📍</button>
+    <button id="btnHome" class="fab" type="button" aria-label="Ir a Hogar">🏠</button>
   </div>
 
-  <!-- CONTROLES DEL MAPA UBICADOS ABAJO A LA DERECHA (NUNCA CHOCAN CON EL BANNER SUPERIOR) -->
-  <div class="floating-map-controls" aria-label="Controles del mapa">
-    <button id="btnZoomIn" class="fab-map-btn" title="Acercar" type="button">＋</button>
-    <button id="btnZoomOut" class="fab-map-btn" title="Alejar" type="button">－</button>
-    <button id="btnFocusSector" class="fab-map-btn" title="Centrar en Hogar (68, 49)" type="button">🏠</button>
-    <button id="btnToggleLayersPopover" class="fab-map-btn" title="Opciones del mapa" type="button">🗺️</button>
-  </div>
-
-  <!-- POPOVER DE CAPAS Y OPCIONES DEL MAPA -->
-  <div id="layersPopover" class="floating-layers-popover hidden">
-    <div class="popover-header-row">
-      <span class="popover-title">Opciones del Mapa</span>
-      <button id="btnCloseLayersPopover" class="btn-close-sm" type="button">✕</button>
-    </div>
-    <label class="pixel-checkbox">
-      <input type="checkbox" id="chkShowGrid" checked />
-      <span>Mostrar cuadrícula de píxeles</span>
-    </label>
-    <label class="pixel-checkbox">
-      <input type="checkbox" id="chkCompareGoogleMap" />
-      <span>Comparar con Google Maps</span>
-    </label>
-    <div class="popover-field">
-      <label for="selectDecayMode">Modo de alerta:</label>
-      <select id="selectDecayMode">
-        <option value="actual">Según Fecha + Gravedad</option>
-        <option value="historico">Acumulado Histórico</option>
-      </select>
-    </div>
-    <div class="popover-field">
-      <label for="referenceDateInput">Fecha hoy:</label>
-      <input type="date" id="referenceDateInput" value="2026-10-22" />
-    </div>
-    <button id="btnUseMyGps" class="btn-pixel btn-xs" type="button" style="width:100%;">
-      📡 Ubicar con mi GPS actual
-    </button>
-    <div class="popover-legend">
-      <div><i class="swatch swatch-critical"></i> Rojo: Seguridad</div>
-      <div><i class="swatch swatch-tranquility"></i> Amarillo: Ruido / Convivencia</div>
-      <div><i class="swatch swatch-user"></i> Casa azul: Hogar (68, 49)</div>
-    </div>
-  </div>
-
-  <!-- ZONA INFERIOR: BARRA DE PÍXEL SELECCIONADO + BOTONES PRINCIPALES -->
-  <div class="floating-bottom-dock">
-    <!-- Barra del píxel seleccionado actualmente -->
-    <div class="floating-gps-pill">
-      <div class="gps-pill-info">
-        <span id="inspectorPixelCoord" class="gps-pill-coord">Píxel (68, 49)</span>
-        <span id="inspectorSectorName" class="gps-pill-sector">Hogar — Pradera del Hato</span>
-        <span id="inspectorGpsCoord" class="gps-pill-latlng">7.00518, -73.06321</span>
-      </div>
-      <button id="btnReportAtSelectedPixel" class="btn-pixel btn-xs btn-primary-red" type="button">
-        📌 Reportar aquí
-      </button>
-    </div>
-
-    <!-- Botonera inferior adaptada a iPhone vertical -->
-    <div class="floating-action-bar">
-      <button id="btnOpenIncidentsDrawer" class="btn-pixel btn-dock" type="button">
-        📋 Incidentes (<span id="dockIncidentsCount">6</span>)
-      </button>
-      <button id="btnOpenNewReport" class="btn-pixel btn-dock btn-primary-red" type="button">
-        ➕ Nuevo Reporte
-      </button>
-      <button id="btnOpenWikiTools" class="btn-pixel btn-dock btn-dock-icon" type="button" title="Configuración Wiki / incidents.json">
-        ⚙️
-      </button>
-    </div>
-  </div>
-
-  <!-- GAVETA INFERIOR (BOTTOM SHEET): LISTA DE INCIDENTES E HISTORIAL WIKI -->
-  <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
-  <aside id="incidentsDrawer" class="floating-drawer hidden" aria-label="Lista de incidentes">
-    <div class="drawer-handle-bar">
-      <div class="drawer-grabber"></div>
-    </div>
-
-    <div class="drawer-header">
-      <div class="drawer-tabs">
-        <button id="tabBtnIncidents" class="drawer-tab active" type="button">
-          📋 Incidentes (<span id="tabCountIncidents">6</span>)
-        </button>
-        <button id="tabBtnWikiHistory" class="drawer-tab" type="button">
-          🕓 Historial Wiki (<span id="tabCountRevisions">1</span>)
-        </button>
-      </div>
-      <button id="btnCloseDrawer" class="btn-close" type="button">✕</button>
-    </div>
-
-    <div id="panelIncidentsList" class="drawer-body">
-      <div class="drawer-tip">
-        Toca un incidente para ir a su píxel en el mapa, o edítalo de forma 100% anónima.
-      </div>
-      <div id="incidentsContainer" class="incidents-list"></div>
-    </div>
-
-    <div id="panelWikiHistory" class="drawer-body hidden">
-      <div class="drawer-tip">
-        <div><strong>Archivo: <code>data/incidents.json</code></strong> <span id="wikiSyncBadge" class="sync-inline-badge"></span></div>
-        <div class="wiki-tools-row">
-          <button id="btnDownloadJson" class="btn-pixel btn-xs" type="button">
-            💾 Descargar JSON
-          </button>
-          <label class="btn-pixel btn-xs file-upload-btn">
-            📂 Importar JSON
-            <input type="file" id="inputImportJson" accept=".json" hidden />
-          </label>
-          <button id="btnResetSeed" class="btn-pixel btn-xs" type="button">
-            🔄 Restaurar
-          </button>
+  <!-- ZONA INFERIOR: tarjeta de contexto + navegación -->
+  <div id="dock" class="dock">
+    <section id="peek" class="peek">
+      <div id="peekIncident" class="peek-incident hidden">
+        <div class="peek-head">
+          <strong id="peekTitle"></strong>
+          <button id="btnClosePeek" class="icon-btn" type="button" aria-label="Cerrar">✕</button>
+        </div>
+        <p id="peekDesc" class="peek-desc"></p>
+        <div class="peek-actions">
+          <button id="btnPeekConfirm" class="btn btn-sm" type="button"></button>
+          <button id="btnPeekMove" class="btn btn-sm" type="button">📍 Mover</button>
+          <button id="btnPeekEdit" class="btn btn-sm" type="button">✏️ Editar</button>
         </div>
       </div>
-      <div id="revisionsContainer" class="revisions-list"></div>
+      <div id="peekPixel" class="peek-pixel">
+        <div class="peek-pixel-info">
+          <span id="pixelSector" class="peek-sector"></span>
+          <span id="pixelCoord" class="peek-coord"></span>
+        </div>
+        <button id="btnReportHere" class="btn btn-sm btn-danger" type="button">📌 Reportar aquí</button>
+      </div>
+    </section>
+
+    <nav class="nav" aria-label="Navegación principal">
+      <button id="navIncidents" class="nav-btn" type="button">
+        <span class="nav-ico">📋</span><span>Incidentes <b id="navCount">0</b></span>
+      </button>
+      <button id="navReport" class="nav-btn nav-primary" type="button">
+        <span class="nav-ico">➕</span><span>Reportar</span>
+      </button>
+      <button id="navSettings" class="nav-btn" type="button">
+        <span class="nav-ico">⚙️</span><span>Mapa y datos</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- HOJA INFERIOR ÚNICA (incidentes · historial · ajustes · reporte) -->
+  <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
+  <aside id="sheet" class="sheet hidden" role="dialog" aria-modal="true">
+    <div class="sheet-grabber"><i></i></div>
+    <div class="sheet-header">
+      <div id="sheetTabs" class="sheet-tabs"></div>
+      <h2 id="sheetTitle" class="sheet-title"></h2>
+      <button id="btnCloseSheet" class="icon-btn" type="button" aria-label="Cerrar">✕</button>
     </div>
+
+    <div id="paneIncidents" class="sheet-pane hidden">
+      <p class="hint">Toca un incidente para verlo en el mapa. Todo es 100% anónimo.</p>
+      <div id="incidentList" class="card-list"></div>
+    </div>
+
+    <div id="paneHistory" class="sheet-pane hidden">
+      <p class="hint">
+        Archivo <code>data/incidents.json</code> <span id="syncBadge" class="sync-badge"></span>
+      </p>
+      <div id="revisionList" class="card-list"></div>
+    </div>
+
+    <div id="paneSettings" class="sheet-pane hidden">
+      <section class="setting-group">
+        <h3>Capas</h3>
+        <label class="switch"><input type="checkbox" id="chkGrid" /><span>Cuadrícula de píxeles</span></label>
+        <label class="switch"><input type="checkbox" id="chkReference" /><span>Superponer Google Maps</span></label>
+      </section>
+      <section class="setting-group">
+        <h3>Alertas</h3>
+        <div class="field">
+          <label for="selDecay">Modo de alerta</label>
+          <select id="selDecay">
+            <option value="actual">Según fecha + gravedad</option>
+            <option value="historico">Acumulado histórico</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="inpToday">Fecha de hoy</label>
+          <input type="date" id="inpToday" />
+        </div>
+      </section>
+      <section class="setting-group">
+        <h3>Leyenda</h3>
+        <ul class="legend">
+          <li><i class="sw sw-red"></i> Rojo — seguridad</li>
+          <li><i class="sw sw-yellow"></i> Amarillo — ruido / convivencia</li>
+          <li><i class="sw sw-hw"></i> Naranja — autopista</li>
+          <li><i class="sw sw-col"></i> Amarillo claro — vía principal</li>
+          <li><i class="sw sw-art"></i> Blanca — calle / carrera</li>
+          <li><i class="sw sw-trail"></i> Punteado marrón — sendero</li>
+          <li><i class="sw sw-water"></i> Azul — Río del Hato</li>
+        </ul>
+      </section>
+      <section class="setting-group">
+        <h3>Datos</h3>
+        <div class="btn-row">
+          <button id="btnHistory" class="btn btn-sm" type="button">🕓 Historial</button>
+          <button id="btnDownload" class="btn btn-sm" type="button">💾 Descargar</button>
+          <label class="btn btn-sm">📂 Importar<input type="file" id="inpImport" accept=".json" hidden /></label>
+          <button id="btnResetSeed" class="btn btn-sm" type="button">🔄 Restaurar</button>
+        </div>
+      </section>
+    </div>
+
+    <form id="paneReport" class="sheet-pane sheet-form hidden" novalidate>
+      <div class="form-scroll">
+        <div class="location-card">
+          <div>
+            <span class="eyebrow">Ubicación en el mapa</span>
+            <strong id="repPixel"></strong>
+            <span id="repGps" class="muted"></span>
+          </div>
+          <button type="button" id="btnPickOnMap" class="btn btn-sm btn-accent">🎯 Elegir en mapa</button>
+        </div>
+
+        <div class="field">
+          <label for="repDescription">¿Qué ocurrió?</label>
+          <textarea id="repDescription" rows="3" placeholder="Describe brevemente lo sucedido…" required></textarea>
+        </div>
+
+        <div class="field">
+          <label for="repCategory">Categoría</label>
+          <select id="repCategory"></select>
+        </div>
+
+        <div class="field">
+          <span class="label">Color de alerta</span>
+          <div id="repImpact" class="segmented"></div>
+        </div>
+
+        <div class="field">
+          <label for="repSeverity">Gravedad: <strong id="repSeverityLabel"></strong></label>
+          <input type="range" id="repSeverity" min="1" max="5" step="1" />
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label for="repDate">Fecha</label>
+            <input type="date" id="repDate" required />
+            <label class="switch switch-sm"><input type="checkbox" id="repDateOk" /><span>Confirmada</span></label>
+          </div>
+          <div class="field">
+            <label for="repTime">Hora aprox.</label>
+            <input type="time" id="repTime" />
+            <label class="switch switch-sm"><input type="checkbox" id="repTimeOk" /><span>Confirmada</span></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="repSector">Nombre del sector</label>
+          <input type="text" id="repSector" placeholder="Ej: Sendero Río del Hato" />
+        </div>
+
+        <p class="notice">🛡️ Reporte 100% anónimo (sin cuenta ni rastreo de IP).</p>
+      </div>
+      <div class="form-footer">
+        <button type="button" id="btnCancelReport" class="btn">Cancelar</button>
+        <button type="submit" class="btn btn-danger">💾 Guardar reporte</button>
+      </div>
+    </form>
   </aside>
-
-  <!-- BOTTOM-SHEET MODAL PARA REPORTAR O EDITAR UN INCIDENTE (OPTIMIZADO PARA IPHONE) -->
-  <div id="incidentModalOverlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h2 id="modalTitle">➕ Reportar Incidente Anónimo</h2>
-        <button id="btnCloseModal" class="btn-close" type="button">✕</button>
-      </div>
-
-      <form id="incidentForm" class="modal-form">
-        <div class="modal-scroll-body">
-          <input type="hidden" id="formEditingId" value="" />
-
-          <!-- Ubicación en Píxel muy fácil de cambiar desde el celular -->
-          <div class="location-picker-card">
-            <div class="location-picker-info">
-              <span class="location-picker-label">UBICACIÓN EN EL MAPA</span>
-              <strong id="formPixelDisplay" class="location-picker-coord">Píxel (68, 49)</strong>
-              <span id="formGpsPreview" class="form-hint">GPS: 7.00518, -73.06321</span>
-            </div>
-            <button type="button" id="btnPickOnMapFromModal" class="btn-pixel btn-sm btn-highlight-yellow">
-              🎯 Tocar otro píxel
-            </button>
-            <div class="hidden-pixel-inputs">
-              <input type="number" id="formPixelX" min="0" max="119" required />
-              <input type="number" id="formPixelY" min="0" max="79" required />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="formDescription">¿Qué ocurrió?</label>
-            <textarea id="formDescription" rows="2" placeholder="Describe brevemente lo sucedido en este punto del sector..." required></textarea>
-          </div>
-
-          <div class="form-row-2col">
-            <div class="form-group">
-              <label for="formImpactType">Color de Alerta</label>
-              <select id="formImpactType" required>
-                <option value="seguridad">🔴 Seguridad (Rojo)</option>
-                <option value="tranquilidad">🟡 Tranquilidad / Ruido (Amarillo)</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="formCategory">Categoría</label>
-              <select id="formCategory" required>
-                <option value="Violencia / Robo y Lesiones">Violencia / Robo y Lesiones</option>
-                <option value="Hurto a Residencia">Hurto a Residencia</option>
-                <option value="Persecución / Orden Público">Persecución / Orden Público</option>
-                <option value="Invasión de Sendero / Peligro Vial">Invasión de Sendero (Motos)</option>
-                <option value="Ruido Excesivo / Convivencia">Ruido Excesivo / Convivencia</option>
-                <option value="Sospechosos / Merodeo en el Río">Sospechosos / Merodeo</option>
-                <option value="Otro Incidente en el Sector">Otro Incidente</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row-2col">
-            <div class="form-group">
-              <label for="formDate">Fecha</label>
-              <input type="date" id="formDate" required />
-              <label class="pixel-checkbox mt-xs">
-                <input type="checkbox" id="formDateConfirmed" checked />
-                <span>Fecha confirmada</span>
-              </label>
-            </div>
-
-            <div class="form-group">
-              <label for="formTime">Hora aprox.</label>
-              <input type="time" id="formTime" value="19:00" />
-              <label class="pixel-checkbox mt-xs">
-                <input type="checkbox" id="formTimeConfirmed" checked />
-                <span>Hora confirmada</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="form-row-2col">
-            <div class="form-group">
-              <label for="formSeverity">
-                Gravedad: <strong id="formSeverityLabel">4 / 5 (Alta)</strong>
-              </label>
-              <input type="range" id="formSeverity" min="1" max="5" step="1" value="4" />
-            </div>
-
-            <div class="form-group">
-              <label for="formSector">Nombre del Sector</label>
-              <input type="text" id="formSector" placeholder="Ej: Sendero Río del Hato" required />
-            </div>
-          </div>
-
-          <div class="form-anonymity-notice">
-            🛡️ Reporte 100% anónimo (sin cuenta ni rastreo de IP).
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" id="btnCancelModal" class="btn-pixel">Cancelar</button>
-          <button type="submit" class="btn-pixel btn-primary-red">💾 Guardar Reporte</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL DE CONFIGURACIÓN WIKI / GITHUB PAGES -->
-  <div id="bridgeModalOverlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h2>⚙️ Datos Wiki (`incidents.json`)</h2>
-        <button id="btnCloseBridgeModal" class="btn-close" type="button">✕</button>
-      </div>
-      <div class="modal-body-content">
-        <div class="wiki-explainer-steps">
-          <p>
-            Descarga el archivo <code>incidents.json</code> actualizado o revisa el historial de ediciones estilo Wikipedia:
-          </p>
-          <div class="wiki-tools-row">
-            <button id="btnDownloadJsonModal" class="btn-pixel btn-sm" type="button">
-              💾 Descargar incidents.json
-            </button>
-            <button id="btnOpenHistoryFromBridge" class="btn-pixel btn-sm" type="button">
-              🕓 Ver Historial Wiki
-            </button>
-          </div>
-        </div>
-
-        <form id="bridgeConfigForm" class="modal-form">
-          <div class="modal-scroll-body">
-            <div class="form-group">
-              <label for="inputGithubRepo">Repositorio de GitHub</label>
-              <input type="text" id="inputGithubRepo" placeholder="xthecapx/days" />
-            </div>
-            <div class="form-group">
-              <label for="inputBridgeUrl">URL del Puente Cloudflare Worker (Opcional)</label>
-              <input type="url" id="inputBridgeUrl" placeholder="https://vecinos-rio-hato.tu-usuario.workers.dev" />
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" id="btnCloseBridgeModal2" class="btn-pixel">Cerrar</button>
-            <button type="submit" class="btn-pixel btn-primary-red">Guardar</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
 
   <script type="module" src="./src/main.js"></script>
 </body>
