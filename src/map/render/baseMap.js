@@ -135,13 +135,17 @@ function paintRoads(ctx) {
   }
 }
 
-function paintWaterAndTrails(ctx) {
+function paintWater(ctx) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   strokeLayer(ctx, RIVER.pts, 2.1, TERRAIN_COLORS.waterEdge);
   strokeLayer(ctx, RIVER.pts, 1.7, TERRAIN_COLORS.water);
   strokeLayer(ctx, RIVER.pts, 0.4, TERRAIN_COLORS.waterLight);
+}
 
+function paintTrails(ctx) {
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   for (const trail of TRAILS) {
     strokeLayer(ctx, trail.pts, 0.34, TERRAIN_COLORS.trail, [1.3, 1.2]);
   }
@@ -157,7 +161,8 @@ export function createBaseMap() {
   paintTerrain(ctx);
   paintForest(ctx, clearance);
   paintBuildings(ctx, clearance);
+  paintWater(ctx); // el río va debajo: las vías lo cruzan como puentes
   paintRoads(ctx);
-  paintWaterAndTrails(ctx);
+  paintTrails(ctx);
   return canvas;
 }

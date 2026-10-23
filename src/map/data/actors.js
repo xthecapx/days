@@ -32,8 +32,8 @@ export const PEDESTRIAN_ROUTES = [
   { path: [[94, 25], [85, 31], [81, 36], [72, 37], [72, 43]], speed: 0.02, offset: 0.48, shirt: '#f97316', pants: '#0f172a' },
   { path: [[81, 36], [85, 31], [94, 25], [98, 28], [104, 19]], speed: 0.018, offset: 0.75, shirt: '#ec4899', pants: '#1e293b' },
   { path: [[62, 43], [65, 43], [72, 43]], speed: 0.025, offset: 0.3, shirt: '#38bdf8', pants: '#1e293b' },
-  { path: [[66.9, 43.7], [70.3, 54.2]], speed: 0.032, offset: 0.25, shirt: '#a855f7', pants: '#0f172a' },
-  { path: [[71.2, 50.2], [66.9, 52]], speed: 0.03, offset: 0.6, shirt: '#eab308', pants: '#1e3a8a' },
-  { path: [[69.6, 56], [75, 53.7]], speed: 0.028, offset: 0.4, shirt: '#14b8a6', pants: '#0f172a' },
+  { path: [[66.3, 46], [69.1, 53.2]], speed: 0.032, offset: 0.25, shirt: '#a855f7', pants: '#0f172a' },
+  { path: [[70.6, 50.3], [66.2, 51.4]], speed: 0.03, offset: 0.6, shirt: '#eab308', pants: '#1e3a8a' },
+  { path: [[70.2, 57.5], [76.4, 55.0]], speed: 0.028, offset: 0.4, shirt: '#14b8a6', pants: '#0f172a' },
   { path: SENDERO_PATH.slice(0, 5), speed: 0.02, offset: 0.55, shirt: '#f43f5e', pants: '#1e293b' }
 ];

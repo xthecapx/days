@@ -31,9 +31,10 @@ export const RIVER_PATH = [
 
 // Trazado de la Vía Río del Hato + Sendero Río del Hato
 export const SENDERO_PATH = [
-  [75, 55], // Exploretheworld / Calle 13 N
-  [73.6, 51.6], // Sube en diagonal desde la esquina
-  [72.4, 48], // Vía Río del Hato
+  [76.2, 56.1], // Esquina Exploretheworld / Calle 13 N
+  [75.2, 52.8],
+  [73.4, 50],
+  [72.4, 47.6], // Vía Río del Hato
   [72, 43], // Vía Río del Hato arriba de Hogar (#1)
   [72, 37], // Cruza el río y sube al sendero
   [81, 36], // Parque Sendero Río del Hato
@@ -60,10 +61,10 @@ export const MAP_LANDMARKS = [
   { x: 64, y: 43, name: 'Sendero Río del Hato (Ribera)', shortName: 'Sendero Río del Hato', type: 'trail' },
   { x: 72, y: 43, name: 'Vía Río del Hato', shortName: 'Vía Río del Hato', type: 'road' },
   { x: 67, y: 51, name: 'Pradera del Hato (Cerca de Hogar)', shortName: 'Pradera del Hato', type: 'residential' },
-  { x: 73, y: 55, name: 'Calle 13 N / Exploretheworld', shortName: 'Calle 13 N / Exploretheworld', type: 'poi' },
+  { x: 76, y: 56, name: 'Calle 13 N / Exploretheworld', shortName: 'Calle 13 N / Exploretheworld', type: 'poi' },
   { x: 81, y: 36, name: 'Sendero Río del Hato (Parque)', shortName: 'Sendero Río del Hato', type: 'park' },
-  { x: 75, y: 55, name: 'Exploretheworld (Calle 13 N)', shortName: 'Exploretheworld', type: 'poi' },
-  { x: 70, y: 58, name: 'Cruce Carrera 2 con Calle 13 N', shortName: 'Cra 2 / Calle 13 N', type: 'road' },
+  { x: 76, y: 54, name: 'Exploretheworld (Calle 13 N)', shortName: 'Exploretheworld', type: 'poi' },
+  { x: 69, y: 59, name: 'Cruce Carrera 2 con Calle 13 N', shortName: 'Cra 2 / Calle 13 N', type: 'road' },
   { x: 60, y: 71, name: 'Azafrán - Ciudad Tierrabuena', shortName: 'Azafrán Tierrabuena', type: 'residential' },
   { x: 51, y: 77, name: 'Conjunto Terracota', shortName: 'Conjunto Terracota', type: 'residential' },
   { x: 83, y: 69, name: 'Veterinaria De Pelos.com (Vía Guatiguará)', shortName: 'Veterinaria De Pelos', type: 'poi' },
@@ -136,7 +137,7 @@ export function detectSectorName(px, py) {
   if (px >= 64 && px <= 72 && py >= 46 && py <= 55) {
     return 'Conjunto Residencial Pradera del Hato';
   }
-  if (Math.hypot(px - 73, py - 55) <= 3.5) {
+  if (Math.hypot(px - 76, py - 56) <= 3.5) {
     return 'Calle 13 N / Exploretheworld';
   }
 

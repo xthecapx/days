@@ -6,7 +6,6 @@
 export const PLACES = [
   { id: 'home', kind: 'home', x: 68, y: 49, label: 'HOGAR', lod: 1 },
   { id: 'sendero', kind: 'poi', icon: '🌲', color: '#15803d', x: 81, y: 36, label: 'Sendero Río del Hato', lod: 1 },
-  { id: 'explore', kind: 'poi', icon: '📍', color: '#0d9488', x: 75, y: 55, label: 'Exploretheworld', lod: 2 },
   { id: 'autoktonos', kind: 'poi', icon: '🍴', color: '#ea580c', x: 109, y: 38, label: 'Autóktonos', lod: 2 },
   { id: 'vet', kind: 'poi', icon: '🐾', color: '#7c3aed', x: 85, y: 68, label: 'Veterinaria', lod: 3 },
   { id: 'eco', kind: 'poi', icon: '🛍', color: '#2563eb', x: 106, y: 58, label: 'Eco Centro Comercial', lod: 2 },

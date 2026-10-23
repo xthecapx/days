@@ -12,29 +12,29 @@ export const HIGHWAY_PATH = [
 export const GUATIGUARA_PATH = [
   [73, 79], [79, 73], [86, 68], [96, 65], [106, 61], [114, 58], [119, 55]
 ];
-// Doble calzada Calle 13 N: ~8 tiles al sur de HOGAR, pasa bajo Exploretheworld y cruza Carrera 2
-export const CALLE_13N_UPPER = [[44, 69.6], [56, 62.8], [62, 60], [68, 57], [75, 54.4], [83.4, 51.6]];
+// Doble calzada Calle 13 N: ~10 tiles al sur de HOGAR, pasa bajo Exploretheworld y cruza Carrera 2
+export const CALLE_13N_UPPER = [[44, 72], [53.6, 67], [62, 63], [69.2, 59], [76.6, 56], [81.2, 53.9], [83.4, 53]];
 export const CALLE_13N_LOWER = CALLE_13N_UPPER.map(([x, y]) => [x, y + 1]);
-export const CARRERA_2_PATH = [[66, 49], [67.5, 53], [69, 57.4], [71.5, 63.5], [73.5, 69], [76, 79]];
+// Carrera 2 nace como la calle occidental del conjunto y sigue hasta Calle 13 N y más al sur
+export const CARRERA_2_PATH = [[64.9, 46.3], [67.7, 53.4], [69.4, 58.9], [71.6, 64.5], [73.8, 70], [76, 79]];
 
-// Tres calles paralelas del conjunto (HOGAR queda entre la 2ª y la 3ª), travesaños y el gancho en J
+// Calles paralelas del conjunto: HOGAR queda entre las dos; terminan ~6 tiles antes de Calle 13 N
 const PRADERA_STREETS = [
-  [[65.5, 44.2], [68.9, 54.8]],
-  [[66.9, 43.7], [70.3, 54.2]],
-  [[68.3, 43.2], [71.7, 53.6]],
-  [[65.9, 48.4], [69.6, 46.9]],
-  [[66.9, 52], [71.2, 50.2]],
+  [[66.3, 46.0], [69.1, 53.2]],
+  [[68.4, 46.0], [71.2, 53.1]],
+  [[65.5, 47.6], [68.9, 46.8]],
+  [[66.2, 51.4], [70.6, 50.3]],
   [[71.6, 52.6], [73, 51.4], [72.9, 50.2], [73.4, 49.8]]
 ];
 
-// Calle paralela a Carrera 2, un poco al occidente
-const WEST_PARALLEL = [[66.5, 58.2], [67.5, 60.3], [68.7, 64.3], [69.3, 68.5], [70, 74], [70.5, 79]];
+// Calle paralela a Carrera 2, al occidente, que nace en Calle 13 N
+const WEST_PARALLEL = [[66.8, 61.3], [67.7, 64], [68.6, 68.5], [69.3, 74], [70, 79]];
 // Carrera 4
 const CARRERA_4 = [[82.9, 58], [84, 62], [85, 66], [86.2, 70], [87, 79]];
 
 const SOUTH_STREETS = [
-  [[63, 60], [65, 65]],
-  [[64, 64], [66.5, 65]],
+  [[63, 62], [65, 66]],
+  [[64, 66], [66.5, 67]],
   [[69, 68], [70, 64], [74, 61], [79, 60], [81, 65], [84, 71]],
   [[72, 65], [77, 63], [82, 69]],
   [[76, 67], [80, 66]],
@@ -87,7 +87,7 @@ export const LANDMARK_BLOCKS = [
   { x: 58.6, y: 51.2, w: 1.6, h: 3.0, tone: 'tower' },
   { x: 54.0, y: 64.0, w: 3.0, h: 2.2, tone: 'tower' },
   { x: 49.0, y: 74.0, w: 3.2, h: 2.4, tone: 'tower' },
-  { x: 76.4, y: 57.2, w: 3.0, h: 1.8, tone: 'shop' },
+  { x: 78, y: 58.4, w: 3.0, h: 1.8, tone: 'shop' },
   { x: 84.0, y: 66.0, w: 2.6, h: 1.8, tone: 'shop' },
   { x: 104.0, y: 56.5, w: 4.0, h: 2.6, tone: 'shop' },
   { x: 108.0, y: 37.0, w: 2.0, h: 1.6, tone: 'shop' }
