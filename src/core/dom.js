@@ -17,6 +17,18 @@ export function toIsoDate(date) {
   return `${date.getFullYear()}-${mm}-${dd}`;
 }
 
+let toastTimer = null;
+
+/** Aviso breve en pantalla (role=status, lo leen los lectores de pantalla). */
+export function showToast(message, ms = 3500) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
+}
+
 export function downloadJson(data, filename) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

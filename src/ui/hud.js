@@ -1,4 +1,5 @@
-import { $, setHidden } from '../core/dom.js';
+import { $, setHidden, showToast } from '../core/dom.js';
+import { sendWhatsAppAlert, sharePoint } from '../services/alertService.js';
 import { pixelToGps } from '../map/gpsGrid.js';
 import { detectSectorName } from '../map/mapData.js';
 import { calculateDaysSince } from '../map/heatmapEngine.js';
@@ -17,7 +18,47 @@ export function mountHud({ store, camera, actions }) {
   $('navIncidents').addEventListener('click', () => actions.openSheet('incidents'));
   $('navSettings').addEventListener('click', () => actions.openSheet('settings'));
   $('navReport').addEventListener('click', () => actions.openReport());
-  $('btnReportHere').addEventListener('click', () => actions.openReport());
+  // WhatsApp: el icono abre un menú de dos acciones; nada se envía sin que la persona pulse enviar en WhatsApp.
+  const waMenu = $('waMenu');
+  const closeWaMenu = () => {
+    setHidden(waMenu, true);
+    $('btnWhatsapp').setAttribute('aria-expanded', 'false');
+  };
+  $('btnWhatsapp').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = waMenu.classList.contains('hidden');
+    setHidden(waMenu, !open);
+    $('btnWhatsapp').setAttribute('aria-expanded', String(open));
+    if (open) $('waHelp').focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!waMenu.contains(e.target)) closeWaMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeWaMenu();
+  });
+  $('mapViewport').addEventListener('pointerdown', closeWaMenu);
+
+  $('waHelp').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    if (btn.getAttribute('aria-busy') === 'true') return;
+    btn.setAttribute('aria-busy', 'true');
+    closeWaMenu();
+    showToast('Obteniendo tu ubicación…', 9000);
+    try {
+      const { gps } = await sendWhatsAppAlert();
+      if (!gps) showToast('Sin GPS: se abrió WhatsApp sin ubicación', 6000);
+    } finally {
+      btn.removeAttribute('aria-busy');
+    }
+  });
+
+  $('waShare').addEventListener('click', () => {
+    closeWaMenu();
+    const { pixel } = store.get().selection;
+    const gps = pixelToGps(pixel.x, pixel.y);
+    sharePoint({ lat: gps.lat, lng: gps.lng }, detectSectorName(gps.pixelX, gps.pixelY));
+  });
 
   $('btnClosePeek').addEventListener('click', () => actions.showPopup(null));
   const popupIncident = () => findIncident(store.get(), store.get().ui.popupIncidentId);
