@@ -7,6 +7,7 @@
 export const ROAD_STYLES = {
   dirt: { width: 0.45, casing: '#c8b78f', fill: '#e6d9b8', order: 0, dash: [3, 3] },
   local: { width: 0.5, casing: '#b3bac5', fill: '#fbfbfc', order: 1 },
+  minor: { width: 0.75, casing: '#a3acb9', fill: '#ffffff', order: 1.5 },
   arterial: { width: 0.85, casing: '#8b95a5', fill: '#ffffff', order: 2 },
   collector: { width: 1.15, casing: '#c9a24a', fill: '#fde68a', order: 3 },
   highway: { width: 1.6, casing: '#c2711a', fill: '#fbbf6a', order: 4, centerLine: '#ffffff' }

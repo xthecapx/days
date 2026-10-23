@@ -17,8 +17,6 @@ import { drawIncidentMarkers, drawSelection } from './render/markers.js';
 export function createMapRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   const base = createBaseMap();
-  const reference = new Image();
-  reference.src = './assets/google-maps-reference.png';
   let dpr = 1;
 
   function resize(vw, vh) {
@@ -44,11 +42,6 @@ export function createMapRenderer(canvas) {
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(base, 0, 0, WORLD_WIDTH * BASE_SCALE, WORLD_HEIGHT * BASE_SCALE, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-      if (settings.showReference && reference.complete) {
-        ctx.globalAlpha = 0.45;
-        ctx.drawImage(reference, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-        ctx.globalAlpha = 1;
-      }
 
       drawRiverShimmer(ctx, phase);
       drawHeat(ctx, heatmap, phase);

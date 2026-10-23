@@ -9,7 +9,7 @@ Aplicación web **100% en español**, **100% anónima** y lista para publicar gr
    - Muestra el resumen del último evento, total de incidentes y cantidad de píxeles rojos en alerta.
 2. **Mapa 2D Pixel Art con Sistema GPS por Píxeles (`120 × 80`)**:
    - Basado en la vista del sector `@7.0060325,-73.0640861,16.21z` (**Río del Hato, Sendero Río del Hato, Ciudad Tierrabuena, Exploretheworld, Azafrán, Conjunto Terracota y Autopista Piedecuesta**).
-   - Incluye zoom fluido, arrastre libre, botón **Mi Píxel GPS** (100% local en el navegador) y modo de comparación con la captura original de Google Maps.
+   - Incluye zoom fluido, arrastre libre, botón **Mi Píxel GPS** (100% local en el navegador) .
 3. **Propagación de Píxeles Rojos según Incidente y Fecha**:
    - Al asociar un evento a un píxel `(X, Y)`, los píxeles vecinos se tiñen de rojo dependiendo de la gravedad (1 a 5), la cercanía de otros eventos y qué tan reciente es la fecha.
 4. **6 Incidentes Iniciales en el Sendero Río del Hato**:

@@ -144,7 +144,6 @@ export function mountSheet({ store, actions, incidents }) {
   // ----- Ajustes ---------------------------------------------------------------------
   function mountSettings() {
     $('chkGrid').addEventListener('change', (e) => store.patch('settings', { showGrid: e.target.checked }));
-    $('chkReference').addEventListener('change', (e) => store.patch('settings', { showReference: e.target.checked }));
     $('selDecay').addEventListener('change', (e) => store.patch('settings', { decayMode: e.target.value }));
     $('inpToday').addEventListener('change', (e) => {
       const [y, m, d] = e.target.value.split('-').map(Number);
@@ -152,7 +151,6 @@ export function mountSheet({ store, actions, incidents }) {
     });
     store.subscribe((s) => [s.settings], ([st]) => {
       $('chkGrid').checked = st.showGrid;
-      $('chkReference').checked = st.showReference;
       $('selDecay').value = st.decayMode;
       $('inpToday').value = toIsoDate(st.referenceDate);
     });

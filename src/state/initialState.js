@@ -17,8 +17,7 @@ export function createInitialState() {
     settings: {
       decayMode: 'actual',
       referenceDate: REFERENCE_DATE,
-      showGrid: false,
-      showReference: false
+      showGrid: false
     },
     selection: { pixel: { ...INITIAL_PIXEL }, incidentId: 'inc-006', hovered: null },
     mode: { type: 'browse' },

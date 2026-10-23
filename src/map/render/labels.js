@@ -1,6 +1,6 @@
 import { TILE_SIZE } from '../worldSize.js';
 import { samplePolyline } from '../geometry.js';
-import { ROADS, TRAILS, RIVER } from '../data/roads.js';
+import { ROADS, RIVER } from '../data/roads.js';
 import { PLACES, ROAD_LABELS } from '../data/places.js';
 
 const FONT = '"Space Grotesk", system-ui, sans-serif';
@@ -13,7 +13,6 @@ function lodVisible(lod, zoom) {
 
 function geometryFor(label) {
   if (label.source === 'river') return RIVER.pts;
-  if (label.source === 'trail') return TRAILS[0].pts;
   return ROADS.find((r) => r.name === label.road)?.pts;
 }
 
@@ -48,7 +47,7 @@ export function drawRoadLabels(ctx, zoom) {
     ctx.save();
     ctx.translate((p.x + 0.5) * TILE_SIZE, (p.y + 0.5) * TILE_SIZE);
     ctx.rotate(angle);
-    haloText(ctx, label.road, 0, 0, label.color, size, 700);
+    haloText(ctx, label.text ?? label.road, 0, 0, label.color, size, 700);
     ctx.restore();
   }
   ctx.restore();
