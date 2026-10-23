@@ -18,6 +18,8 @@
  *   2. Tope de PR abiertos: si ya hay MAX_OPEN_REPORTS sin revisar, se rechazan nuevos reportes.
  *      Es exacto y no depende de quién envía, así que nadie puede llenar tu bandeja de revisión.
  *
+ * Despliegue: Cloudflare ejecuta `npx wrangler deploy` en cada push a main (Settings -> Builds).
+ *
  * Cuerpo esperado (POST, JSON):
  *   { "change": { "type": "create" | "edit" | "confirm", "incident": {...}, "id": "inc-001" },
  *     "commitMessage": "texto corto" }
