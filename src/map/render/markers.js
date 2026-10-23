@@ -2,7 +2,13 @@ import { TILE_SIZE } from '../worldSize.js';
 import { isTranquilityIncident } from '../heatmapEngine.js';
 
 const markerScale = (zoom) => 1 / Math.max(0.8, Math.min(zoom, 3));
-export const MARKER_BOX = { w: 24, h: 17 };
+export const MARKER_BOX = { h: 17 };
+
+/** Ancho de la etiqueta en unidades de pantalla: crece con los dígitos y con el 👮 de los casos resueltos. */
+export function markerWidth(inc) {
+  const digits = String(inc.number ?? '').length;
+  return 10 + digits * 7 + (inc.resolvedBy === 'policia' ? 10 : 0);
+}
 
 /** Desplazamiento (en unidades de mundo) de la etiqueta de cada incidente; evita que se encimen. */
 export function layoutMarkers(incidents, zoom) {
@@ -16,7 +22,7 @@ export function layoutMarkers(incidents, zoom) {
     } else {
       const idx = group.findIndex((n) => n.id === cur.id);
       const mid = (group.length - 1) / 2;
-      offsets.set(cur.id, { dx: (idx - mid) * 27 * s, dy: (idx % 2 ? -34 : -17) * s });
+      offsets.set(cur.id, { dx: (idx - mid) * 32 * s, dy: (idx % 2 ? -34 : -17) * s });
     }
   }
   return offsets;
@@ -28,7 +34,6 @@ export function layoutMarkers(incidents, zoom) {
  */
 export function drawIncidentMarkers(ctx, incidents, selectedId, phase, zoom) {
   const s = markerScale(zoom);
-  const boxW = MARKER_BOX.w * s;
   const boxH = MARKER_BOX.h * s;
   const offsets = layoutMarkers(incidents, zoom);
 
@@ -45,6 +50,8 @@ export function drawIncidentMarkers(ctx, incidents, selectedId, phase, zoom) {
     const selected = inc.id === selectedId;
     const calm = isTranquilityIncident(inc);
     const { dx, dy } = offsets.get(inc.id);
+    const boxW = markerWidth(inc) * s;
+    const resolved = inc.resolvedBy === 'policia';
     const bx = px + dx - boxW / 2;
     const by = py + dy - boxH / 2;
 
@@ -74,7 +81,17 @@ export function drawIncidentMarkers(ctx, incidents, selectedId, phase, zoom) {
     ctx.strokeStyle = selected || calm ? '#0f172a' : '#ffffff';
     ctx.strokeRect(bx, by, boxW, boxH);
     ctx.fillStyle = selected || calm ? '#0f172a' : '#ffffff';
-    ctx.fillText(`#${inc.number ?? ''}`, bx + boxW / 2, by + boxH / 2 + 0.5 * s);
+    const digits = String(inc.number ?? '').length;
+    if (resolved) {
+      // 👮 en línea con el número, un poco más pequeño
+      ctx.font = `${8 * s}px "Space Grotesk", system-ui, sans-serif`;
+      ctx.fillText('👮', bx + 10 * s, by + boxH / 2 + 0.5 * s);
+      ctx.font = `800 ${11 * s}px "JetBrains Mono", monospace`;
+      ctx.fillText(String(inc.number ?? ''), bx + (15 + digits * 3.5) * s, by + boxH / 2 + 0.5 * s);
+    } else {
+      ctx.fillText(String(inc.number ?? ''), bx + boxW / 2, by + boxH / 2 + 0.5 * s);
+    }
+
   }
   ctx.restore();
 }

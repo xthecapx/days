@@ -120,6 +120,7 @@ export function createActions({ store, camera, incidents }) {
           time: incident.time || '19:00',
           dateConfirmed: Boolean(incident.dateConfirmed),
           timeConfirmed: Boolean(incident.timeConfirmed),
+          resolved: incident.resolvedBy === 'policia',
           description: incident.description || ''
         }
       : {
@@ -136,6 +137,7 @@ export function createActions({ store, camera, incidents }) {
           time: '19:30',
           dateConfirmed: true,
           timeConfirmed: true,
+          resolved: false,
           description: ''
         };
 
@@ -170,6 +172,7 @@ export function createActions({ store, camera, incidents }) {
         time: draft.time,
         dateConfirmed: draft.dateConfirmed,
         timeConfirmed: draft.timeConfirmed,
+        resolvedBy: draft.resolved ? 'policia' : null,
         category: draft.category,
         severity: draft.severity,
         description: draft.description

@@ -1,6 +1,6 @@
 import { GRID_WIDTH, GRID_HEIGHT, pixelToGps } from '../map/gpsGrid.js';
 import { detectSectorName } from '../map/mapData.js';
-import { layoutMarkers, MARKER_BOX } from '../map/render/markers.js';
+import { layoutMarkers, markerWidth, MARKER_BOX } from '../map/render/markers.js';
 import { TILE_SIZE } from '../map/worldSize.js';
 import { selectHeatmap, selectIncidents } from '../state/selectors.js';
 import { escapeHtml } from '../core/dom.js';
@@ -33,7 +33,7 @@ export function mountMapInput({ viewport, tooltip, store, camera, actions }) {
       const py = (inc.pixelY + 0.5) * TILE_SIZE;
       const { dx, dy } = offsets.get(inc.id);
       const inBox =
-        Math.abs(world.x - (px + dx)) <= (MARKER_BOX.w * s) / 2 + pad &&
+        Math.abs(world.x - (px + dx)) <= (markerWidth(inc) * s) / 2 + pad &&
         Math.abs(world.y - (py + dy)) <= (MARKER_BOX.h * s) / 2 + pad;
       const d = Math.hypot(world.x - px, world.y - py);
       const nearPin = d <= 14 * s;

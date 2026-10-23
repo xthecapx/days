@@ -87,7 +87,7 @@ export function mountSheet({ store, actions, incidents }) {
     card.className = `incident-card ${inc.id === state.selection.incidentId ? 'active' : ''} ${calm ? 'calm' : ''}`;
     card.innerHTML = `
       <div class="ic-head">
-        <div><span class="badge ${calm ? 'calm' : ''}">#${inc.number}</span><span class="ic-date">${escapeHtml(inc.dateLabel || inc.date)}</span></div>
+        <div><span class="badge ${calm ? 'calm' : ''}">#${inc.number}</span>${inc.resolvedBy === 'policia' ? '<span class="tag-resolved" title="Atendido por la policía">👮 Resuelto</span>' : ''}<span class="ic-date">${escapeHtml(inc.dateLabel || inc.date)}</span></div>
         ${pending ? '<span class="tag-warn">⚠️ Por confirmar</span>' : ''}
       </div>
       <div class="ic-cat">
@@ -188,6 +188,7 @@ export function mountSheet({ store, actions, incidents }) {
     $('repTime').addEventListener('change', (e) => actions.patchDraft({ time: e.target.value }));
     $('repDateOk').addEventListener('change', (e) => actions.patchDraft({ dateConfirmed: e.target.checked }));
     $('repTimeOk').addEventListener('change', (e) => actions.patchDraft({ timeConfirmed: e.target.checked }));
+    $('repResolved').addEventListener('change', (e) => actions.patchDraft({ resolved: e.target.checked }));
     $('repSector').addEventListener('input', (e) => actions.patchDraft({ sector: e.target.value, sectorTouched: true }));
     $('repImpact').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-impact]');
@@ -234,6 +235,7 @@ export function mountSheet({ store, actions, incidents }) {
         $('repTime').value = d.time;
         $('repDateOk').checked = d.dateConfirmed;
         $('repTimeOk').checked = d.timeConfirmed;
+        $('repResolved').checked = Boolean(d.resolved);
         form.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
       }
       if (document.activeElement !== $('repSector')) $('repSector').value = d.sector;

@@ -1,33 +1,107 @@
-# Monitor Vecinal en 2D Pixel Art — Sendero Río del Hato
+# Monitor Vecinal — Sendero Río del Hato
 
-Aplicación web **100% en español**, **100% anónima** y lista para publicar gratis en **GitHub Pages** usando `data/incidents.json` como base de datos abierta estilo Wikipedia.
+Aplicación web **100% en español**, **100% anónima** y lista para publicar gratis en **GitHub Pages**. Muestra un mapa del sector con los incidentes reportados por los vecinos y los días transcurridos desde el último. Los incidentes viven en `data/incidents.json`, una base de datos abierta estilo Wikipedia.
 
-## Características Principales
+## Características
 
-1. **Tablero Prioritario Gigante (`DÍAS DESDE EL ÚLTIMO INCIDENTE`)**:
-   - Calcula automáticamente los días transcurridos desde el incidente más reciente en el sector.
-   - Muestra el resumen del último evento, total de incidentes y cantidad de píxeles rojos en alerta.
-2. **Mapa 2D Pixel Art con Sistema GPS por Píxeles (`120 × 80`)**:
-   - Basado en la vista del sector `@7.0060325,-73.0640861,16.21z` (**Río del Hato, Sendero Río del Hato, Ciudad Tierrabuena, Exploretheworld, Azafrán, Conjunto Terracota y Autopista Piedecuesta**).
-   - Incluye zoom fluido, arrastre libre, botón **Mi Píxel GPS** (100% local en el navegador) .
-3. **Propagación de Píxeles Rojos según Incidente y Fecha**:
-   - Al asociar un evento a un píxel `(X, Y)`, los píxeles vecinos se tiñen de rojo dependiendo de la gravedad (1 a 5), la cercanía de otros eventos y qué tan reciente es la fecha.
-4. **6 Incidentes Iniciales en el Sendero Río del Hato**:
-   - **#1** en la vía `Río del Hato` justo arriba de tu posición (punto azul).
-   - **#2 al #6** ubicados a lo largo del **Sendero Río del Hato** por encima de la línea azul del río.
-5. **Edición Abierta Estilo Wikipedia (`data/incidents.json`)**:
-   - Permite reportar nuevos incidentes, confirmar fechas pendientes, mover el píxel de cualquier incidente en el mapa y revertir cambios desde la pestaña **Historial Wiki**.
+1. **Contador `DÍAS DESDE EL ÚLTIMO INCIDENTE`** con el resumen del último reporte y los píxeles en alerta.
+2. **Mapa del sector** (~2.8 × 2.9 km, Piedecuesta) dibujado a partir de datos de OpenStreetMap: calles por jerarquía, ríos, senderos, nombres de vías, lugares, autos y peatones animados.
+3. **Mapa de calor** sobre una grilla de 200 × 200 tiles (~14 m cada uno): cada incidente tiñe los tiles vecinos según gravedad (1 a 5) y antigüedad. Rojo = seguridad, amarillo = ruido/convivencia.
+4. **Edición abierta estilo Wikipedia** de incidentes: reportar, editar, confirmar, mover y revertir desde el historial.
+5. Pensado para **celular**: hoja inferior única, botones táctiles de 44 px, pellizco para zoom.
 
-## Uso Local
+## Uso local
 
 ```bash
 npm run dev
 ```
 
-Abre `http://localhost:5173`. Cualquier cambio que hagas desde la interfaz en modo local se guarda automáticamente en `data/incidents.json`.
+Abre `http://localhost:5173` (en el celular: `http://<IP-de-tu-computador>:5173`, misma red Wi-Fi). En local, cada cambio hecho desde la interfaz se guarda en `data/incidents.json`.
 
-## Publicar Gratis en GitHub Pages
+> ⚠️ Mientras no cambies la configuración del puente, **guardar un reporte también hace un commit en GitHub** a través del Worker de Cloudflare. Para probar sin publicar, ejecuta una vez en la consola del navegador y recarga:
+>
+> ```js
+> localStorage.setItem('vecinos_rio_hato_github_bridge_v1', JSON.stringify({bridgeUrl:'', githubRepo:'xthecapx/days'}))
+> ```
+
+## Cómo se organiza el mapa
+
+El mapa tiene **tres capas de datos** y todas usan coordenadas reales (lat/lng):
+
+| Archivo | Qué contiene | Quién lo edita |
+|---|---|---|
+| `data/map.json` | Calles, ríos, senderos y zonas descargados de OpenStreetMap | Se genera con `npm run map:update`. No lo edites a mano. |
+| `data/map-overrides.json` | Tus ajustes: HOGAR, lugares, sectores, clases de vía, vías extra u ocultas | **Tú**, a mano. Nunca se sobrescribe. |
+| `data/incidents.json` | Incidentes y su historial de revisiones | La app (y tú, para correcciones). |
+
+Los incidentes se guardan con `lat`/`lng`. El tile `(pixelX, pixelY)` se recalcula en cada carga, así que **cambiar el área o el tamaño de la grilla nunca mueve un incidente**.
+
+## Actualizar el mapa
+
+### Traer datos nuevos de OpenStreetMap
+
+```bash
+npm run map:update
+```
+
+Descarga el área definida en `BOUNDS` de `scripts/update-map.mjs` y reescribe `data/map.json`. Si el servidor público (Overpass) está saturado, el script reintenta con otros servidores; si falla del todo, espera unos minutos y repite. Después recarga la app y haz `git add data/map.json`.
+
+### Cambiar o ampliar el área
+
+1. Edita `BOUNDS` en `scripts/update-map.mjs` (`south`, `north`, `west`, `east`).
+2. Pon **los mismos valores** en `GEO_BOUNDS` de `src/map/gpsGrid.js`.
+3. Ajusta `GRID_WIDTH`/`GRID_HEIGHT` de ese archivo para mantener tiles de ~14 m (área en metros ÷ 14).
+4. Ejecuta `npm run map:update`.
+
+Los incidentes se reubican solos. Áreas mucho mayores (toda una ciudad) necesitan otra arquitectura: el mapa se dibuja en un solo lienzo y los datos viven en un solo archivo.
+
+### Corregir lo que OpenStreetMap no tiene o tiene mal
+
+Todo se hace en `data/map-overrides.json` (se conserva al actualizar):
+
+- **`home`**: `{ "lat", "lng", "label" }` — la casa que se marca en el mapa.
+- **`places`**: lugares con ícono (`kind: "poi"`) o solo texto (`kind: "area"`). `lod` decide desde qué zoom se ven: `1` siempre, `2` zoom ≥ 1.4, `3` zoom ≥ 2.2.
+- **`sectors`**: nombres de zona por radio: `{ "name", "lat", "lng", "radiusM" }`. Se usan al reportar y en la barra inferior.
+- **`roadClass`**: cambia la clase de una calle por nombre, p. ej. `{ "Avenida Calle 13 Norte": "arterial" }`. Clases: `highway`, `collector`, `arterial`, `minor`, `local`, `busway`, `trail`, `dirt`.
+- **`rename`**: corrige nombres, p. ej. `{ "Río Lato del Hato": "Río del Hato" }`.
+- **`hideWays`**: ids (u nombres) de vías de OSM que no quieres ver.
+- **`extraRoads`**: vías que faltan: `{ "cls", "name", "pts": [[lat,lng], …] }`.
+- **`areas`**: zonas extra (p. ej. suelo abierto): `{ "kind", "pts": [[lat,lng], …] }`.
+
+Para sacar lat/lng de un punto: clic derecho en Google Maps o en openstreetmap.org → copiar coordenadas.
+
+Si algo está mal en OpenStreetMap mismo (una calle que falta para todos), también puedes corregirlo allí en [openstreetmap.org](https://www.openstreetmap.org) y volver a correr `npm run map:update`.
+
+### Estilo de las vías
+
+Colores, anchos y cuándo se ocultan al alejar el mapa están en `src/map/data/roadStyles.js`.
+
+### Qué no trae OpenStreetMap aquí
+
+No hay edificios en esta zona: las casas del mapa son decoración generada por el código (`src/map/render/baseMap.js`).
+
+## Estructura del código
+
+```
+index.html             Estructura de la pantalla
+data/                  map.json · map-overrides.json · incidents.json
+scripts/update-map.mjs Descarga de OpenStreetMap
+src/main.js            Conecta todas las piezas
+src/state/             Store con suscripciones, acciones y selectores
+src/services/          Casos de uso sobre los incidentes
+src/storage/           Lectura/escritura de incidents.json (disco, GitHub)
+src/map/               Cámara, grilla, modelo del mapa, mapa de calor
+src/map/render/        Una capa de dibujo por archivo (base, calor, etiquetas, marcadores…)
+src/ui/                Barra superior, hoja inferior, gestos del mapa
+src/styles/            base.css · hud.css · sheets.css
+```
+
+## Publicar gratis en GitHub Pages
 
 1. Sube este repositorio a GitHub.
-2. En tu repositorio ve a **Settings → Pages → Build and deployment → Source: Deploy from a branch** y selecciona la rama `main` (`/ (root)`).
-3. *(Opcional para edición directa de todos los vecinos sin cuenta de GitHub)*: Despliega gratis `worker/github-wiki-bridge.js` en Cloudflare Workers con un token restringido a `data/incidents.json`.
+2. En **Settings → Pages → Build and deployment** elige **GitHub Actions** (el flujo `.github/workflows/deploy-pages.yml` ya está incluido) o **Deploy from a branch** con `main` (`/ (root)`).
+3. *(Opcional, para que los vecinos editen sin cuenta de GitHub)*: despliega `worker/github-wiki-bridge.js` en Cloudflare Workers con un token restringido a `data/incidents.json`, y define la variable `GITHUB_TOKEN`.
+
+## Créditos y licencia de datos
+
+Datos del mapa © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), disponibles bajo la licencia [ODbL](https://opendatacommons.org/licenses/odbl/). Si publicas el mapa, mantén esta atribución visible.

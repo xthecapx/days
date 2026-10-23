@@ -1,6 +1,7 @@
 import { TILE_SIZE } from '../worldSize.js';
 import { samplePolyline } from '../geometry.js';
-import { LABEL_STYLES } from '../data/roadStyles.js';
+import { LABEL_STYLES, ROAD_STYLES } from '../data/roadStyles.js';
+import { distanceToPolyline } from '../gpsGrid.js';
 
 const FONT = '"Space Grotesk", system-ui, sans-serif';
 const SKIP_NAME = /^(Salida|Entrada|Retorno|Plazoleta|Calzada)/i;
@@ -25,6 +26,49 @@ function haloText(ctx, text, x, y, color, size, weight = 700) {
 /** El tamaño en pantalla se mantiene casi constante: se compensa el zoom de la cámara. */
 const screenSize = (px, zoom) => px / Math.max(0.8, Math.min(zoom, 3));
 
+const CANDIDATE_T = [0.5, 0.35, 0.65, 0.2, 0.8, 0.12, 0.88];
+
+/** ¿El punto (en tiles) cae sobre una calle de igual o mayor jerarquía que no sea la propia? */
+function onOtherRoad(world, label, x, y) {
+  const ownOrder = ROAD_STYLES[label.kind]?.order ?? -1;
+  for (const r of world.roads) {
+    if (r.name === label.text || ROAD_STYLES[r.cls].order < ownOrder) continue;
+    const pad = ROAD_STYLES[r.cls].width / 2 + 0.8;
+    const b = r.bbox;
+    if (x < b.x0 - pad || x > b.x1 + pad || y < b.y0 - pad || y > b.y1 + pad) continue;
+    if (distanceToPolyline(x, y, r.pts) < pad) return true;
+  }
+  return false;
+}
+
+/**
+ * Busca el primer punto del propio trazo donde TODO el texto (no solo su centro) queda
+ * libre de otras calles. El ancho del texto depende del zoom, así que el resultado se
+ * guarda por nivel de zoom. Devuelve null si no hay lugar libre.
+ */
+function placeLabel(world, label, halfTiles, zoomKey) {
+  if (label.placed.has(zoomKey)) return label.placed.get(zoomKey);
+  let spot = null;
+  for (const p of label.candidates) {
+    const len = Math.hypot(p.dx, p.dy) || 1;
+    const ux = p.dx / len;
+    const uy = p.dy / len;
+    let free = true;
+    for (const k of [-1, -0.5, 0, 0.5, 1]) {
+      if (onOtherRoad(world, label, p.x + ux * halfTiles * k, p.y + uy * halfTiles * k)) {
+        free = false;
+        break;
+      }
+    }
+    if (free) {
+      spot = p;
+      break;
+    }
+  }
+  label.placed.set(zoomKey, spot);
+  return spot;
+}
+
 /** Una etiqueta por calle con nombre (dos si es muy larga), tomada de los tramos más largos. */
 function buildRoadLabels(world) {
   const byName = new Map();
@@ -47,8 +91,12 @@ function buildRoadLabels(world) {
     const picks = total > 90 && sorted.length > 1 ? sorted.slice(0, 2) : sorted.slice(0, 1);
     for (const w of picks) {
       if (w.len < 5) continue;
-      labels.push({ text: w.name, pts: w.pts, len: w.len, ...style });
+      labels.push({ text: w.name, pts: w.pts, len: w.len, kind, ...style });
     }
+  }
+  for (const l of labels) {
+    l.candidates = CANDIDATE_T.map((t) => samplePolyline(l.pts, t));
+    l.placed = new Map();
   }
   return labels.sort((a, b) => a.rank - b.rank || b.len - a.len);
 }
@@ -119,7 +167,10 @@ export function createLabelLayer(world) {
         if (!lodVisible(label.lod, zoom)) continue;
         const width = label.text.length * size * 0.58;
         if (label.len * TILE_SIZE < width * 1.1) continue; // la calle no alcanza para el texto
-        const p = samplePolyline(label.pts, 0.5);
+        const zoomKey = Math.round(zoom * 4);
+        const halfTiles = width / TILE_SIZE / 2;
+        const p = placeLabel(world, label, halfTiles, zoomKey);
+        if (!p) continue; // sin un tramo libre, mejor no escribir encima de otra calle
         const wx = (p.x + 0.5) * TILE_SIZE;
         const wy = (p.y + 0.5) * TILE_SIZE;
         if (placed.some((q) => Math.hypot(q.x - wx, q.y - wy) < (q.w + width) * 0.45)) continue;

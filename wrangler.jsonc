@@ -6,6 +6,14 @@
   "vars": {
     "GITHUB_REPO": "xthecapx/days"
   },
+  // Límite de ráfaga por visitante: 3 reportes por minuto. namespace_id debe ser único en tu cuenta.
+  "ratelimits": [
+    {
+      "name": "REPORT_LIMITER",
+      "namespace_id": "7421",
+      "simple": { "limit": 3, "period": 60 }
+    }
+  ],
   "observability": {
     "logs": {
       "enabled": true,

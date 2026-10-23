@@ -53,6 +53,7 @@
 .badge { background: var(--red); font: 800 0.72rem var(--font-mono); padding: 2px 6px; margin-right: 6px; }
 .badge.calm { background: #fef08a; color: #090d16; }
 .ic-date { font-size: 0.74rem; font-weight: 700; }
+.tag-resolved { background: rgba(59, 130, 246, 0.2); border: 1px solid #60a5fa; color: #bfdbfe; font: 700 0.63rem var(--font-mono); padding: 1px 5px; margin-right: 6px; }
 .tag-warn { background: rgba(245, 158, 11, 0.18); border: 1px solid #f59e0b; color: #fcd34d; font-size: 0.63rem; padding: 1px 5px; }
 .ic-cat { display: flex; justify-content: space-between; align-items: center; font: 0.7rem var(--font-mono); }
 .ic-cat span:first-child { color: #93c5fd; font-weight: 700; }
@@ -83,6 +84,9 @@
 .sw-art { background: #fff; border-color: #8b95a5; }
 .sw-trail { background: repeating-linear-gradient(90deg, #8a6a45 0 4px, transparent 4px 7px); border: 0; }
 .sw-water { background: #6ec1f5; border-color: #3d93d9; }
+
+.credit-text { font-size: 0.78rem; line-height: 1.45; color: #cbd5e1; }
+.credit-text a { color: var(--yellow); }
 
 /* Formularios (16px evita el auto-zoom de iOS) */
 .field { display: flex; flex-direction: column; gap: 4px; }

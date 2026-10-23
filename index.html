@@ -57,6 +57,9 @@
     <button id="btnHome" class="fab" type="button" aria-label="Ir a Hogar">🏠</button>
   </div>
 
+  <!-- Atribución de los datos del mapa (siempre visible, licencia ODbL) -->
+  <a id="mapCredit" class="map-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>
+
   <!-- ZONA INFERIOR: tarjeta de contexto + navegación -->
   <div id="dock" class="dock">
     <section id="peek" class="peek">
@@ -148,6 +151,14 @@
         </ul>
       </section>
       <section class="setting-group">
+        <h3>Créditos</h3>
+        <p class="credit-text">
+          Datos del mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>,
+          disponibles bajo la licencia <a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener noreferrer">ODbL</a>.
+          Casas y árboles son decoración generada.
+        </p>
+      </section>
+      <section class="setting-group">
         <h3>Datos</h3>
         <div class="btn-row">
           <button id="btnHistory" class="btn btn-sm" type="button">🕓 Historial</button>
@@ -206,6 +217,8 @@
           <label for="repSector">Nombre del sector</label>
           <input type="text" id="repSector" placeholder="Ej: Sendero Río del Hato" />
         </div>
+
+        <label class="switch"><input type="checkbox" id="repResolved" /><span>👮 Atendido por la policía</span></label>
 
         <p class="notice">🛡️ Reporte 100% anónimo (sin cuenta ni rastreo de IP).</p>
       </div>

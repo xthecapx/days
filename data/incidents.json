@@ -111,7 +111,8 @@
       "sector": "Sendero Río del Hato",
       "description": "Persecución en el sector del río.",
       "confirmations": 6,
-      "updatedAt": "2026-10-20T21:10:00-05:00"
+      "updatedAt": "2026-10-20T21:10:00-05:00",
+      "resolvedBy": "policia"
     },
     {
       "id": "inc-006",
@@ -131,7 +132,8 @@
       "sector": "Sendero Río del Hato",
       "description": "Persona robada y apuñalada pidiendo ayuda en el sector.",
       "confirmations": 9,
-      "updatedAt": "2026-10-21T19:35:00-05:00"
+      "updatedAt": "2026-10-21T19:35:00-05:00",
+      "resolvedBy": "policia"
     },
     {
       "id": "inc-007",
@@ -151,7 +153,29 @@
       "sector": "Cerca de Vía Ciudadela Río del Hato",
       "description": "Moto abandonada y recuperada por la policía.",
       "confirmations": 1,
-      "updatedAt": "2026-10-23T19:15:20.720Z"
+      "updatedAt": "2026-10-23T19:15:20.720Z",
+      "resolvedBy": "policia"
+    },
+    {
+      "id": "inc-008",
+      "number": 8,
+      "date": "2026-10-22",
+      "time": "12:00",
+      "dateLabel": "22 de octubre (Por confirmar) - 12:00 (Hora por confirmar)",
+      "dateConfirmed": false,
+      "timeConfirmed": false,
+      "impactType": "seguridad",
+      "category": "Otro Incidente en el Sector",
+      "severity": 2,
+      "pixelX": 85,
+      "pixelY": 121,
+      "lat": 7.004812,
+      "lng": -73.064885,
+      "sector": "Conjunto Residencial Pradera del Hato",
+      "description": "Intento de robo de moto: la policía capturó al sospechoso y evitó el robo.",
+      "resolvedBy": "policia",
+      "confirmations": 1,
+      "updatedAt": "2026-10-23T19:31:07.059Z"
     }
   ],
   "revisions": [

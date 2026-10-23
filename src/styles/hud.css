@@ -96,6 +96,31 @@
 }
 .fab:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 #000; }
 
+/* ---------- Atribución OSM ---------- */
+.map-credit {
+  position: fixed;
+  left: 8px;
+  bottom: var(--controls-bottom, 190px);
+  max-width: calc(100vw - 64px);
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.45);
+  color: rgba(51, 65, 85, 0.85);
+  font: 500 0.5rem var(--font-sans);
+  text-decoration: none;
+  z-index: 24;
+  transition: bottom 0.15s;
+}
+.map-credit:active { background: rgba(255, 255, 255, 0.85); }
+
+/* En pantallas anchas el dock queda centrado: la atribución va en la esquina inferior izquierda. */
+@media (min-width: 680px) {
+  .map-credit {
+    bottom: max(4px, env(safe-area-inset-bottom));
+    left: 4px;
+    max-width: none;
+  }
+}
+
 /* ---------- Zona inferior ---------- */
 .dock {
   position: fixed;

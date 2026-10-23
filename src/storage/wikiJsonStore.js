@@ -119,7 +119,7 @@ function normalizeStore(data) {
 /**
  * Persiste el nuevo estado de incidents.json sin guardar ningún dato personal ni IP
  */
-export async function persistWikiStore(storeData, commitSummary = 'Actualización anónima en incidents.json') {
+export async function persistWikiStore(storeData, commitSummary = 'Actualización anónima en incidents.json', change = null) {
   const normalized = normalizeStore(storeData);
   normalized.lastUpdated = new Date().toISOString();
 
@@ -144,28 +144,35 @@ export async function persistWikiStore(storeData, commitSummary = 'Actualizació
     } catch (_) {}
   }
 
+  // Los cambios no se publican solos: el puente abre un Pull Request y el dueño lo revisa.
+  // En localhost no se llama al puente (así probar no abre PRs). Sin `change` (importar,
+  // restaurar, revertir) tampoco se envía nada: esos cambios se hacen con git.
   const bridge = getBridgeConfig();
-  if (bridge.bridgeUrl) {
+  const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (bridge.bridgeUrl && change && !isLocalhost) {
     try {
       const res = await fetch(bridge.bridgeUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          commitMessage: `Wiki Vecinal: ${commitSummary}`,
-          content: normalized
-        })
+        body: JSON.stringify({ commitMessage: `Wiki Vecinal: ${commitSummary}`, change })
       });
       if (res.ok) {
         syncStatus = {
-          mode: 'github',
+          mode: 'pr',
           ok: true,
-          message: 'Commit anónimo guardado en GitHub'
+          message: 'Enviado para revisión (aparecerá cuando se apruebe)'
+        };
+      } else if (res.status === 429) {
+        syncStatus = {
+          mode: 'github-limited',
+          ok: false,
+          message: 'Guardado localmente; hay demasiados reportes pendientes, intenta más tarde'
         };
       } else {
         syncStatus = {
           mode: 'github-error',
           ok: false,
-          message: 'Guardado localmente (error en puente GitHub)'
+          message: 'Guardado localmente (el puente rechazó el reporte)'
         };
       }
     } catch (_) {
@@ -228,6 +235,9 @@ export async function saveIncidentWikiRevision(currentStore, incidentInput, edit
 
   const impactType = incidentInput.impactType === 'tranquilidad' ? 'tranquilidad' : 'seguridad';
 
+  // Quién resolvió el caso (por ahora solo 'policia'); null = sin resolver.
+  const resolvedBy = incidentInput.resolvedBy === 'policia' ? 'policia' : null;
+
   let updatedIncidents = [...currentStore.incidents];
   let actionType = 'CREATE';
   let targetIncident = null;
@@ -252,6 +262,7 @@ export async function saveIncidentWikiRevision(currentStore, incidentInput, edit
         lng: coords.lng,
         sector: autoSector,
         description: incidentInput.description.trim(),
+        resolvedBy,
         updatedAt: new Date().toISOString()
       };
       return targetIncident;
@@ -275,6 +286,7 @@ export async function saveIncidentWikiRevision(currentStore, incidentInput, edit
       lng: coords.lng,
       sector: autoSector,
       description: incidentInput.description.trim(),
+      resolvedBy,
       confirmations: 1,
       updatedAt: new Date().toISOString()
     };
@@ -301,7 +313,28 @@ export async function saveIncidentWikiRevision(currentStore, incidentInput, edit
     revisions: [newRevision, ...(currentStore.revisions || [])].slice(0, 40)
   };
 
-  const result = await persistWikiStore(nextStore, summaryNote);
+  const change = {
+    type: editingId ? 'edit' : 'create',
+    incident: {
+      id: targetIncident.id,
+      date: targetIncident.date,
+      time: targetIncident.time,
+      dateLabel: targetIncident.dateLabel,
+      dateConfirmed: targetIncident.dateConfirmed,
+      timeConfirmed: targetIncident.timeConfirmed,
+      impactType: targetIncident.impactType,
+      category: targetIncident.category,
+      severity: targetIncident.severity,
+      pixelX: targetIncident.pixelX,
+      pixelY: targetIncident.pixelY,
+      lat: targetIncident.lat,
+      lng: targetIncident.lng,
+      sector: targetIncident.sector,
+      description: targetIncident.description,
+      resolvedBy: targetIncident.resolvedBy
+    }
+  };
+  const result = await persistWikiStore(nextStore, summaryNote, change);
   return {
     ...result,
     savedIncident: targetIncident
@@ -341,7 +374,7 @@ export async function confirmIncidentAnonymously(currentStore, incidentId) {
     ].slice(0, 40)
   };
 
-  return persistWikiStore(nextStore, note);
+  return persistWikiStore(nextStore, note, { type: 'confirm', id: incidentId });
 }
 
 export async function revertWikiRevision(currentStore, revId) {

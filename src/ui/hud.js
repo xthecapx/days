@@ -55,7 +55,7 @@ export function mountHud({ store, camera, actions }) {
     setHidden($('peekIncident'), !inc);
     $('peek').classList.toggle('has-incident', Boolean(inc));
     if (inc) {
-      $('peekTitle').textContent = `#${inc.number} · ${inc.dateLabel || inc.date}`;
+      $('peekTitle').textContent = `#${inc.number} · ${inc.dateLabel || inc.date}${inc.resolvedBy === 'policia' ? ' · 👮 Resuelto' : ''}`;
       $('peekDesc').textContent = inc.description;
       $('btnPeekConfirm').textContent = `👍 Confirmar (${inc.confirmations || 1})`;
     }
@@ -73,6 +73,7 @@ export function mountHud({ store, camera, actions }) {
     // Con una hoja abierta el dock queda tapado por la hoja.
     setHidden($('dock'), Boolean(sheet));
     setHidden($('mapControls'), Boolean(sheet));
+    setHidden($('mapCredit'), Boolean(sheet));
   });
 
   window.addEventListener('resize', measureInsets);
