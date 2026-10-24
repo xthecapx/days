@@ -2,11 +2,11 @@ import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { sendChange } from '../src/storage/bridgeClient.js';
 import * as cache from '../src/storage/localCache.js';
-import { loadStore, persistStore, loadSeed } from '../src/storage/incidentStore.js';
+import { loadStore, persistStore } from '../src/storage/incidentStore.js';
 import { normalizeStore } from '../src/storage/normalize.js';
 
-const remote = { incidents: [{ id: 'r1', number: 1 }], revisions: [] };
-const cached = { incidents: [{ id: 'c1', number: 1 }], revisions: [] };
+const remote = { incidents: [{ id: 'r1', number: 1 }] };
+const cached = { incidents: [{ id: 'c1', number: 1 }] };
 let calls;
 
 function env({ host = 'vecinos.example.com', routes = {}, storage = {} } = {}) {
@@ -60,7 +60,6 @@ test('localCache: nunca lanza aunque localStorage falle', () => {
   const warn = mock.method(console, 'warn', () => {});
   assert.equal(cache.readStore(), null);
   assert.equal(cache.writeStore({ a: 1 }), false);
-  assert.doesNotThrow(() => cache.clearStore());
   assert.doesNotThrow(() => cache.purgeLegacyStores());
   assert.deepEqual(cache.readBridgeConfig(), { bridgeUrl: cache.DEFAULT_BRIDGE_URL, githubRepo: cache.DEFAULT_GITHUB_REPO });
   warn.mock.restore();
@@ -137,16 +136,22 @@ test('persistStore: sigue funcionando si localStorage está bloqueado', async ()
   warn.mock.restore();
 });
 
-test('loadSeed borra la copia local y devuelve el archivo del despliegue', async () => {
-  const mem = env({ routes: { './data/incidents.json': [200, remote] }, storage: { vecinos_rio_hato_wiki_json_v4: '{}' } });
-  assert.equal((await loadSeed()).incidents[0].id, 'r1');
-  assert.equal(mem.has('vecinos_rio_hato_wiki_json_v4'), false);
-});
-
 test('normalizeStore: ordena por número y completa los campos que faltan', () => {
   const n = normalizeStore({ incidents: [{ id: 'b', number: 2 }, { id: 'a', number: 1 }] });
   assert.deepEqual(n.incidents.map((i) => i.id), ['a', 'b']);
-  assert.equal(n.schemaVersion, 3);
-  assert.deepEqual(n.revisions, []);
+  assert.equal(n.schemaVersion, 4);
+  assert.equal('revisions' in n, false);
   assert.ok(n.referenceCenter && n.lastUpdated);
+});
+
+test('normalizeStore: un incidents.json viejo con revisiones se limpia al cargar', () => {
+  const n = normalizeStore({ schemaVersion: 3, incidents: [{ id: 'a', number: 1 }], revisions: [{ revId: 'rev-001', previousIncidentsSnapshot: [] }] });
+  assert.equal('revisions' in n, false);
+  assert.equal(n.incidents.length, 1);
+});
+
+test('persistStore: lo que se guarda y se envía ya no lleva revisiones', async () => {
+  const mem = env({ routes: { 'workers.dev': [200, {}] } });
+  await persistStore({ ...cached, revisions: [{ revId: 'x' }] }, 'nota', { type: 'confirm', id: 'c1' });
+  assert.equal('revisions' in JSON.parse(mem.get('vecinos_rio_hato_wiki_json_v4')), false);
 });

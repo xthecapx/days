@@ -1,7 +1,7 @@
 import { isLocalhost } from '../core/env.js';
 import { normalizeStore } from './normalize.js';
 import * as cache from './localCache.js';
-import { loadFromRepository, fetchSeed } from './repository.js';
+import { loadFromRepository } from './repository.js';
 import { saveToDisk } from './localDisk.js';
 import { sendChange } from './bridgeClient.js';
 
@@ -22,12 +22,12 @@ export async function loadStore() {
     cache.writeStore(remote);
     return normalizeStore(remote);
   }
-  return normalizeStore(cache.readStore() || { incidents: [], revisions: [] });
+  return normalizeStore(cache.readStore() || { incidents: [] });
 }
 
 /**
  * Guarda el nuevo estado sin ningún dato personal ni IP. Con `change` (crear, editar, confirmar) y fuera de
- * localhost, además lo manda al puente para que se abra un PR; importar, restaurar o revertir no se envían.
+ * localhost, además lo manda al puente para que se abra un PR; un guardado sin `change` solo queda en el navegador.
  */
 export async function persistStore(storeData, commitSummary = 'Actualización anónima en incidents.json', change = null) {
   const store = normalizeStore(storeData);
@@ -46,9 +46,4 @@ export async function persistStore(storeData, commitSummary = 'Actualización an
   const { bridgeUrl } = cache.readBridgeConfig();
   if (bridgeUrl && change) syncStatus = await sendChange(bridgeUrl, change, commitSummary);
   return { store, syncStatus };
-}
-
-export async function loadSeed() {
-  cache.clearStore();
-  return normalizeStore(await fetchSeed());
 }

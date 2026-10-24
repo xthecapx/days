@@ -24,10 +24,3 @@ export async function loadFromRepository({ githubRepo }) {
   }
   return getJson(`./data/incidents.json?t=${Date.now()}`, './data/incidents.json');
 }
-
-/** Los incidentes iniciales que trae este despliegue. Lanza si no se pueden leer. */
-export async function fetchSeed() {
-  const res = await fetch(`./data/incidents.json?t=${Date.now()}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`No se pudo leer data/incidents.json (HTTP ${res.status})`);
-  return res.json();
-}

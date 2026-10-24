@@ -16,7 +16,7 @@ export function normalizeStore(data) {
   const incidents = (Array.isArray(data.incidents) ? data.incidents : []).map(anchorToGrid);
   incidents.sort((a, b) => (a.number || 0) - (b.number || 0));
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     neighborhood: data.neighborhood || 'Sendero Río del Hato y Ciudad Tierrabuena',
     referenceCenter: data.referenceCenter || {
       lat: (GEO_BOUNDS.north + GEO_BOUNDS.south) / 2,
@@ -24,7 +24,6 @@ export function normalizeStore(data) {
       zoom: 16.21
     },
     lastUpdated: data.lastUpdated || new Date().toISOString(),
-    incidents,
-    revisions: Array.isArray(data.revisions) ? data.revisions : []
+    incidents
   };
 }

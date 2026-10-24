@@ -1,13 +1,13 @@
 # Monitor Vecinal — Sendero Río del Hato
 
-Aplicación web **100% en español**, **100% anónima** y lista para publicar gratis en **GitHub Pages**. Muestra un mapa del sector con los incidentes reportados por los vecinos y los días transcurridos desde el último. Los incidentes viven en `data/incidents.json`, una base de datos abierta estilo Wikipedia.
+Aplicación web **100% en español**, **100% anónima** y lista para publicar gratis en **GitHub Pages**. Muestra un mapa del sector con los incidentes reportados por los vecinos y los días transcurridos desde el último. Los incidentes viven en `data/incidents.json`, una base de datos abierta: cada reporte llega como un Pull Request y solo se publica cuando el dueño lo aprueba.
 
 ## Características
 
 1. **Contador `DÍAS DESDE EL ÚLTIMO INCIDENTE`** con el resumen del último reporte y los píxeles en alerta.
 2. **Mapa del sector** (~2.8 × 2.9 km, Piedecuesta) dibujado a partir de datos de OpenStreetMap: calles por jerarquía, ríos, senderos, nombres de vías, lugares, autos y peatones animados.
 3. **Mapa de calor** sobre una grilla de 200 × 200 tiles (~14 m cada uno): cada incidente tiñe los tiles vecinos según gravedad (1 a 5) y antigüedad. Rojo = seguridad, amarillo = ruido/convivencia.
-4. **Edición abierta estilo Wikipedia** de incidentes: reportar, editar, confirmar, mover y revertir desde el historial.
+4. **Reportes abiertos y moderados** de incidentes: reportar, editar, confirmar y mover desde la propia app. El historial de cambios es el de git (un Pull Request por reporte).
 5. Pensado para **celular**: hoja inferior única, botones táctiles de 44 px, pellizco para zoom.
 
 ## Uso local
@@ -32,7 +32,7 @@ El mapa tiene **tres capas de datos** y todas usan coordenadas reales (lat/lng):
 |---|---|---|
 | `data/map.json` | Calles, ríos, senderos y zonas descargados de OpenStreetMap | Se genera con `npm run map:update`. No lo edites a mano. |
 | `data/map-overrides.json` | Tus ajustes: HOGAR, lugares, sectores, clases de vía, vías extra u ocultas | **Tú**, a mano. Nunca se sobrescribe. |
-| `data/incidents.json` | Incidentes y su historial de revisiones | La app (y tú, para correcciones). |
+| `data/incidents.json` | Incidentes | La app (y tú, para correcciones). |
 
 Los incidentes se guardan con `lat`/`lng`. El tile `(pixelX, pixelY)` se recalcula en cada carga, así que **cambiar el área o el tamaño de la grilla nunca mueve un incidente**.
 
@@ -93,13 +93,13 @@ src/main.js            Conecta todas las piezas
 src/state/             Store con suscripciones, acciones y selectores
 src/core/geo.js        Área del mapa y tamaño de la grilla (única definición)
 src/core/clock.js      "Hoy" de la app: sigue al reloj del dispositivo
-src/domain/            Reglas puras de incidentes e historial (sin DOM ni red)
+src/domain/            Reglas puras de incidentes (sin DOM ni red)
 src/services/          Casos de uso (incidentes) y servicios del teléfono (gps.js, whatsapp.js)
 src/storage/           Adaptadores: repositorio, copia del navegador, disco local y puente (PR)
 src/map/               Cámara, grilla, modelo del mapa (`buildWorld`, `createSectorNamer`), mapa de calor
 src/map/render/        Una capa de dibujo por archivo (base, calor y sus colores, etiquetas, marcadores…)
-src/ui/                HUD (hud, alertCard, peek, whatsappMenu, insets), hoja inferior y gestos del mapa
-src/ui/panes/          Un panel de la hoja por archivo: incidents, history, settings, report
+src/ui/                HUD (hud, alertCard, peek, whatsappMenu, syncToast, insets), hoja inferior y gestos del mapa
+src/ui/panes/          Un panel de la hoja por archivo: incidents, settings, report
 src/styles/            base.css · hud.css · sheets.css
 ```
 
@@ -117,7 +117,7 @@ src/styles/            base.css · hud.css · sheets.css
 npm test
 ```
 
-Usa `node --test` (sin dependencias) y corre también en cada PR (`.github/workflows/test.yml`). Cubren las reglas de incidentes, el historial, el almacenamiento, el GPS, WhatsApp, el mapa de calor, los nombres de sector, el reloj y la validación del Worker.
+Usa `node --test` (sin dependencias) y corre también en cada PR (`.github/workflows/test.yml`). Cubren las reglas de incidentes, el almacenamiento, el GPS, WhatsApp, el mapa de calor, los nombres de sector, el reloj y la validación del Worker.
 
 ## Créditos y licencia de datos
 

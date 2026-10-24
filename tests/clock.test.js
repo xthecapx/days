@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { startOfDay, msUntilNextDay, startDayClock } from '../src/core/clock.js';
 import { createStore } from '../src/state/store.js';
 import { createInitialState } from '../src/state/initialState.js';
-import { pickReferenceDate } from '../src/ui/panes/settings.js';
 import { alertSummary } from '../src/ui/alertCard.js';
 import { toIsoDate } from '../src/core/dom.js';
 
@@ -39,7 +38,7 @@ test('msUntilNextDay: faltan horas por la tarde, 1 s mínimo, y cruza fin de mes
 
 test('createInitialState usa la fecha real (no una fija)', () => {
   assert.equal(toIsoDate(createInitialState(at(2031, 1, 5)).settings.referenceDate), '2031-01-05');
-  assert.equal(createInitialState().settings.referenceOverride, false);
+  assert.equal('referenceOverride' in createInitialState().settings, false);
 });
 
 test('el reloj pasa a mañana a medianoche y el contador sube un día', () => {
@@ -76,26 +75,6 @@ test('no repinta si el día no cambió', () => {
   state.now = at(2026, 10, 23, 20);
   state.timers.at(-1).fn();
   assert.equal(store.get().settings, before, 'misma referencia: ningún suscriptor se entera');
-});
-
-test('una fecha elegida a mano en Ajustes no la pisa el reloj', () => {
-  const { state, store, deps, today } = rig(at(2026, 10, 23, 15));
-  startDayClock(store, deps);
-  store.patch('settings', pickReferenceDate('2026-11-02', state.now));
-  assert.equal(today(), '2026-11-02');
-  state.now = at(2026, 10, 25, 1);
-  state.timers.at(-1).fn();
-  assert.equal(today(), '2026-11-02');
-});
-
-test('pickReferenceDate: vacío o igual a hoy vuelve a automática', () => {
-  const now = at(2026, 10, 23, 15);
-  const manual = pickReferenceDate('2026-11-02', now);
-  assert.deepEqual([toIsoDate(manual.referenceDate), manual.referenceOverride], ['2026-11-02', true]);
-  for (const v of ['', '2026-10-23']) {
-    const auto = pickReferenceDate(v, now);
-    assert.deepEqual([toIsoDate(auto.referenceDate), auto.referenceOverride], ['2026-10-23', false]);
-  }
 });
 
 test('stop cancela el temporizador y deja de escuchar la pestaña', () => {

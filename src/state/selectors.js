@@ -2,7 +2,6 @@ import { computePixelHeatmap } from '../map/heatmapEngine.js';
 import { toIsoDate } from '../core/dom.js';
 
 export const selectIncidents = (s) => s.data.incidents || [];
-export const selectRevisions = (s) => s.data.revisions || [];
 
 export function findIncident(state, id) {
   return selectIncidents(state).find((i) => i.id === id) || null;

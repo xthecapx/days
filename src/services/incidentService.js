@@ -1,6 +1,6 @@
 import { pixelToGps } from '../map/gpsGrid.js';
-import { planSave, planConfirm, planRevert } from '../domain/storePlans.js';
-import { loadStore, persistStore, loadSeed } from '../storage/incidentStore.js';
+import { planSave, planConfirm } from '../domain/storePlans.js';
+import { loadStore, persistStore } from '../storage/incidentStore.js';
 
 /**
  * Casos de uso sobre los incidentes: arma el cambio con las reglas de `domain/`, lo guarda con
@@ -9,7 +9,7 @@ import { loadStore, persistStore, loadSeed } from '../storage/incidentStore.js';
 export function createIncidentService(store, { sectorName = () => 'Sector Piedecuesta' } = {}) {
   const commit = ({ store: data, syncStatus }) => {
     store.set({ data });
-    if (syncStatus) store.patch('sync', { message: syncStatus.message });
+    if (syncStatus) store.patch('sync', { message: syncStatus.message, ok: syncStatus.ok });
   };
 
   const current = () => store.get().data;
@@ -40,25 +40,6 @@ export function createIncidentService(store, { sectorName = () => 'Sector Piedec
       const incident = current().incidents.find((i) => i.id === id);
       if (!incident) return null;
       return save({ ...incident, pixelX, pixelY, sector: sectorName(pixelX, pixelY) }, id);
-    },
-
-    async revert(revId) {
-      try {
-        await apply(planRevert(current(), revId));
-      } catch (err) {
-        store.patch('sync', { message: err.message });
-      }
-    },
-
-    async importJson(text) {
-      const parsed = JSON.parse(text);
-      if (!parsed || !Array.isArray(parsed.incidents)) throw new Error('incidents.json inválido');
-      commit(await persistStore(parsed, 'Importación manual de incidents.json'));
-    },
-
-    async resetToSeed() {
-      store.set({ data: await loadSeed() });
-      store.patch('sync', { message: 'Restaurados los incidentes iniciales' });
     }
   };
 }

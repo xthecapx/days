@@ -106,17 +106,16 @@
         <span class="nav-ico">➕</span><span>Reportar</span>
       </button>
       <button id="navSettings" class="nav-btn" type="button">
-        <span class="nav-ico">⚙️</span><span>Mapa y datos</span>
+        <span class="nav-ico">⚙️</span><span>Mapa</span>
       </button>
     </nav>
   </div>
 
-  <!-- HOJA INFERIOR ÚNICA (incidentes · historial · ajustes · reporte) -->
+  <!-- HOJA INFERIOR ÚNICA (incidentes · ajustes · reporte) -->
   <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
   <aside id="sheet" class="sheet hidden" role="dialog" aria-modal="true">
     <div class="sheet-grabber"><i></i></div>
     <div class="sheet-header">
-      <div id="sheetTabs" class="sheet-tabs"></div>
       <h2 id="sheetTitle" class="sheet-title"></h2>
       <button id="btnCloseSheet" class="icon-btn" type="button" aria-label="Cerrar">✕</button>
     </div>
@@ -124,13 +123,6 @@
     <div id="paneIncidents" class="sheet-pane hidden">
       <p class="hint">Toca un incidente para verlo en el mapa. Todo es 100% anónimo.</p>
       <div id="incidentList" class="card-list"></div>
-    </div>
-
-    <div id="paneHistory" class="sheet-pane hidden">
-      <p class="hint">
-        Archivo <code>data/incidents.json</code> <span id="syncBadge" class="sync-badge"></span>
-      </p>
-      <div id="revisionList" class="card-list"></div>
     </div>
 
     <div id="paneSettings" class="sheet-pane hidden">
@@ -146,10 +138,6 @@
             <option value="actual">Según fecha + gravedad</option>
             <option value="historico">Acumulado histórico</option>
           </select>
-        </div>
-        <div class="field">
-          <label for="inpToday">Fecha de hoy</label>
-          <input type="date" id="inpToday" />
         </div>
       </section>
       <section class="setting-group">
@@ -171,15 +159,6 @@
           disponibles bajo la licencia <a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener noreferrer">ODbL</a>.
           Casas y árboles son decoración generada.
         </p>
-      </section>
-      <section class="setting-group">
-        <h3>Datos</h3>
-        <div class="btn-row">
-          <button id="btnHistory" class="btn btn-sm" type="button">🕓 Historial</button>
-          <button id="btnDownload" class="btn btn-sm" type="button">💾 Descargar</button>
-          <label class="btn btn-sm">📂 Importar<input type="file" id="inpImport" accept=".json" hidden /></label>
-          <button id="btnResetSeed" class="btn btn-sm" type="button">🔄 Restaurar</button>
-        </div>
       </section>
     </div>
 

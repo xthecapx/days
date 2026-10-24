@@ -4,6 +4,7 @@ import { mountInsets } from './insets.js';
 import { mountAlertCard } from './alertCard.js';
 import { mountPeek } from './peek.js';
 import { mountWhatsAppMenu } from './whatsappMenu.js';
+import { mountSyncToast } from './syncToast.js';
 
 /**
  * Barra superior, banner de modo, controles del mapa y zona inferior (tarjeta + navegación).
@@ -14,6 +15,7 @@ export function mountHud({ store, camera, actions, gps, whatsapp, sectorName }) 
   mountAlertCard({ store, actions, measureInsets });
   mountPeek({ store, actions, measureInsets, sectorName });
   mountWhatsAppMenu({ store, gps, whatsapp, sectorName });
+  mountSyncToast({ store });
 
   // ----- Controles del mapa y navegación --------------------------------------
   $('btnZoomIn').addEventListener('click', () => camera.zoomBy(1.3));

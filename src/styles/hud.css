@@ -231,7 +231,7 @@
   box-shadow: 3px 3px 0 #000;
   font: 700 0.72rem var(--font-mono);
   text-align: center;
-  z-index: 40;
+  z-index: 60; /* por encima de la hoja (50), para que se vea también al confirmar desde la lista */
   pointer-events: none;
 }
 

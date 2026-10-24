@@ -26,14 +26,13 @@ export function incidentCardHtml(inc, referenceDate) {
 }
 
 /** Lista de incidentes, del más nuevo al más viejo (por número de reporte). */
-export function mountIncidentsPane({ store, actions, renderTabs }) {
+export function mountIncidentsPane({ store, actions }) {
   const list = $('incidentList');
 
   store.subscribe(
     (s) => [s.data.incidents, s.selection.incidentId, s.settings.referenceDate, s.ui.sheet === 'incidents'],
     ([, , , visible]) => {
       if (!visible) return;
-      renderTabs('incidents');
       const state = store.get();
       const rows = [...selectIncidents(state)].sort((a, b) => (b.number || 0) - (a.number || 0));
       list.innerHTML = '';

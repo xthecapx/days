@@ -6,7 +6,9 @@ import { alertSummary } from '../src/ui/alertCard.js';
 import { peekTitle } from '../src/ui/peek.js';
 import { noLocationMessage, GPS_LABELS } from '../src/ui/whatsappMenu.js';
 import { incidentCardHtml } from '../src/ui/panes/incidents.js';
-import { revisionHtml, formatRevisionTime } from '../src/ui/panes/history.js';
+import { syncToastMs, mountSyncToast } from '../src/ui/syncToast.js';
+import { createStore } from '../src/state/store.js';
+import { createInitialState } from '../src/state/initialState.js';
 import { missingField, reportTitle } from '../src/ui/panes/report.js';
 import { hoverHtml } from '../src/ui/mapInput.js';
 import { $ } from '../src/core/dom.js';
@@ -54,14 +56,6 @@ test('incidentCardHtml: etiquetas de pendiente, resuelto, tranquilidad y confirm
   assert.match(incidentCardHtml(inc({ impactType: 'tranquilidad' }), today), /Tranquilidad/);
   assert.match(incidentCardHtml(inc(), today), /🔴 3\/5 · 1d/);
   assert.match(incidentCardHtml(inc({ confirmations: 5 }), today), /👍 5/);
-});
-
-test('revisionHtml: solo ofrece revertir si guardó foto; escapa notas', () => {
-  const base = { revId: 'rev-001', action: 'CREATE', timestamp: '2026-10-23T15:00:00.000Z', note: '<x>' };
-  assert.doesNotMatch(revisionHtml(base), /Revertir/);
-  assert.match(revisionHtml({ ...base, previousIncidentsSnapshot: [] }), /Revertir/);
-  assert.doesNotMatch(revisionHtml(base), /<x>/);
-  assert.equal(formatRevisionTime('no es fecha'), 'no es fecha');
 });
 
 test('missingField y reportTitle', () => {
@@ -121,8 +115,36 @@ test('los ids de index.html no se repiten', () => {
   assert.equal(all.length, new Set(all).size);
 });
 
-test('la hoja y el HUD usan paneles con los ids que espera sheet.js', () => {
-  for (const id of ['paneIncidents', 'paneHistory', 'paneSettings', 'paneReport', 'sheetTabs', 'sheetTitle']) {
-    assert.ok(htmlIds.has(id), id);
+test('la hoja usa solo los paneles que existen (sin historial ni pestañas)', () => {
+  for (const id of ['paneIncidents', 'paneSettings', 'paneReport', 'sheetTitle']) assert.ok(htmlIds.has(id), id);
+  for (const gone of ['paneHistory', 'sheetTabs', 'revisionList', 'syncBadge', 'btnHistory', 'btnDownload', 'btnResetSeed', 'inpImport', 'inpToday']) {
+    assert.equal(htmlIds.has(gone), false, `${gone} ya no debe estar en la interfaz pública`);
   }
+});
+
+test('Ajustes pública: solo cuadrícula y modo de alerta', () => {
+  const start = html.indexOf('id="paneSettings"');
+  const pane = html.slice(start, html.indexOf('id="paneReport"', start));
+  assert.ok(pane.includes('id="chkGrid"') && pane.includes('id="selDecay"'));
+  assert.doesNotMatch(pane, /<input type="(file|date)"|Descargar|Importar|Restaurar|Historial/);
+  assert.match(pane, /OpenStreetMap/, 'el crédito de OpenStreetMap debe seguir visible');
+});
+
+// ---------- aviso de guardado ----------
+
+test('syncToastMs: los fallos duran más', () => {
+  assert.ok(syncToastMs(false) > syncToastMs(true));
+});
+
+test('mountSyncToast avisa cada guardado, aun con el mismo mensaje, y no avisa al arrancar', () => {
+  const store = createStore(createInitialState());
+  const shown = [];
+  mountSyncToast({ store, toast: (m, ms) => shown.push([m, ms]) });
+  assert.deepEqual(shown, [], 'sin mensaje inicial');
+  store.patch('sync', { message: 'Enviado para revisión', ok: true });
+  store.patch('sync', { message: 'Enviado para revisión', ok: true });
+  store.patch('sync', { message: 'Guardado localmente (sin conexión al puente)', ok: false });
+  store.patch('sync', { message: '', ok: true });
+  assert.deepEqual(shown.map(([m]) => m), ['Enviado para revisión', 'Enviado para revisión', 'Guardado localmente (sin conexión al puente)']);
+  assert.equal(shown[2][1], syncToastMs(false));
 });

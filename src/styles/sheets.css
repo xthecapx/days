@@ -25,24 +25,9 @@
 
 .sheet-header { display: flex; align-items: center; gap: 6px; padding: 0 4px 6px 12px; border-bottom: 2px solid var(--line); }
 .sheet-title { flex: 1; font: 800 0.9rem var(--font-mono); color: var(--yellow); }
-.sheet-tabs { display: flex; gap: 6px; flex: 1; }
-.sheet-tabs:empty { display: none; }
-.sheet-tabs:empty ~ .sheet-title { display: block; }
-.sheet-tabs:not(:empty) ~ .sheet-title { display: none; }
-.tab {
-  min-height: 38px;
-  padding: 0 10px;
-  background: #1e293b;
-  border: 2px solid var(--line);
-  color: var(--muted);
-  font: 700 0.72rem var(--font-mono);
-  cursor: pointer;
-}
-.tab.active { background: var(--yellow); border-color: #fff; color: #090d16; }
 
 .sheet-pane { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 12px 16px; display: flex; flex-direction: column; gap: 10px; }
 .hint { background: var(--bg); border: 1px solid var(--line); padding: 7px 9px; font-size: 0.75rem; color: #cbd5e1; }
-.sync-badge { color: #6ee7b7; font: 0.68rem var(--font-mono); }
 .card-list { display: flex; flex-direction: column; gap: 9px; }
 
 /* Tarjetas de incidente */
@@ -67,9 +52,6 @@
 .ic-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px; }
 .ic-actions .btn { padding: 0 4px; }
 
-.revision-card { background: var(--card); border: 1px solid var(--line); padding: 8px 10px; font: 0.72rem var(--font-mono); display: flex; flex-direction: column; gap: 4px; }
-.rev-top { display: flex; justify-content: space-between; gap: 6px; color: var(--yellow); font-weight: 700; }
-.rev-foot { display: flex; justify-content: space-between; align-items: center; color: #6ee7b7; }
 
 /* Ajustes */
 .setting-group { display: flex; flex-direction: column; gap: 8px; }

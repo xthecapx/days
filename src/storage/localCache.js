@@ -36,8 +36,6 @@ export const writeStore = (data) =>
     return true;
   });
 
-export const clearStore = () => attempt('borrar la copia local', undefined, () => localStorage.removeItem(STORAGE_KEY));
-
 export const purgeLegacyStores = () =>
   attempt('borrar copias antiguas', undefined, () => LEGACY_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k)));
 

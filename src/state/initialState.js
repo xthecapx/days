@@ -2,7 +2,7 @@ import { startOfDay } from '../core/clock.js';
 
 /**
  * Forma del estado de la app:
- *  data      → incidents.json (incidentes + revisiones)
+ *  data      → incidents.json (incidentes)
  *  sync      → último estado de sincronización con disco / GitHub
  *  settings  → preferencias de visualización
  *  selection → píxel / incidente seleccionado y píxel bajo el cursor
@@ -12,12 +12,11 @@ import { startOfDay } from '../core/clock.js';
  */
 export function createInitialState(now = new Date()) {
   return {
-    data: { incidents: [], revisions: [] },
-    sync: { message: '' },
+    data: { incidents: [] },
+    sync: { message: '', ok: true },
     settings: {
       decayMode: 'actual',
       referenceDate: startOfDay(now), // "hoy"; lo mantiene al día core/clock.js
-      referenceOverride: false, // true = la persona eligió una fecha en Ajustes y no se actualiza sola
       showGrid: false
     },
     selection: { pixel: { x: 0, y: 0 }, incidentId: 'inc-006', hovered: null },

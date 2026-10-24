@@ -52,7 +52,7 @@ async function boot() {
 
   mountMapInput({ viewport, tooltip: $('mapHoverTooltip'), store, camera, actions, sectorName });
   mountHud({ store, camera, actions, gps, whatsapp, sectorName });
-  mountSheet({ store, actions, incidents });
+  mountSheet({ store, actions });
 
   await incidents.load();
   actions.goHome();

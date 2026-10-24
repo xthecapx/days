@@ -1,9 +1,9 @@
 import { buildIncident, buildSaveChange, buildConfirmChange, confirmedIncident } from './incident.js';
-import { addRevision, snapshotOf } from './revisions.js';
 
 /**
  * Cada función recibe el estado actual y devuelve el estado siguiente MÁS lo que hay que contarle al
- * mundo (nota del historial y mensaje para el puente). No guarda ni envía nada: eso lo hace el servicio.
+ * mundo (nota para el commit y mensaje para el puente). No guarda ni envía nada: eso lo hace el servicio.
+ * El historial de cambios lo lleva git (cada reporte es un Pull Request), no la app.
  */
 
 /**
@@ -21,19 +21,11 @@ export function planSave(store, input, editingId, { coords, sector, now = new Da
 
   const where = `Píxel (${coords.pixelX}, ${coords.pixelY})`;
   const note = existing
-    ? `Edición Wiki de incidente #${savedIncident.number} en ${where}`
+    ? `Edición de incidente #${savedIncident.number} en ${where}`
     : `Nuevo incidente #${savedIncident.number} en ${where} — ${savedIncident.category}`;
 
   return {
-    nextStore: {
-      ...store,
-      incidents,
-      revisions: addRevision(
-        store,
-        { action: existing ? 'EDIT' : 'CREATE', incidentId: savedIncident.id, note },
-        now
-      )
-    },
+    nextStore: { ...store, incidents },
     savedIncident,
     note,
     change: buildSaveChange(savedIncident, Boolean(existing))
@@ -42,25 +34,12 @@ export function planSave(store, input, editingId, { coords, sector, now = new Da
 
 export function planConfirm(store, incidentId, { now = new Date() } = {}) {
   const target = store.incidents.find((i) => i.id === incidentId);
-  const note = `Confirmación vecinal anónima sumada al incidente #${target ? target.number : 0}`;
   return {
     nextStore: {
       ...store,
-      incidents: store.incidents.map((i) => (i.id === incidentId ? confirmedIncident(i, now) : i)),
-      revisions: addRevision(store, { action: 'CONFIRM', incidentId, note }, now)
+      incidents: store.incidents.map((i) => (i.id === incidentId ? confirmedIncident(i, now) : i))
     },
-    note,
+    note: `Confirmación vecinal anónima sumada al incidente #${target ? target.number : 0}`,
     change: buildConfirmChange(incidentId)
-  };
-}
-
-/** Vuelve al estado anterior a `revId`. Lanza si esa revisión no guardó foto. No genera mensaje para el puente. */
-export function planRevert(store, revId, { now = new Date() } = {}) {
-  const { incidents, incidentId } = snapshotOf(store, revId);
-  const note = `Reversión Wiki ejecutada: se deshizo ${revId}`;
-  return {
-    nextStore: { ...store, incidents, revisions: addRevision(store, { action: 'REVERT', incidentId, note }, now) },
-    note,
-    change: null
   };
 }
