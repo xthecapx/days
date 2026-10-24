@@ -88,8 +88,9 @@ data/                  map.json · map-overrides.json · incidents.json
 scripts/update-map.mjs Descarga de OpenStreetMap
 src/main.js            Conecta todas las piezas
 src/state/             Store con suscripciones, acciones y selectores
+src/domain/            Reglas puras de incidentes e historial (sin DOM ni red)
 src/services/          Casos de uso sobre los incidentes
-src/storage/           Lectura/escritura de incidents.json (disco, GitHub)
+src/storage/           Adaptadores: repositorio, copia del navegador, disco local y puente (PR)
 src/map/               Cámara, grilla, modelo del mapa, mapa de calor
 src/map/render/        Una capa de dibujo por archivo (base, calor, etiquetas, marcadores…)
 src/ui/                Barra superior, hoja inferior, gestos del mapa

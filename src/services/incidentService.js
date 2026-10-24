@@ -1,16 +1,11 @@
+import { pixelToGps } from '../map/gpsGrid.js';
 import { detectSectorName } from '../map/mapData.js';
-import {
-  loadWikiStore,
-  saveIncidentWikiRevision,
-  confirmIncidentAnonymously,
-  revertWikiRevision,
-  resetToRepositorySeed,
-  persistWikiStore
-} from '../storage/wikiJsonStore.js';
+import { planSave, planConfirm, planRevert } from '../domain/storePlans.js';
+import { loadStore, persistStore, loadSeed } from '../storage/incidentStore.js';
 
 /**
- * Casos de uso sobre los incidentes. Habla con la capa de persistencia
- * (`storage/`) y deja el resultado en el store; la UI nunca toca el storage.
+ * Casos de uso sobre los incidentes: arma el cambio con las reglas de `domain/`, lo guarda con
+ * `storage/` y deja el resultado en el store. La UI nunca toca el almacenamiento.
  */
 export function createIncidentService(store) {
   const commit = ({ store: data, syncStatus }) => {
@@ -19,37 +14,38 @@ export function createIncidentService(store) {
   };
 
   const current = () => store.get().data;
+  const apply = async (plan) => {
+    commit(await persistStore(plan.nextStore, plan.note, plan.change));
+    return plan;
+  };
+
+  async function save(payload, editingId = null) {
+    const coords = pixelToGps(payload.pixelX, payload.pixelY);
+    const sector = payload.sector?.trim() || detectSectorName(coords.pixelX, coords.pixelY);
+    const plan = planSave(current(), payload, editingId, { coords, sector });
+    return (await apply(plan)).savedIncident;
+  }
 
   return {
     async load() {
-      store.set({ data: await loadWikiStore() });
+      store.set({ data: await loadStore() });
     },
 
-    async save(payload, editingId = null) {
-      const result = await saveIncidentWikiRevision(current(), payload, editingId);
-      commit(result);
-      return result.savedIncident;
-    },
+    save,
 
     async confirm(id) {
-      commit(await confirmIncidentAnonymously(current(), id));
+      await apply(planConfirm(current(), id));
     },
 
     async move(id, pixelX, pixelY) {
       const incident = current().incidents.find((i) => i.id === id);
       if (!incident) return null;
-      const result = await saveIncidentWikiRevision(
-        current(),
-        { ...incident, pixelX, pixelY, sector: detectSectorName(pixelX, pixelY) },
-        id
-      );
-      commit(result);
-      return result.savedIncident;
+      return save({ ...incident, pixelX, pixelY, sector: detectSectorName(pixelX, pixelY) }, id);
     },
 
     async revert(revId) {
       try {
-        commit(await revertWikiRevision(current(), revId));
+        await apply(planRevert(current(), revId));
       } catch (err) {
         store.patch('sync', { message: err.message });
       }
@@ -58,11 +54,11 @@ export function createIncidentService(store) {
     async importJson(text) {
       const parsed = JSON.parse(text);
       if (!parsed || !Array.isArray(parsed.incidents)) throw new Error('incidents.json inválido');
-      commit(await persistWikiStore(parsed, 'Importación manual de incidents.json'));
+      commit(await persistStore(parsed, 'Importación manual de incidents.json'));
     },
 
     async resetToSeed() {
-      store.set({ data: await resetToRepositorySeed() });
+      store.set({ data: await loadSeed() });
       store.patch('sync', { message: 'Restaurados los incidentes iniciales' });
     }
   };
