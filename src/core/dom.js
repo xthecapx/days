@@ -1,4 +1,9 @@
-export const $ = (id) => document.getElementById(id);
+/** Elemento por id. Si el HTML y el código se desincronizan falla con el nombre del id, no con "null". */
+export function $(id) {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Falta el elemento #${id} en index.html`);
+  return el;
+}
 
 export const setHidden = (el, hidden) => el.classList.toggle('hidden', Boolean(hidden));
 

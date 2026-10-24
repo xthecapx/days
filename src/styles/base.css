@@ -96,3 +96,10 @@ html, body {
   z-index: 28;
   box-shadow: 4px 4px 0 #000;
 }
+.tip-coords { color: #94a3b8; }
+.tip-sector { color: #fcd34d; margin-bottom: 4px; }
+.tip-incident { border-top: 1px solid #334155; padding-top: 4px; margin-top: 4px; }
+.tip-title { font-weight: 700; }
+.tip-danger { color: #ff5252; }
+.tip-calm { color: #fef08a; }
+.tip-dist { color: #cbd5e1; }

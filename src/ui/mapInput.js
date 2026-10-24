@@ -8,6 +8,19 @@ import { ZOOM } from '../core/config.js';
 
 const TAP_SLOP = 8; // px de movimiento tolerado para seguir contando como "tap"
 
+/** Contenido del cuadro que aparece al pasar el mouse por un tile. Puro; los estilos viven en base.css (.tip-*). */
+export function hoverHtml(tile, cell, sector) {
+  const gps = pixelToGps(tile.x, tile.y);
+  let html = `<div><strong>Píxel (${tile.x}, ${tile.y})</strong> · <span class="tip-coords">${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}</span></div>`;
+  html += `<div class="tip-sector">${escapeHtml(sector)}</div>`;
+  for (const item of cell?.incidents || []) {
+    const calm = item.impactType === 'tranquilidad';
+    const dist = item.distance === 0 ? 'Epicentro en este píxel' : `A ${item.distance} px del punto`;
+    html += `<div class="tip-incident"><span class="tip-title ${calm ? 'tip-calm' : 'tip-danger'}">#${item.number} (${escapeHtml(item.dateLabel)})</span><br/>${escapeHtml(item.description)}<br/><small class="tip-dist">${dist}</small></div>`;
+  }
+  return html;
+}
+
 /** Gestos del mapa: arrastre, pellizco, rueda, tap y hover de escritorio. */
 export function mountMapInput({ viewport, tooltip, store, camera, actions }) {
   const pointers = new Map();
@@ -46,17 +59,8 @@ export function mountMapInput({ viewport, tooltip, store, camera, actions }) {
   }
 
   function showHover(clientX, clientY, tile) {
-    const state = store.get();
-    const cell = selectHeatmap(state).grid[tile.y * GRID_WIDTH + tile.x];
-    const gps = pixelToGps(tile.x, tile.y);
-    let html = `<div><strong>Píxel (${tile.x}, ${tile.y})</strong> · <span style="color:#94a3b8">${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}</span></div>`;
-    html += `<div style="color:#fcd34d;margin-bottom:4px">${escapeHtml(detectSectorName(tile.x, tile.y))}</div>`;
-    for (const item of cell?.incidents || []) {
-      const color = item.impactType === 'tranquilidad' ? '#fef08a' : '#ff5252';
-      const dist = item.distance === 0 ? 'Epicentro en este píxel' : `A ${item.distance} px del punto`;
-      html += `<div style="border-top:1px solid #334155;padding-top:4px;margin-top:4px"><span style="color:${color};font-weight:700">#${item.number} (${escapeHtml(item.dateLabel)})</span><br/>${escapeHtml(item.description)}<br/><small style="color:#cbd5e1">${dist}</small></div>`;
-    }
-    tooltip.innerHTML = html;
+    const cell = selectHeatmap(store.get()).grid[tile.y * GRID_WIDTH + tile.x];
+    tooltip.innerHTML = hoverHtml(tile, cell, detectSectorName(tile.x, tile.y));
     tooltip.classList.remove('hidden');
     tooltip.style.left = `${Math.min(window.innerWidth - 270, Math.max(10, clientX + 12))}px`;
     tooltip.style.top = `${Math.min(window.innerHeight - 160, Math.max(90, clientY - 20))}px`;
