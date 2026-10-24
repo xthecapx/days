@@ -7,6 +7,7 @@ export function findIncident(state, id) {
   return selectIncidents(state).find((i) => i.id === id) || null;
 }
 
+/** Último incidente por fecha del hecho (`date`), nunca por cuándo se reportó. */
 export function selectLatestIncident(incidents) {
   if (!incidents.length) return null;
   return [...incidents].sort((a, b) => {

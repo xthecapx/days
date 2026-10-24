@@ -1,5 +1,5 @@
 import { $, setHidden, showToast } from '../core/dom.js';
-import { sendWhatsAppAlert, sharePoint } from '../services/alertService.js';
+import { sendWhatsAppAlert, sharePoint, warmUpPosition, freshPosition, lastGpsError, startGps, onGpsChange } from '../services/alertService.js';
 import { pixelToGps } from '../map/gpsGrid.js';
 import { detectSectorName } from '../map/mapData.js';
 import { calculateDaysSince } from '../map/heatmapEngine.js';
@@ -18,6 +18,23 @@ export function mountHud({ store, camera, actions }) {
   $('navIncidents').addEventListener('click', () => actions.openSheet('incidents'));
   $('navSettings').addEventListener('click', () => actions.openSheet('settings'));
   $('navReport').addEventListener('click', () => actions.openReport());
+  // Punto de estado del GPS sobre el botón de WhatsApp: verde = listo, ámbar = buscando, rojo = no disponible.
+  const GPS_LABELS = {
+    ok: 'GPS listo',
+    searching: 'Buscando GPS…',
+    stale: 'GPS desactualizado: se actualiza al usarlo',
+    denied: 'GPS bloqueado: permite la ubicación en Ajustes > Safari',
+    unavailable: 'GPS no disponible'
+  };
+  onGpsChange((status, fix) => {
+    const dot = $('gpsDot');
+    dot.dataset.status = status;
+    const acc = status === 'ok' && fix?.accuracy ? ` (±${fix.accuracy} m)` : '';
+    dot.title = GPS_LABELS[status] + acc;
+    $('btnWhatsapp').setAttribute('aria-label', `Compartir por WhatsApp. ${GPS_LABELS[status]}${acc}`);
+  });
+  startGps();
+
   // WhatsApp: el icono abre un menú de dos acciones; nada se envía sin que la persona pulse enviar en WhatsApp.
   const waMenu = $('waMenu');
   const closeWaMenu = () => {
@@ -29,7 +46,10 @@ export function mountHud({ store, camera, actions }) {
     const open = waMenu.classList.contains('hidden');
     setHidden(waMenu, !open);
     $('btnWhatsapp').setAttribute('aria-expanded', String(open));
-    if (open) $('waHelp').focus();
+    if (open) {
+      $('waHelp').focus();
+      warmUpPosition();
+    }
   });
   document.addEventListener('click', (e) => {
     if (!waMenu.contains(e.target)) closeWaMenu();
@@ -39,17 +59,29 @@ export function mountHud({ store, camera, actions }) {
   });
   $('mapViewport').addEventListener('pointerdown', closeWaMenu);
 
+  const clearWaBusy = () => $('waHelp').removeAttribute('aria-busy');
+  // Al volver de WhatsApp Safari restaura la página (bfcache) tal como quedó: sin esto el
+  // botón seguiría "ocupado" y la segunda vez no haría nada.
+  window.addEventListener('pageshow', clearWaBusy);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) clearWaBusy();
+  });
+
   $('waHelp').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     if (btn.getAttribute('aria-busy') === 'true') return;
-    btn.setAttribute('aria-busy', 'true');
     closeWaMenu();
+    if (freshPosition()) return void sendWhatsAppAlert(); // navega dentro del toque
+    btn.setAttribute('aria-busy', 'true');
     showToast('Obteniendo tu ubicación…', 9000);
     try {
       const { gps } = await sendWhatsAppAlert();
-      if (!gps) showToast('Sin GPS: se abrió WhatsApp sin ubicación', 6000);
+      if (!gps) {
+        const why = lastGpsError() === 'denied' ? 'permiso de ubicación denegado (Ajustes > Safari > Ubicación)' : 'sin señal GPS';
+        showToast(`Se abrió WhatsApp sin ubicación: ${why}`, 7000);
+      }
     } finally {
-      btn.removeAttribute('aria-busy');
+      clearWaBusy();
     }
   });
 

@@ -135,8 +135,10 @@ export function createActions({ store, camera, incidents }) {
           severity: 4,
           date: toIsoDate(state.settings.referenceDate),
           time: '19:30',
-          dateConfirmed: true,
-          timeConfirmed: true,
+          // La fecha propuesta es la de hoy (cuando se reporta), no necesariamente la del hecho:
+          // la persona debe confirmarla para que cuente en "días desde el último incidente".
+          dateConfirmed: false,
+          timeConfirmed: false,
           resolved: false,
           description: ''
         };

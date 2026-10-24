@@ -7,23 +7,98 @@ import { detectSectorName } from '../map/mapData.js';
  * La persona elige el grupo y pulsa enviar, así que nada se publica solo.
  */
 
-const GPS_OPTIONS = { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 };
+const GPS_OPTIONS = { enableHighAccuracy: true, timeout: 15000, maximumAge: 15000 };
+// Una posición vale 2 min. Pasado ese tiempo se vuelve a leer, pero solo cuando hace falta (nunca en continuo).
+const FRESH_MS = 2 * 60_000;
 
-/** Lee el GPS. Devuelve null (nunca lanza) si no hay permiso, señal o contexto seguro (https). */
-export function readPosition() {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: Number.isFinite(pos.coords.accuracy) ? Math.round(pos.coords.accuracy) : null
-        }),
-      () => resolve(null),
-      GPS_OPTIONS
-    );
+let lastFix = null; // { lat, lng, accuracy, at }
+let lastError = null; // 'denied' | 'unavailable' | 'timeout' | null
+let staleTimer = null;
+let pending = null; // lectura puntual en curso, compartida entre llamadas
+const listeners = new Set();
+
+const toFix = (pos) => ({
+  lat: pos.coords.latitude,
+  lng: pos.coords.longitude,
+  accuracy: Number.isFinite(pos.coords.accuracy) ? Math.round(pos.coords.accuracy) : null,
+  at: Date.now()
+});
+const toError = (err) => (err?.code === 1 ? 'denied' : err?.code === 3 ? 'timeout' : 'unavailable');
+
+/**
+ * 'ok' = posición vigente · 'searching' = leyendo · 'stale' = posición vieja (se relee al usarla)
+ * · 'denied' | 'unavailable' = no se puede.
+ */
+export function gpsStatus() {
+  if (lastError === 'denied' || lastError === 'unavailable') return lastError;
+  if (freshPosition()) return 'ok';
+  if (pending || (!lastFix && !lastError)) return 'searching';
+  return 'stale';
+}
+
+const emit = () => listeners.forEach((fn) => fn(gpsStatus(), lastFix));
+
+/** Avisa cada vez que cambia el estado del GPS. Devuelve la función para desuscribirse. */
+export function onGpsChange(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+const gotFix = (pos) => {
+  lastFix = toFix(pos);
+  lastError = null;
+  // Un solo temporizador (no lee el GPS): solo repinta el indicador cuando la posición caduca.
+  clearTimeout(staleTimer);
+  staleTimer = setTimeout(emit, FRESH_MS + 100);
+  return lastFix;
+};
+
+/**
+ * Una sola lectura al cargar la página (Safari pide el permiso aquí). En cuanto hay posición se deja
+ * de leer. Al volver a la pestaña se relee solo si la posición ya caducó; recargar la página también relee.
+ */
+export function startGps() {
+  readPosition();
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) warmUpPosition();
   });
+}
+
+/**
+ * Lectura puntual del GPS. Devuelve null (nunca lanza) si no hay permiso, señal o contexto seguro
+ * (https). El motivo del fallo queda en `lastGpsError()`.
+ */
+export function readPosition() {
+  if (pending) return pending;
+  pending = new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      lastError = 'unavailable';
+      return resolve(null);
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(gotFix(pos)),
+      (err) => {
+        lastError = toError(err);
+        resolve(null);
+      },
+      { ...GPS_OPTIONS, timeout: 8000 }
+    );
+  }).finally(() => {
+    pending = null;
+    emit();
+  });
+  emit();
+  return pending;
+}
+
+export const lastGpsError = () => lastError;
+
+/** Última posición si es reciente. Permite abrir WhatsApp sin esperar (ver `sendWhatsAppAlert`). */
+export const freshPosition = () => (lastFix && Date.now() - lastFix.at < FRESH_MS ? lastFix : null);
+
+/** Relee el GPS solo si la posición guardada caducó (o no existe). Una lectura, no un seguimiento. */
+export function warmUpPosition() {
+  if (!freshPosition()) readPosition();
 }
 
 /** Formato documentado de Google Maps (Maps URLs): abre un pin en esas coordenadas. */
@@ -66,9 +141,14 @@ export function sharePoint(point, sector, open = (url) => window.location.assign
   return { url };
 }
 
+/**
+ * Abre WhatsApp con la alerta. iOS Safari solo abre la app si la navegación ocurre dentro del
+ * toque de la persona: con una posición reciente en caché se navega al instante (síncrono);
+ * si no la hay, se espera el GPS y se abre igual (mejor esfuerzo).
+ */
 export async function sendWhatsAppAlert(open = (url) => window.location.assign(url)) {
-  const position = await readPosition();
+  const position = freshPosition() || (await readPosition());
   const url = whatsappUrl(buildAlertMessage(position));
   open(url);
-  return { gps: Boolean(position), url };
+  return { gps: Boolean(position), url, error: position ? null : lastError };
 }

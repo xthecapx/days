@@ -1,7 +1,10 @@
 export const ZOOM = { min: 0.35, max: 5.5 };
 
-/** "Hoy" dentro de la app (se puede cambiar desde el panel de capas). */
-export const REFERENCE_DATE = new Date(2026, 9, 22, 12, 0, 0);
+/** "Hoy" dentro de la app: la fecha real del dispositivo (se puede cambiar desde el panel de capas). */
+export const REFERENCE_DATE = (() => {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12, 0, 0);
+})();
 
 export const SEVERITY_NAMES = {
   1: '1 / 5 (Baja)',

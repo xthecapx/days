@@ -156,6 +156,7 @@
 .peek-coord { font-size: 0.66rem; color: var(--yellow); white-space: nowrap; }
 
 .btn-wa {
+  position: relative;
   flex-shrink: 0;
   width: var(--tap);
   height: var(--tap);
@@ -170,6 +171,22 @@
 }
 .btn-wa:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 #000; }
 .btn-wa[aria-busy='true'] { opacity: 0.6; }
+
+.gps-dot {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #000;
+  background: #ffb020;
+}
+.gps-dot[data-status='ok'] { background: #22c55e; }
+.gps-dot[data-status='denied'],
+.gps-dot[data-status='unavailable'] { background: #ef4444; }
+.gps-dot[data-status='searching'] { animation: gps-blink 1s steps(2) infinite; }
+@keyframes gps-blink { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .gps-dot[data-status='searching'] { animation: none; } }
 
 .wa-menu {
   position: fixed;
