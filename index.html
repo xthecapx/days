@@ -174,16 +174,15 @@
       <div class="form-scroll">
         <div class="location-card">
           <div>
-            <span class="eyebrow">Ubicación en el mapa</span>
-            <strong id="repPixel"></strong>
-            <span id="repGps" class="muted"></span>
+            <span class="eyebrow">Ubicación</span>
+            <strong id="repSector"></strong>
           </div>
           <button type="button" id="btnPickOnMap" class="btn btn-sm btn-accent">🎯 Elegir en mapa</button>
         </div>
 
         <div class="field">
           <label for="repDescription">¿Qué ocurrió?</label>
-          <textarea id="repDescription" rows="3" placeholder="Describe brevemente lo sucedido…" required></textarea>
+          <textarea id="repDescription" rows="3" maxlength="500" placeholder="Describe brevemente lo sucedido (máx. 500 caracteres)…" required></textarea>
         </div>
 
         <div class="field">
@@ -192,8 +191,19 @@
         </div>
 
         <div class="field">
-          <span class="label">Color de alerta</span>
-          <div id="repImpact" class="segmented"></div>
+          <span class="label" id="repWhenLabel">¿Cuándo ocurrió?</span>
+          <div id="repWhen" class="segmented segmented-3" role="group" aria-labelledby="repWhenLabel">
+            <button type="button" data-when="today">Hoy</button>
+            <button type="button" data-when="yesterday">Ayer</button>
+            <button type="button" data-when="other">Otro día</button>
+          </div>
+          <input type="date" id="repDate" class="hidden" aria-label="Fecha en que ocurrió" />
+          <p id="repWhenHint" class="field-hint hidden">⚠️ Fecha por confirmar: elige cuándo ocurrió.</p>
+        </div>
+
+        <div class="field">
+          <label for="repTime">Hora aproximada <span class="muted">(opcional)</span></label>
+          <input type="time" id="repTime" />
         </div>
 
         <div class="field">
@@ -201,31 +211,13 @@
           <input type="range" id="repSeverity" min="1" max="5" step="1" />
         </div>
 
-        <div class="row-2">
-          <div class="field">
-            <label for="repDate">Fecha</label>
-            <input type="date" id="repDate" required />
-            <label class="switch switch-sm"><input type="checkbox" id="repDateOk" /><span>Confirmada</span></label>
-          </div>
-          <div class="field">
-            <label for="repTime">Hora aprox.</label>
-            <input type="time" id="repTime" />
-            <label class="switch switch-sm"><input type="checkbox" id="repTimeOk" /><span>Confirmada</span></label>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="repSector">Nombre del sector</label>
-          <input type="text" id="repSector" placeholder="Ej: Sendero Río del Hato" />
-        </div>
-
         <label class="switch"><input type="checkbox" id="repResolved" /><span>👮 Atendido por la policía</span></label>
 
-        <p class="notice">🛡️ Reporte 100% anónimo (sin cuenta ni rastreo de IP).</p>
+        <p class="notice">🛡️ Reporte 100% anónimo (sin cuenta ni rastreo de IP). Se revisa antes de publicarse.</p>
       </div>
       <div class="form-footer">
         <button type="button" id="btnCancelReport" class="btn">Cancelar</button>
-        <button type="submit" class="btn btn-danger">💾 Guardar reporte</button>
+        <button type="submit" id="btnSubmitReport" class="btn btn-danger">💾 Guardar reporte</button>
       </div>
     </form>
   </aside>

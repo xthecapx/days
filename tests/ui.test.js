@@ -58,9 +58,9 @@ test('incidentCardHtml: etiquetas de pendiente, resuelto, tranquilidad y confirm
   assert.match(incidentCardHtml(inc({ confirmations: 5 }), today), /👍 5/);
 });
 
-test('missingField y reportTitle', () => {
+test('missingField: pide descripción y luego "cuándo"; reportTitle según crear o editar', () => {
   assert.equal(missingField({ description: '  ', date: '2026-10-22' }), 'repDescription');
-  assert.equal(missingField({ description: 'x', date: '' }), 'repDate');
+  assert.equal(missingField({ description: 'x', date: '' }), 'repWhen');
   assert.equal(missingField({ description: 'x', date: '2026-10-22' }), null);
   assert.equal(reportTitle({ editingId: 'a', number: 4 }), '✏️ Editar incidente #4');
   assert.equal(reportTitle({ editingId: null }), '➕ Reportar evento anónimo');

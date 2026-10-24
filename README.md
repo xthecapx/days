@@ -116,6 +116,7 @@ src/styles/            base.css · hud.css · sheets.css
 ## Seguridad
 
 - El sitio publicado lleva una **política de seguridad de contenido** (`<meta http-equiv="Content-Security-Policy">`, definida en `vite.config.js`): solo scripts y estilos propios, y las únicas salidas son Google Fonts, GitHub (lectura de `incidents.json`) y el Worker. Si agregas otro servicio externo, añádelo ahí o el navegador lo bloqueará.
+- El formulario de reporte **no propone fecha ni hora**: la persona elige «Hoy», «Ayer» u «Otro día», así el día en que se reporta nunca se guarda como el día en que ocurrió (eso es lo que cuenta «días desde el último incidente»). El color del mapa sale de la categoría, y el botón de guardar se bloquea mientras guarda para no abrir dos Pull Requests.
 - Todo texto de los vecinos se escapa antes de pintarse, y los números que llegan de `incidents.json` se convierten con `toNumber`.
 - En desarrollo, el endpoint que escribe `data/incidents.json` solo acepta peticiones desde este mismo computador (aunque el servidor esté abierto a la red para probar en el celular).
 

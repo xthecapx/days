@@ -101,6 +101,7 @@
   font: 700 0.72rem var(--font-mono);
   cursor: pointer;
 }
+.segmented-3 { grid-template-columns: repeat(3, 1fr); }
 .segmented button.active { border-color: #fff; color: #090d16; background: var(--yellow); }
 
 .sheet-form { padding: 0; gap: 0; overflow: hidden; }
@@ -111,7 +112,9 @@
 .location-card > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .location-card strong { font: 800 0.84rem var(--font-mono); color: var(--yellow); }
 .notice { background: rgba(16, 185, 129, 0.12); border: 1px solid var(--green); color: #a7f3d0; font-size: 0.74rem; padding: 6px 8px; }
-.field-error input, .field-error textarea { border-color: var(--red) !important; }
+.field-error input, .field-error textarea, .field-error .segmented button { border-color: var(--red) !important; }
+.field-hint { font-size: 0.7rem; color: #fcd34d; }
+.form-footer .btn[aria-busy='true'] { opacity: 0.6; pointer-events: none; }
 
 @media (min-width: 680px) {
   .sheet { bottom: 16px; border: 3px solid var(--yellow); }

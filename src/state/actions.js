@@ -105,12 +105,12 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
           pixelX: gps.pixelX,
           pixelY: gps.pixelY,
           sector: incident.sector || sectorName(gps.pixelX, gps.pixelY),
-          sectorTouched: false,
           impactType: calm ? 'tranquilidad' : 'seguridad',
           category: incident.category || DEFAULT_CATEGORY,
           severity: incident.severity || 4,
           date: incident.date || toIsoDate(state.settings.referenceDate),
-          time: incident.time || '19:00',
+          time: incident.timeConfirmed || incident.time !== '12:00' ? incident.time || '' : '', // las 12:00 sin confirmar eran un relleno
+          pickDate: false,
           dateConfirmed: Boolean(incident.dateConfirmed),
           timeConfirmed: Boolean(incident.timeConfirmed),
           resolved: incident.resolvedBy === 'policia',
@@ -122,14 +122,14 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
           pixelX: gps.pixelX,
           pixelY: gps.pixelY,
           sector: sectorName(gps.pixelX, gps.pixelY),
-          sectorTouched: false,
           impactType: 'seguridad',
           category: DEFAULT_CATEGORY,
           severity: 4,
-          date: toIsoDate(state.settings.referenceDate),
-          time: '19:30',
-          // La fecha propuesta es la de hoy (cuando se reporta), no necesariamente la del hecho:
-          // la persona debe confirmarla para que cuente en "días desde el último incidente".
+          // Sin fecha ni hora hasta que la persona las elija: así nunca se guarda el día del REPORTE
+          // como si fuera el día del HECHO (eso es lo que cuenta "días desde el último incidente").
+          date: '',
+          time: '',
+          pickDate: false,
           dateConfirmed: false,
           timeConfirmed: false,
           resolved: false,
@@ -145,8 +145,14 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
     const next = { ...draft, ...partial };
     if ('category' in partial) {
       const cat = CATEGORIES.find((c) => c.value === partial.category);
-      if (cat && !('impactType' in partial)) next.impactType = cat.impact;
+      if (cat && !('impactType' in partial)) next.impactType = cat.impact; // el color sale de la categoría
     }
+    // Elegir una fecha u hora la confirma; dejarla vacía la deja sin confirmar.
+    if ('date' in partial) {
+      if (!('dateConfirmed' in partial)) next.dateConfirmed = Boolean(partial.date);
+      if (!('pickDate' in partial)) next.pickDate = false;
+    }
+    if ('time' in partial && !('timeConfirmed' in partial)) next.timeConfirmed = Boolean(partial.time);
     store.set({ draft: next });
   }
 
@@ -193,7 +199,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
 
     if (mode.type === 'pick' && draft) {
       const gps = pixelToGps(x, y);
-      const sector = draft.sectorTouched ? draft.sector : sectorName(gps.pixelX, gps.pixelY);
+      const sector = sectorName(gps.pixelX, gps.pixelY);
       store.set({
         mode: { type: 'browse' },
         draft: { ...draft, pixelX: gps.pixelX, pixelY: gps.pixelY, sector },

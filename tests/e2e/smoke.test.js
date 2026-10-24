@@ -107,3 +107,62 @@ test('si el mapa no carga, se muestra un aviso con botón de reintentar (no una 
   assert.ok(await page.$('#btnRetryBoot'));
   await page.close();
 });
+
+test('reportar: sin fecha no deja guardar; con "Ayer" guarda una sola vez y el contador sube', { skip }, async () => {
+  // El sitio de prueba corre en 127.0.0.1 (la app lo toma por "local" e intenta guardar en disco, algo que solo
+  // existe en `vite dev`): se contesta aquí para poder contar cuántas veces se intenta guardar.
+  const saves = [];
+  const intercept = (r) => {
+    if (!r.url().endsWith('/api/local-wiki-save')) return false;
+    saves.push(JSON.parse(r.postData()));
+    r.respond({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+    return true;
+  };
+  const { page, problems } = await openApp(browser, site.url, { intercept });
+  await page.goto(site.url, { waitUntil: 'networkidle0' });
+  const before = Number(await text(page, '#navCount'));
+
+  await page.click('#navReport');
+  await wait(200);
+  await page.type('#repDescription', 'Prueba E2E del formulario');
+  // Sin fecha no se puede guardar, y se marca qué falta.
+  await page.evaluate(() => document.getElementById('paneReport').requestSubmit());
+  await wait(100);
+  assert.equal(await page.$eval('#repWhen', (e) => e.closest('.field').classList.contains('field-error')), true);
+  assert.equal(Number(await text(page, '#navCount')), before);
+
+  await page.click('[data-when="yesterday"]');
+  await page.select('#repCategory', 'Ruido Excesivo / Convivencia');
+  // Un triple envío seguido tiene que guardar un solo incidente.
+  await page.evaluate(() => { const f = document.getElementById('paneReport'); f.requestSubmit(); f.requestSubmit(); f.requestSubmit(); });
+  await wait(600);
+  assert.equal(Number(await text(page, '#navCount')), before + 1);
+  assert.equal(saves.length, 1, 'tres envíos seguidos = un solo guardado');
+  const saved = saves[0].incidents.at(-1);
+  assert.equal(saved.impactType, 'tranquilidad', 'el color sale de la categoría');
+  assert.equal(saved.dateConfirmed, true);
+  assert.equal(saved.timeConfirmed, false);
+  assert.match(saved.dateLabel, /Hora por confirmar$/);
+  assert.equal(await page.$eval('#sheet', (e) => e.classList.contains('hidden')), true, 'la hoja se cierra al guardar');
+  assert.deepEqual(problems, []);
+  await page.close();
+});
+
+test('con las fuentes de Google permitidas, la política de seguridad no bloquea nada', { skip }, async () => {
+  // Las demás pruebas bloquean internet a propósito; aquí se deja pasar solo lo que la CSP autoriza.
+  const { page, problems } = await openApp(browser, site.url, { intercept: (r) => {
+    if (!/fonts\.(googleapis|gstatic)\.com/.test(r.url())) return false;
+    r.continue();
+    return true;
+  } });
+  const fontsLoaded = [];
+  page.on('response', (r) => { if (/fonts\.gstatic\.com/.test(r.url()) && r.ok()) fontsLoaded.push(r.url()); });
+  await page.goto(site.url, { waitUntil: 'networkidle0' }).catch(() => {});
+  await wait(1500);
+  assert.deepEqual(problems.filter((p) => /CSP|Content Security/i.test(p)), []);
+  // Si hay internet, las fuentes tienen que haber cargado; si no hay, la prueba no puede afirmar nada.
+  const online = await page.evaluate(() => document.fonts.size > 0);
+  if (online) assert.ok(fontsLoaded.length > 0, 'las fuentes no cargaron bajo la CSP');
+  await page.close();
+});
+

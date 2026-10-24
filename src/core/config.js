@@ -8,11 +8,6 @@ export const SEVERITY_NAMES = {
   5: '5 / 5 (Crítica)'
 };
 
-export const IMPACT_TYPES = [
-  { value: 'seguridad', label: '🔴 Seguridad (Rojo)' },
-  { value: 'tranquilidad', label: '🟡 Tranquilidad / Ruido (Amarillo)' }
-];
-
 /** Agregar una categoría aquí la hace disponible en el formulario. */
 export const CATEGORIES = [
   { value: 'Violencia / Robo y Lesiones', label: 'Violencia / Robo y Lesiones', impact: 'seguridad' },
