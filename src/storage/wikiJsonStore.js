@@ -1,5 +1,7 @@
 import { pixelToGps, gpsToPixel } from '../map/gpsGrid.js';
 import { detectSectorName } from '../map/mapData.js';
+import { buildIncident, buildSaveChange, buildConfirmChange, confirmedIncident } from '../domain/incident.js';
+import { addRevision, snapshotOf } from '../domain/revisions.js';
 
 // v4: las copias v3 (que ganaban sobre el repositorio) se ignoran y se borran al cargar.
 const STORAGE_KEY = 'vecinos_rio_hato_wiki_json_v4';
@@ -192,219 +194,65 @@ export async function persistWikiStore(storeData, commitSummary = 'Actualizació
   return { store: normalized, syncStatus };
 }
 
-export function formatSpanishDateLabel(dateStr, timeStr, dateConfirmed = true, timeConfirmed = true) {
-  const months = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-  ];
-  let datePart = 'Fecha por confirmar';
-  if (dateStr) {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    if (y && m && d) {
-      datePart = `${d} de ${months[m - 1]}`;
-      if (!dateConfirmed) datePart += ' (Por confirmar)';
-    }
-  }
-
-  let timePart = 'Hora por confirmar';
-  if (timeStr && timeConfirmed) {
-    const [hh, mm] = timeStr.split(':').map(Number);
-    if (!Number.isNaN(hh) && !Number.isNaN(mm)) {
-      const period = hh >= 12 ? 'p. m.' : 'a. m.';
-      const h12 = hh % 12 || 12;
-      timePart = `${h12}:${String(mm).padStart(2, '0')} ${period}`;
-    }
-  } else if (timeStr && !timeConfirmed) {
-    timePart = `${timeStr} (Hora por confirmar)`;
-  }
-
-  return `${datePart} - ${timePart}`;
-}
-
 /**
  * Agrega un nuevo incidente o edita uno existente manteniendo historial estilo Wikipedia
  */
 export async function saveIncidentWikiRevision(currentStore, incidentInput, editingId = null) {
-  const prevSnapshot = JSON.parse(JSON.stringify(currentStore.incidents));
   const coords = pixelToGps(incidentInput.pixelX, incidentInput.pixelY);
-  const autoSector = incidentInput.sector?.trim() || detectSectorName(coords.pixelX, coords.pixelY);
+  const sector = incidentInput.sector?.trim() || detectSectorName(coords.pixelX, coords.pixelY);
+  const now = new Date();
 
-  const dateConfirmed = Boolean(incidentInput.dateConfirmed);
-  const timeConfirmed = Boolean(incidentInput.timeConfirmed);
-  const dateLabel = formatSpanishDateLabel(
-    incidentInput.date,
-    incidentInput.time,
-    dateConfirmed,
-    timeConfirmed
-  );
+  const existing = editingId ? currentStore.incidents.find((i) => i.id === editingId) : null;
+  if (editingId && !existing) throw new Error(`No existe el incidente ${editingId}.`);
+  const targetIncident = existing
+    ? buildIncident(incidentInput, { existing, coords, sector, now })
+    : buildIncident(incidentInput, { incidents: currentStore.incidents, coords, sector, now });
 
-  const impactType = incidentInput.impactType === 'tranquilidad' ? 'tranquilidad' : 'seguridad';
+  const incidents = existing
+    ? currentStore.incidents.map((i) => (i.id === editingId ? targetIncident : i))
+    : [...currentStore.incidents, targetIncident];
 
-  // Quién resolvió el caso (por ahora solo 'policia'); null = sin resolver.
-  const resolvedBy = incidentInput.resolvedBy === 'policia' ? 'policia' : null;
-
-  let updatedIncidents = [...currentStore.incidents];
-  let actionType = 'CREATE';
-  let targetIncident = null;
-
-  if (editingId) {
-    actionType = 'EDIT';
-    updatedIncidents = updatedIncidents.map((item) => {
-      if (item.id !== editingId) return item;
-      targetIncident = {
-        ...item,
-        date: incidentInput.date,
-        time: incidentInput.time || '12:00',
-        dateLabel,
-        dateConfirmed,
-        timeConfirmed,
-        impactType,
-        category: incidentInput.category,
-        severity: Number(incidentInput.severity) || 3,
-        pixelX: coords.pixelX,
-        pixelY: coords.pixelY,
-        lat: coords.lat,
-        lng: coords.lng,
-        sector: autoSector,
-        description: incidentInput.description.trim(),
-        resolvedBy,
-        updatedAt: new Date().toISOString()
-      };
-      return targetIncident;
-    });
-  } else {
-    const nextNumber = updatedIncidents.reduce((max, i) => Math.max(max, i.number || 0), 0) + 1;
-    targetIncident = {
-      id: `inc-${String(nextNumber).padStart(3, '0')}-${Date.now().toString(36).slice(-3)}`,
-      number: nextNumber,
-      date: incidentInput.date,
-      time: incidentInput.time || '12:00',
-      dateLabel,
-      dateConfirmed,
-      timeConfirmed,
-      impactType,
-      category: incidentInput.category,
-      severity: Number(incidentInput.severity) || 3,
-      pixelX: coords.pixelX,
-      pixelY: coords.pixelY,
-      lat: coords.lat,
-      lng: coords.lng,
-      sector: autoSector,
-      description: incidentInput.description.trim(),
-      resolvedBy,
-      confirmations: 1,
-      updatedAt: new Date().toISOString()
-    };
-    updatedIncidents.push(targetIncident);
-  }
-
-  const revNumber = (currentStore.revisions?.length || 0) + 1;
-  const summaryNote = actionType === 'CREATE'
-    ? `Nuevo incidente #${targetIncident.number} en Píxel (${coords.pixelX}, ${coords.pixelY}) — ${targetIncident.category}`
-    : `Edición Wiki de incidente #${targetIncident.number} en Píxel (${coords.pixelX}, ${coords.pixelY})`;
-
-  const newRevision = {
-    revId: `rev-${String(revNumber).padStart(3, '0')}`,
-    timestamp: new Date().toISOString(),
-    action: actionType,
-    incidentId: targetIncident.id,
-    note: summaryNote,
-    previousIncidentsSnapshot: prevSnapshot
-  };
+  const where = `Píxel (${coords.pixelX}, ${coords.pixelY})`;
+  const note = editingId
+    ? `Edición Wiki de incidente #${targetIncident.number} en ${where}`
+    : `Nuevo incidente #${targetIncident.number} en ${where} — ${targetIncident.category}`;
 
   const nextStore = {
     ...currentStore,
-    incidents: updatedIncidents,
-    revisions: [newRevision, ...(currentStore.revisions || [])].slice(0, 40)
+    incidents,
+    revisions: addRevision(
+      currentStore,
+      { action: editingId ? 'EDIT' : 'CREATE', incidentId: targetIncident.id, note },
+      now
+    )
   };
 
-  const change = {
-    type: editingId ? 'edit' : 'create',
-    incident: {
-      id: targetIncident.id,
-      date: targetIncident.date,
-      time: targetIncident.time,
-      dateLabel: targetIncident.dateLabel,
-      dateConfirmed: targetIncident.dateConfirmed,
-      timeConfirmed: targetIncident.timeConfirmed,
-      impactType: targetIncident.impactType,
-      category: targetIncident.category,
-      severity: targetIncident.severity,
-      pixelX: targetIncident.pixelX,
-      pixelY: targetIncident.pixelY,
-      lat: targetIncident.lat,
-      lng: targetIncident.lng,
-      sector: targetIncident.sector,
-      description: targetIncident.description,
-      resolvedBy: targetIncident.resolvedBy
-    }
-  };
-  const result = await persistWikiStore(nextStore, summaryNote, change);
-  return {
-    ...result,
-    savedIncident: targetIncident
-  };
+  const result = await persistWikiStore(nextStore, note, buildSaveChange(targetIncident, Boolean(editingId)));
+  return { ...result, savedIncident: targetIncident };
 }
 
 export async function confirmIncidentAnonymously(currentStore, incidentId) {
-  const prevSnapshot = JSON.parse(JSON.stringify(currentStore.incidents));
-  let targetNumber = 0;
-
-  const updatedIncidents = currentStore.incidents.map((inc) => {
-    if (inc.id !== incidentId) return inc;
-    targetNumber = inc.number;
-    return {
-      ...inc,
-      confirmations: (inc.confirmations || 1) + 1,
-      updatedAt: new Date().toISOString()
-    };
-  });
-
-  const revNumber = (currentStore.revisions?.length || 0) + 1;
-  const note = `Confirmación vecinal anónima sumada al incidente #${targetNumber}`;
+  const now = new Date();
+  const target = currentStore.incidents.find((i) => i.id === incidentId);
+  const note = `Confirmación vecinal anónima sumada al incidente #${target ? target.number : 0}`;
 
   const nextStore = {
     ...currentStore,
-    incidents: updatedIncidents,
-    revisions: [
-      {
-        revId: `rev-${String(revNumber).padStart(3, '0')}`,
-        timestamp: new Date().toISOString(),
-        action: 'CONFIRM',
-        incidentId,
-        note,
-        previousIncidentsSnapshot: prevSnapshot
-      },
-      ...(currentStore.revisions || [])
-    ].slice(0, 40)
+    incidents: currentStore.incidents.map((i) => (i.id === incidentId ? confirmedIncident(i, now) : i)),
+    revisions: addRevision(currentStore, { action: 'CONFIRM', incidentId, note }, now)
   };
 
-  return persistWikiStore(nextStore, note, { type: 'confirm', id: incidentId });
+  return persistWikiStore(nextStore, note, buildConfirmChange(incidentId));
 }
 
 export async function revertWikiRevision(currentStore, revId) {
-  const targetRev = (currentStore.revisions || []).find((r) => r.revId === revId);
-  if (!targetRev || !Array.isArray(targetRev.previousIncidentsSnapshot)) {
-    throw new Error('Esta revisión inicial no tiene un estado previo al cual revertir.');
-  }
-
-  const revNumber = (currentStore.revisions?.length || 0) + 1;
+  const { incidents, incidentId } = snapshotOf(currentStore, revId);
   const note = `Reversión Wiki ejecutada: se deshizo ${revId}`;
 
   const nextStore = {
     ...currentStore,
-    incidents: JSON.parse(JSON.stringify(targetRev.previousIncidentsSnapshot)),
-    revisions: [
-      {
-        revId: `rev-${String(revNumber).padStart(3, '0')}`,
-        timestamp: new Date().toISOString(),
-        action: 'REVERT',
-        incidentId: targetRev.incidentId,
-        note,
-        previousIncidentsSnapshot: JSON.parse(JSON.stringify(currentStore.incidents))
-      },
-      ...(currentStore.revisions || [])
-    ].slice(0, 40)
+    incidents,
+    revisions: addRevision(currentStore, { action: 'REVERT', incidentId, note })
   };
 
   return persistWikiStore(nextStore, note);

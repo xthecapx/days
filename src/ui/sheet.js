@@ -1,7 +1,7 @@
 import { $, setHidden, escapeHtml, toIsoDate, downloadJson } from '../core/dom.js';
 import { CATEGORIES, IMPACT_TYPES, SEVERITY_NAMES } from '../core/config.js';
 import { pixelToGps } from '../map/gpsGrid.js';
-import { calculateDaysSince, isTranquilityIncident } from '../map/heatmapEngine.js';
+import { calculateDaysSince, isTranquilityIncident } from '../domain/incident.js';
 import { selectIncidents, selectRevisions } from '../state/selectors.js';
 
 const TITLES = {

@@ -7,15 +7,6 @@ export function findIncident(state, id) {
   return selectIncidents(state).find((i) => i.id === id) || null;
 }
 
-/** Último incidente por fecha del hecho (`date`), nunca por cuándo se reportó. */
-export function selectLatestIncident(incidents) {
-  if (!incidents.length) return null;
-  return [...incidents].sort((a, b) => {
-    const cmp = (b.date || '').localeCompare(a.date || '');
-    return cmp !== 0 ? cmp : (b.number || 0) - (a.number || 0);
-  })[0];
-}
-
 /** El borrador del formulario se dibuja como "fantasma" en el mapa mientras se edita. */
 function draftToPreview(draft) {
   if (!draft || Number.isNaN(draft.pixelX) || Number.isNaN(draft.pixelY)) return null;

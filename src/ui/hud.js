@@ -2,8 +2,8 @@ import { $, setHidden, showToast } from '../core/dom.js';
 import { sendWhatsAppAlert, sharePoint, warmUpPosition, freshPosition, lastGpsError, startGps, onGpsChange } from '../services/alertService.js';
 import { pixelToGps } from '../map/gpsGrid.js';
 import { detectSectorName } from '../map/mapData.js';
-import { calculateDaysSince } from '../map/heatmapEngine.js';
-import { selectHeatmap, selectIncidents, selectLatestIncident, findIncident } from '../state/selectors.js';
+import { calculateDaysSince, latestIncident } from '../domain/incident.js';
+import { selectHeatmap, selectIncidents, findIncident } from '../state/selectors.js';
 
 /** Barra superior, banner de modo, controles del mapa y zona inferior (tarjeta + navegación). */
 export function mountHud({ store, camera, actions }) {
@@ -170,7 +170,7 @@ export function mountHud({ store, camera, actions }) {
     $('navCount').textContent = String(incidents.length);
     $('redPixels').textContent = `🔴 ${selectHeatmap(state).affectedPixelsCount} px`;
 
-    const latest = selectLatestIncident(incidents);
+    const latest = latestIncident(incidents);
     if (!latest) {
       $('daysValue').textContent = '--';
       $('daysLabel').textContent = 'DÍAS DESDE EL ÚLTIMO INCIDENTE';

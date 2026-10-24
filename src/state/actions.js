@@ -2,7 +2,7 @@ import { CATEGORIES, DEFAULT_CATEGORY } from '../core/config.js';
 import { toIsoDate } from '../core/dom.js';
 import { gpsToPixel, pixelToGps } from '../map/gpsGrid.js';
 import { detectSectorName, getWorld } from '../map/mapData.js';
-import { isTranquilityIncident } from '../map/heatmapEngine.js';
+import { isTranquilityIncident } from '../domain/incident.js';
 import { findIncident } from './selectors.js';
 
 let draftSession = 0;

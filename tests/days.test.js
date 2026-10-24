@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateDaysSince } from '../src/map/heatmapEngine.js';
-import { selectLatestIncident } from '../src/state/selectors.js';
+import { calculateDaysSince, latestIncident as selectLatestIncident } from '../src/domain/incident.js';
 
 const at = (y, m, d, h = 12) => new Date(y, m - 1, d, h);
 

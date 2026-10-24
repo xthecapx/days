@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatSpanishDateLabel } from '../src/storage/wikiJsonStore.js';
+import { formatSpanishDateLabel } from '../src/domain/incident.js';
 import { buildAlertMessage, buildPointMessage, whatsappUrl, mapsLink } from '../src/services/alertService.js';
 
 test('formatSpanishDateLabel: confirmada', () => {

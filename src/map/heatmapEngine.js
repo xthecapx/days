@@ -1,29 +1,5 @@
 import { GRID_WIDTH, GRID_HEIGHT } from './gpsGrid.js';
-
-/**
- * Calcula los días transcurridos desde una fecha YYYY-MM-DD hasta hoy
- */
-export function calculateDaysSince(dateStr, nowDate = new Date()) {
-  if (!dateStr) return 30;
-  const [year, month, day] = dateStr.split('-').map(Number);
-  if (!year || !month || !day) return 30;
-
-  const target = new Date(year, month - 1, day, 12, 0, 0);
-  const current = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate(), 12, 0, 0);
-  const diffMs = current.getTime() - target.getTime();
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  return Math.max(0, days);
-}
-
-/**
- * Determina si un incidente es de tranquilidad/convivencia (amarillo claro) o seguridad (rojo)
- */
-export function isTranquilityIncident(inc) {
-  if (!inc) return false;
-  if (inc.impactType === 'tranquilidad') return true;
-  const cat = String(inc.category || '').toLowerCase();
-  return cat.includes('ruido') || cat.includes('convivencia') || cat.includes('tranquilidad');
-}
+import { calculateDaysSince, isTranquilityIncident } from '../domain/incident.js';
 
 /**
  * Factor de peso según la fecha del incidente.

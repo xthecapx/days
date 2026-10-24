@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { computePixelHeatmap, isTranquilityIncident, getTemporalWeight } from '../src/map/heatmapEngine.js';
+import { computePixelHeatmap, getTemporalWeight } from '../src/map/heatmapEngine.js';
+import { isTranquilityIncident } from '../src/domain/incident.js';
 import { GRID_WIDTH } from '../src/map/gpsGrid.js';
 
 const NOW = new Date(2026, 9, 23, 12);

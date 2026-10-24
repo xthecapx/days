@@ -1,5 +1,5 @@
 import { TILE_SIZE } from '../worldSize.js';
-import { isTranquilityIncident } from '../heatmapEngine.js';
+import { isTranquilityIncident } from '../../domain/incident.js';
 
 const markerScale = (zoom) => 1 / Math.max(0.8, Math.min(zoom, 3));
 export const MARKER_BOX = { h: 17 };
