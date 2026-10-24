@@ -4,14 +4,13 @@ import { gpsToPixel, pixelToGps } from '../map/gpsGrid.js';
 import { isTranquilityIncident } from '../domain/incident.js';
 import { findIncident } from './selectors.js';
 
-let draftSession = 0;
-
 /**
  * Todas las operaciones de la app en un solo lugar. Los componentes de UI
  * solo llaman a estas funciones y leen el store; no se hablan entre sí.
  */
 export function createActions({ store, camera, incidents, gps, world, sectorName }) {
   const { home } = world;
+  let draftSession = 0; // identifica cada apertura del formulario, para rellenarlo una sola vez
   const ui = (partial) => store.patch('ui', partial);
 
   const isMobile = () => window.innerWidth < 600;
@@ -36,7 +35,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
   /** Centra el mapa en la posición del teléfono; reutiliza la lectura reciente en vez de pedir otra. */
   async function locateMe() {
     const fallback = () => {
-        selectPixel(home.x, home.y);
+      selectPixel(home.x, home.y);
       camera.focusTile(home.x, home.y, 1.8);
     };
     const position = gps.fix() || (await gps.read());

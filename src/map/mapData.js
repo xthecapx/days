@@ -18,6 +18,22 @@ async function fetchJson(url, fallback) {
   }
 }
 
+/** Intenta de nuevo si falla (una señal móvil floja suele recuperarse en un segundo). */
+async function withRetry(fn, { tries = 3, delayMs = 800, wait = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  let lastError;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (i < tries - 1) await wait(delayMs * (i + 1));
+    }
+  }
+  throw lastError;
+}
+
+export { withRetry };
+
 const project = (pts) => pts.map(([lat, lng]) => geoToTileF(lat, lng));
 
 function bboxOf(pts) {
@@ -93,11 +109,11 @@ export function buildWorld(map, overrides = {}) {
   };
 }
 
-export async function loadMapData() {
-  const [map, overrides] = await Promise.all([
-    fetchJson('./data/map.json'),
-    fetchJson('./data/map-overrides.json', {})
-  ]);
+export async function loadMapData(options) {
+  const [map, overrides] = await withRetry(
+    () => Promise.all([fetchJson('./data/map.json'), fetchJson('./data/map-overrides.json', {})]),
+    options
+  );
   return buildWorld(map, overrides);
 }
 

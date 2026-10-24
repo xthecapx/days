@@ -18,7 +18,7 @@ export function getTemporalWeight(daysAgo, decayMode = 'actual') {
 /**
  * Radio equilibrado (~2.5 a ~4.4 píxeles vecinos) para destacar la zona de alerta sin tapar el mapa
  */
-export function getIncidentPixelRadius(severity = 3, daysAgo = 0, decayMode = 'actual', isTranquility = false) {
+function getIncidentPixelRadius(severity = 3, daysAgo = 0, decayMode = 'actual', isTranquility = false) {
   const sev = Math.max(1, Math.min(5, Number(severity) || 3));
   if (isTranquility) {
     return 1.6 + sev * 0.48; // ~2.5 px alrededor del incidente #3 (amarillo claro)

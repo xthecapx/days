@@ -72,8 +72,18 @@ async function boot() {
     requestAnimationFrame(loop);
   });
 
-  // Útil para depurar desde la consola del navegador.
-  window.__app = { store, camera, actions, gps, world };
+  // Útil para depurar desde la consola; no se expone en el sitio publicado.
+  if (import.meta.env?.DEV) window.__app = { store, camera, actions, gps, world };
 }
 
-boot();
+/** Si algo falla al arrancar, se avisa en pantalla con un botón para reintentar (en vez de dejarla en blanco). */
+function showBootError(err) {
+  console.error('No se pudo iniciar la app', err);
+  $('bootErrorText').textContent = navigator.onLine === false
+    ? 'Sin conexión. Conéctate a internet e inténtalo de nuevo.'
+    : 'Revisa tu conexión e inténtalo de nuevo.';
+  $('bootError').classList.remove('hidden');
+}
+
+$('btnRetryBoot').addEventListener('click', () => window.location.reload());
+boot().catch(showBootError);

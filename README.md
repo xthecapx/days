@@ -89,7 +89,8 @@ data/                  map.json · map-overrides.json · incidents.json
 scripts/update-map.mjs Descarga de OpenStreetMap
 vite.config.js        Vite: servidor de desarrollo, empaquetado y copia de data/
 worker/                Puente (Cloudflare Worker) que abre un PR por cada reporte
-tests/                 Pruebas con node:test
+tests/                 Pruebas con node:test (lógica) y tests/e2e (navegador real)
+public/                Archivos que se copian tal cual al sitio (favicon)
 src/main.js            Conecta todas las piezas
 src/state/             Store con suscripciones, acciones y selectores
 src/core/geo.js        Área del mapa y tamaño de la grilla (única definición)
@@ -112,13 +113,19 @@ src/styles/            base.css · hud.css · sheets.css
 
 > Con **Deploy from a branch** también funciona, pero publica todo el repositorio tal cual.
 
+## Seguridad
+
+- El sitio publicado lleva una **política de seguridad de contenido** (`<meta http-equiv="Content-Security-Policy">`, definida en `vite.config.js`): solo scripts y estilos propios, y las únicas salidas son Google Fonts, GitHub (lectura de `incidents.json`) y el Worker. Si agregas otro servicio externo, añádelo ahí o el navegador lo bloqueará.
+- Todo texto de los vecinos se escapa antes de pintarse, y los números que llegan de `incidents.json` se convierten con `toNumber`.
+- En desarrollo, el endpoint que escribe `data/incidents.json` solo acepta peticiones desde este mismo computador (aunque el servidor esté abierto a la red para probar en el celular).
+
 ## Pruebas
 
 ```bash
 npm test
 ```
 
-Usa `node --test` (sin librerías de pruebas) y corre en cada PR junto con `npm run build` (`.github/workflows/test.yml`). Cubren las reglas de incidentes, el almacenamiento, el GPS, WhatsApp, el mapa de calor, los nombres de sector, el reloj y la validación del Worker.
+Usa `node --test` (sin librerías de pruebas) y corre en cada PR junto con `npm run build` (`.github/workflows/test.yml`). Además de las pruebas de lógica, `tests/e2e/` construye el sitio, lo sirve y lo abre en un Chrome real con GPS falso: comprueba que el mapa se dibuja, que las hojas abren, que WhatsApp recibe el mensaje y que sin mapa aparece el aviso de reintento. Si no hay Chrome instalado se omiten solas (o define `CHROME_PATH`). Cubren las reglas de incidentes, el almacenamiento, el GPS, WhatsApp, el mapa de calor, los nombres de sector, el reloj y la validación del Worker.
 
 ## Créditos y licencia de datos
 

@@ -17,7 +17,7 @@ const LNG_SPAN = GEO_BOUNDS.east - GEO_BOUNDS.west;
 const LAT_SPAN = GEO_BOUNDS.north - GEO_BOUNDS.south;
 
 /** Metros por tile (aprox., en el centro del mapa). */
-export const METERS_PER_TILE = {
+const METERS_PER_TILE = {
   x: (LNG_SPAN * 111320 * Math.cos((((GEO_BOUNDS.north + GEO_BOUNDS.south) / 2) * Math.PI) / 180)) / GRID_WIDTH,
   y: (LAT_SPAN * 110574) / GRID_HEIGHT
 };
@@ -32,7 +32,7 @@ export function geoToTileF(lat, lng) {
 }
 
 /** Centro del tile (px, py) en lat/lng; admite tiles fraccionarios. */
-export function tileToGeo(px, py) {
+function tileToGeo(px, py) {
   return {
     lng: GEO_BOUNDS.west + ((px + 0.5) / GRID_WIDTH) * LNG_SPAN,
     lat: GEO_BOUNDS.north - ((py + 0.5) / GRID_HEIGHT) * LAT_SPAN

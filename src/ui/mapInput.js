@@ -1,8 +1,7 @@
 import { GRID_WIDTH, GRID_HEIGHT, pixelToGps } from '../map/gpsGrid.js';
-import { layoutMarkers, markerWidth, MARKER_BOX } from '../map/render/markers.js';
-import { TILE_SIZE } from '../map/worldSize.js';
+import { incidentAtPoint } from '../map/markerLayout.js';
 import { selectHeatmap, selectIncidents } from '../state/selectors.js';
-import { escapeHtml } from '../core/dom.js';
+import { escapeHtml, toNumber } from '../core/dom.js';
 import { ZOOM } from '../core/config.js';
 
 const TAP_SLOP = 8; // px de movimiento tolerado para seguir contando como "tap"
@@ -14,8 +13,9 @@ export function hoverHtml(tile, cell, sector) {
   html += `<div class="tip-sector">${escapeHtml(sector)}</div>`;
   for (const item of cell?.incidents || []) {
     const calm = item.impactType === 'tranquilidad';
-    const dist = item.distance === 0 ? 'Epicentro en este píxel' : `A ${item.distance} px del punto`;
-    html += `<div class="tip-incident"><span class="tip-title ${calm ? 'tip-calm' : 'tip-danger'}">#${item.number} (${escapeHtml(item.dateLabel)})</span><br/>${escapeHtml(item.description)}<br/><small class="tip-dist">${dist}</small></div>`;
+    const distance = toNumber(item.distance);
+    const dist = distance === 0 ? 'Epicentro en este píxel' : `A ${distance} px del punto`;
+    html += `<div class="tip-incident"><span class="tip-title ${calm ? 'tip-calm' : 'tip-danger'}">#${toNumber(item.number)} (${escapeHtml(item.dateLabel)})</span><br/>${escapeHtml(item.description)}<br/><small class="tip-dist">${dist}</small></div>`;
   }
   return html;
 }
@@ -31,31 +31,8 @@ export function mountMapInput({ viewport, tooltip, store, camera, actions, secto
   const tileAt = (cx, cy) => camera.screenToTile(cx, cy, GRID_WIDTH, GRID_HEIGHT);
 
   /** Un tap cuenta como "tocó un incidente" si cae en su etiqueta o cerca de su píxel. */
-  function incidentAt(cx, cy) {
-    const { zoom } = camera.state;
-    const world = camera.screenToWorld(cx, cy);
-    const incidents = selectIncidents(store.get());
-    const offsets = layoutMarkers(incidents, zoom);
-    const s = 1 / Math.max(0.8, Math.min(zoom, 3));
-    const pad = 6 * s;
-    let best = null;
-    let bestD = Infinity;
-    for (const inc of incidents) {
-      const px = (inc.pixelX + 0.5) * TILE_SIZE;
-      const py = (inc.pixelY + 0.5) * TILE_SIZE;
-      const { dx, dy } = offsets.get(inc.id);
-      const inBox =
-        Math.abs(world.x - (px + dx)) <= (markerWidth(inc) * s) / 2 + pad &&
-        Math.abs(world.y - (py + dy)) <= (MARKER_BOX.h * s) / 2 + pad;
-      const d = Math.hypot(world.x - px, world.y - py);
-      const nearPin = d <= 14 * s;
-      if ((inBox || nearPin) && d < bestD) {
-        best = inc;
-        bestD = d;
-      }
-    }
-    return best;
-  }
+  const incidentAt = (cx, cy) =>
+    incidentAtPoint(selectIncidents(store.get()), camera.screenToWorld(cx, cy), camera.state.zoom);
 
   function showHover(clientX, clientY, tile) {
     const cell = selectHeatmap(store.get()).grid[tile.y * GRID_WIDTH + tile.x];

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#090d16" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <title>Días Desde el Último Incidente — Sendero Río del Hato</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,6 +68,13 @@
   </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- Si la app no puede arrancar (p. ej. sin conexión al abrirla), se muestra esto en vez de una pantalla en blanco. -->
+  <div id="bootError" class="boot-error hidden" role="alert">
+    <strong>No se pudo cargar el mapa</strong>
+    <p id="bootErrorText">Revisa tu conexión e inténtalo de nuevo.</p>
+    <button id="btnRetryBoot" class="btn btn-accent" type="button">🔄 Reintentar</button>
+  </div>
 
   <!-- Atribución de los datos del mapa (siempre visible, licencia ODbL) -->
   <a id="mapCredit" class="map-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>

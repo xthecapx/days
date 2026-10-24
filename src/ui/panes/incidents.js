@@ -1,4 +1,4 @@
-import { $, escapeHtml } from '../../core/dom.js';
+import { $, escapeHtml, toNumber } from '../../core/dom.js';
 import { calculateDaysSince, isTranquilityIncident } from '../../domain/incident.js';
 import { selectIncidents } from '../../state/selectors.js';
 
@@ -7,21 +7,25 @@ export function incidentCardHtml(inc, referenceDate) {
   const calm = isTranquilityIncident(inc);
   const ago = calculateDaysSince(inc.date, referenceDate);
   const pending = !inc.dateConfirmed || !inc.timeConfirmed;
+  // Los números también llegan de un JSON que puede editarse a mano: nunca se pintan tal cual.
+  const number = toNumber(inc.number);
+  const severity = toNumber(inc.severity, 3);
+  const confirmations = toNumber(inc.confirmations, 1) || 1;
   return `
       <div class="ic-head">
-        <div><span class="badge ${calm ? 'calm' : ''}">#${inc.number}</span>${inc.resolvedBy === 'policia' ? '<span class="tag-resolved" title="Atendido por la policía">👮 Resuelto</span>' : ''}<span class="ic-date">${escapeHtml(inc.dateLabel || inc.date)}</span></div>
+        <div><span class="badge ${calm ? 'calm' : ''}">#${number}</span>${inc.resolvedBy === 'policia' ? '<span class="tag-resolved" title="Atendido por la policía">👮 Resuelto</span>' : ''}<span class="ic-date">${escapeHtml(inc.dateLabel || inc.date)}</span></div>
         ${pending ? '<span class="tag-warn">⚠️ Por confirmar</span>' : ''}
       </div>
       <div class="ic-cat">
         <span>${escapeHtml(inc.category)}</span>
-        <span class="sev ${calm ? 'sev-calm' : `sev-${inc.severity}`}">${calm ? '🟡 Tranquilidad' : `🔴 ${inc.severity}/5`} · ${ago}d</span>
+        <span class="sev ${calm ? 'sev-calm' : `sev-${severity}`}">${calm ? '🟡 Tranquilidad' : `🔴 ${severity}/5`} · ${ago}d</span>
       </div>
       <p class="ic-desc">${escapeHtml(inc.description)}</p>
-      <div class="ic-foot"><span>📍 ${escapeHtml(inc.sector)}</span><span>(${inc.pixelX}, ${inc.pixelY})</span></div>
+      <div class="ic-foot"><span>📍 ${escapeHtml(inc.sector)}</span><span>(${toNumber(inc.pixelX)}, ${toNumber(inc.pixelY)})</span></div>
       <div class="ic-actions">
         <button class="btn btn-sm" data-act="focus" type="button">🎯 Ver</button>
         <button class="btn btn-sm" data-act="edit" type="button">✏️ Editar</button>
-        <button class="btn btn-sm" data-act="confirm" type="button">👍 ${inc.confirmations || 1}</button>
+        <button class="btn btn-sm" data-act="confirm" type="button">👍 ${confirmations}</button>
       </div>`;
 }
 

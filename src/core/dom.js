@@ -15,6 +15,12 @@ export function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
+/** Número seguro para pintar en HTML: cualquier cosa que no sea un número finito (p. ej. un texto con "<") pasa a `fallback`. */
+export function toNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /** YYYY-MM-DD en hora local (toISOString usaría UTC y puede correr el día). */
 export function toIsoDate(date) {
   const mm = String(date.getMonth() + 1).padStart(2, '0');

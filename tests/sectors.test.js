@@ -2,14 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildWorld, detectSectorName, createSectorNamer } from '../src/map/mapData.js';
-import { pixelToGps, gpsToPixel } from '../src/map/gpsGrid.js';
 import { createStore } from '../src/state/store.js';
 import { createInitialState } from '../src/state/initialState.js';
 import { selectHeatmap, selectPreviewKey } from '../src/state/selectors.js';
 
 const read = (f) => JSON.parse(readFileSync(new URL(`../data/${f}`, import.meta.url), 'utf8'));
 const world = buildWorld(read('map.json'), read('map-overrides.json'));
-const overrides = read('map-overrides.json');
 
 test('buildWorld: carga el mapa real con calles, agua, sectores y hogar dentro de la grilla', () => {
   assert.ok(world.roads.length > 50);

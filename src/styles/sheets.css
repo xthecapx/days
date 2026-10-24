@@ -56,7 +56,6 @@
 /* Ajustes */
 .setting-group { display: flex; flex-direction: column; gap: 8px; }
 .setting-group h3 { font: 800 0.72rem var(--font-mono); color: var(--yellow); text-transform: uppercase; border-bottom: 1px solid var(--line); padding-bottom: 3px; }
-.btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .legend { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font: 0.7rem var(--font-mono); color: #cbd5e1; }
 .sw { display: inline-block; width: 22px; height: 8px; margin-right: 6px; vertical-align: middle; border: 1px solid #0f172a; }
 .sw-red { background: #ff1744; height: 12px; width: 12px; }

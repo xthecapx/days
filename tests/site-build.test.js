@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, statSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname, resolve, relative } from 'node:path';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -17,7 +17,7 @@ const read = (p) => readFileSync(p, 'utf8');
 const html = read(join(out, 'index.html'));
 
 test('el sitio publicado tiene index.html, assets/ y data/, y nada del repositorio', () => {
-  assert.deepEqual(readdirSync(out).sort(), ['assets', 'data', 'index.html']);
+  assert.deepEqual(readdirSync(out).sort(), ['assets', 'data', 'favicon.svg', 'index.html']);
   for (const leak of ['worker', 'scripts', 'tests', '.github', 'src', 'package.json', 'vite.config.js', 'wrangler.jsonc', 'node_modules']) {
     assert.equal(existsSync(join(out, leak)), false, `${leak} no debe publicarse`);
   }
@@ -64,11 +64,32 @@ test('cada $("id") del bundle existe en el index.html publicado', () => {
   assert.deepEqual(missing, []);
 });
 
+test('el sitio publicado lleva una política de seguridad que permite solo lo que la app usa', () => {
+  const csp = html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
+  assert.ok(csp, 'falta el <meta> de CSP');
+  assert.match(csp, /script-src 'self'(;|$)/);
+  assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval/);
+  assert.match(csp, /object-src 'none'/);
+  // Todo host al que la app llama con fetch tiene que estar permitido en connect-src.
+  const connect = csp.match(/connect-src ([^;]+)/)[1];
+  for (const host of ['https://raw.githubusercontent.com', 'https://days.xthecapx.workers.dev']) assert.ok(connect.includes(host), host);
+  assert.match(read(join(ROOT, 'src/storage/localCache.js')), /days\.xthecapx\.workers\.dev/);
+  // En desarrollo no se aplica (el servidor de Vite necesita su WebSocket).
+  assert.doesNotMatch(read(join(ROOT, 'index.html')), /Content-Security-Policy/);
+});
+
+test('el bundle no escribe estilos en línea en el HTML (los bloquearía la CSP)', () => {
+  const js = read(join(out, 'assets', readdirSync(join(out, 'assets')).find((f) => f.endsWith('.js'))));
+  assert.doesNotMatch(js, /style="/);
+  assert.doesNotMatch(html, /\sstyle="/);
+});
+
 test('la configuración de Vite sigue guardando en dev y copiando data/', () => {
   const cfg = read(join(ROOT, 'vite.config.js'));
   assert.match(cfg, /base:\s*'\.\/'/);
   assert.match(cfg, /\/api\/local-wiki-save/);
   assert.match(cfg, /closeBundle/);
+  assert.match(cfg, /LOOPBACK/, 'el guardado local solo acepta a este computador');
 });
 
 test('los flujos de CI instalan, prueban y construyen con npm', () => {

@@ -62,7 +62,7 @@ export function formatSpanishDateLabel(dateStr, timeStr, dateConfirmed = true, t
   return `${datePart} - ${timePart}`;
 }
 
-export const nextIncidentNumber = (incidents) => incidents.reduce((max, i) => Math.max(max, i.number || 0), 0) + 1;
+const nextIncidentNumber = (incidents) => incidents.reduce((max, i) => Math.max(max, i.number || 0), 0) + 1;
 
 /** Campos que el formulario controla, ya normalizados. Los comparten crear y editar. */
 function formFields(input, { coords, sector }) {

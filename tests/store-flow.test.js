@@ -100,7 +100,7 @@ test('el aviso de sincronización refleja el fallo (para el toast)', async () =>
 });
 
 test('mover un incidente lo guarda como edición con el sector del nuevo punto', async () => {
-  const { store, service } = setup();
+  const { service } = setup();
   const moved = await service.move('inc-001', 100, 100);
   assert.equal([moved.pixelX, moved.pixelY].join(','), '100,100');
   assert.equal(moved.sector, 'Sector auto');
