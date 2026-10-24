@@ -19,15 +19,17 @@ export function findChrome() {
 /** Construye el sitio con Vite en una carpeta temporal y lo sirve con `vite preview`. Devuelve { url, stop }. */
 export async function serveBuiltSite() {
   const dir = mkdtempSync(join(tmpdir(), 'e2e-site-'));
-  execFileSync('npx', ['vite', 'build', '--outDir', dir, '--emptyOutDir'], { cwd: ROOT, stdio: 'pipe' });
+  execFileSync(process.execPath, [join(ROOT, 'node_modules/vite/bin/vite.js'), 'build', '--outDir', dir, '--emptyOutDir'], { cwd: ROOT, stdio: 'pipe' });
   const port = 4300 + Math.floor(Math.random() * 500);
-  const proc = spawn('npx', ['vite', 'preview', '--outDir', dir, '--port', String(port), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'pipe' });
+  // Se lanza `vite` directo (no `npx`): con npx, `kill()` mata al envoltorio y el servidor queda vivo en Linux,
+  // y como además su salida estándar sigue conectada al proceso de prueba, Node nunca termina (CI colgado).
+  const proc = spawn(process.execPath, [join(ROOT, 'node_modules/vite/bin/vite.js'), 'preview', '--outDir', dir, '--port', String(port), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
   const url = `http://127.0.0.1:${port}/`;
   for (let i = 0; i < 50; i++) {
     try { if ((await fetch(url)).ok) break; } catch { /* aún arrancando */ }
     await new Promise((r) => setTimeout(r, 100));
   }
-  return { url, stop: () => { proc.kill(); rmSync(dir, { recursive: true, force: true }); } };
+  return { url, stop: () => { proc.kill('SIGKILL'); rmSync(dir, { recursive: true, force: true }); } };
 }
 
 /** Abre una página móvil con GPS falso y sin salir a internet (GitHub y fuentes se bloquean). */
@@ -57,3 +59,19 @@ export async function openApp(browser, url, { geo = { latitude: 7.005, longitude
   }
   return { page, problems };
 }
+
+/**
+ * Abre la app y espera a que de verdad esté lista (días calculados e incidentes cargados), en vez de esperar a que la
+ * red "se calme" (`networkidle0`): en Linux esa señal a veces no llega nunca y cada prueba se quedaba 20 s esperando.
+ */
+export async function loadApp(page, url, { timeout = 15000 } = {}) {
+  await page.goto(url, { waitUntil: 'load', timeout });
+  await page.waitForFunction(
+    () => document.getElementById('daysValue')?.textContent !== '--' && Number(document.getElementById('navCount')?.textContent) > 0,
+    { timeout }
+  );
+}
+
+/** Espera a que un elemento esté visible u oculto (la clase `hidden` de la app), sin pausas fijas. */
+export const waitHidden = (page, selector, hidden, timeout = 5000) =>
+  page.waitForFunction((s, h) => document.querySelector(s)?.classList.contains('hidden') === h, { timeout }, selector, hidden);

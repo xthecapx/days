@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findChrome, serveBuiltSite, openApp } from './helpers.mjs';
+import { findChrome, serveBuiltSite, openApp, loadApp, waitHidden } from './helpers.mjs';
 
 const chrome = findChrome();
 const skip = chrome ? false : 'no hay Chrome instalado (define CHROME_PATH para correr estas pruebas)';
@@ -18,13 +18,12 @@ test.after(async () => {
   site?.stop();
 });
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const text = (page, sel) => page.$eval(sel, (e) => e.textContent);
 
 test('el sitio publicado arranca, dibuja el mapa y no rompe la política de seguridad', { skip }, async () => {
   const { page, problems } = await openApp(browser, site.url);
-  await page.goto(site.url, { waitUntil: 'networkidle0' });
-  await wait(600);
+  await loadApp(page, site.url);
+  await page.waitForFunction(() => document.getElementById('gpsDot').dataset.status === 'ok');
 
   assert.match(await text(page, '#daysValue'), /^\d\d$/);
   assert.ok(Number(await text(page, '#navCount')) >= 1, 'debe mostrar los incidentes cargados');
@@ -44,16 +43,16 @@ test('el sitio publicado arranca, dibuja el mapa y no rompe la política de segu
 
 test('las hojas abren y cierran, y Ajustes solo trae lo público', { skip }, async () => {
   const { page, problems } = await openApp(browser, site.url);
-  await page.goto(site.url, { waitUntil: 'networkidle0' });
+  await loadApp(page, site.url);
 
   await page.click('#navIncidents');
-  await wait(200);
+  await waitHidden(page, '#sheet', false);
   assert.ok((await page.$$('.incident-card')).length >= 1);
   assert.match(await text(page, '#sheetTitle'), /Incidentes/);
   await page.click('#btnCloseSheet');
 
   await page.click('#navSettings');
-  await wait(200);
+  await waitHidden(page, '#paneSettings', false);
   assert.ok(await page.$('#chkGrid'));
   assert.equal(await page.$('#inpImport'), null);
   assert.equal(await page.$('#btnHistory'), null);
@@ -65,12 +64,11 @@ test('las hojas abren y cierran, y Ajustes solo trae lo público', { skip }, asy
 
 test('"Ver" en la lista centra el mapa y abre la tarjeta del incidente', { skip }, async () => {
   const { page } = await openApp(browser, site.url);
-  await page.goto(site.url, { waitUntil: 'networkidle0' });
-  await wait(300);
+  await loadApp(page, site.url);
   await page.click('#navIncidents');
-  await wait(200);
+  await page.waitForSelector('.incident-card [data-act="focus"]');
   await page.click('.incident-card [data-act="focus"]');
-  await wait(300);
+  await waitHidden(page, '#peekIncident', false);
   assert.equal(await page.$eval('#sheet', (e) => e.classList.contains('hidden')), true);
   assert.equal(await page.$eval('#peekIncident', (e) => e.classList.contains('hidden')), false);
   assert.match(await text(page, '#peekTitle'), /^#\d+/);
@@ -87,11 +85,11 @@ test('el menú de WhatsApp abre WhatsApp con el mensaje y la ubicación', { skip
     return true;
   };
   const { page } = await openApp(browser, site.url, { intercept });
-  await page.goto(site.url, { waitUntil: 'networkidle0' });
-  await wait(300);
+  await loadApp(page, site.url);
+  await page.waitForFunction(() => document.getElementById('gpsDot').dataset.status === 'ok');
   await page.click('#btnWhatsapp');
   await page.click('#waHelp');
-  await wait(500);
+  for (let i = 0; i < 50 && hits.length === 0; i++) await new Promise((r) => setTimeout(r, 100));
   assert.equal(hits.length, 1);
   const msg = decodeURIComponent(new URL(hits[0]).searchParams.get('text'));
   assert.match(msg, /NECESITO AYUDA/);
@@ -101,7 +99,7 @@ test('el menú de WhatsApp abre WhatsApp con el mensaje y la ubicación', { skip
 
 test('si el mapa no carga, se muestra un aviso con botón de reintentar (no una pantalla en blanco)', { skip }, async () => {
   const { page } = await openApp(browser, site.url, { blockMap: true });
-  await page.goto(site.url, { waitUntil: 'networkidle0' });
+  await page.goto(site.url, { waitUntil: 'load' });
   await page.waitForSelector('#bootError:not(.hidden)', { timeout: 15000 });
   assert.match(await text(page, '#bootError'), /No se pudo cargar el mapa/);
   assert.ok(await page.$('#btnRetryBoot'));
@@ -119,15 +117,15 @@ test('reportar: sin fecha no deja guardar; con "Ayer" guarda una sola vez y el c
     return true;
   };
   const { page, problems } = await openApp(browser, site.url, { intercept });
-  await page.goto(site.url, { waitUntil: 'networkidle0' });
+  await loadApp(page, site.url);
   const before = Number(await text(page, '#navCount'));
 
   await page.click('#navReport');
-  await wait(200);
+  await waitHidden(page, '#paneReport', false);
   await page.type('#repDescription', 'Prueba E2E del formulario');
   // Sin fecha no se puede guardar, y se marca qué falta.
   await page.evaluate(() => document.getElementById('paneReport').requestSubmit());
-  await wait(100);
+  await page.waitForFunction(() => document.getElementById('repWhen').closest('.field').classList.contains('field-error'));
   assert.equal(await page.$eval('#repWhen', (e) => e.closest('.field').classList.contains('field-error')), true);
   assert.equal(Number(await text(page, '#navCount')), before);
 
@@ -135,7 +133,7 @@ test('reportar: sin fecha no deja guardar; con "Ayer" guarda una sola vez y el c
   await page.select('#repCategory', 'Ruido Excesivo / Convivencia');
   // Un triple envío seguido tiene que guardar un solo incidente.
   await page.evaluate(() => { const f = document.getElementById('paneReport'); f.requestSubmit(); f.requestSubmit(); f.requestSubmit(); });
-  await wait(600);
+  await waitHidden(page, '#sheet', true);
   assert.equal(Number(await text(page, '#navCount')), before + 1);
   assert.equal(saves.length, 1, 'tres envíos seguidos = un solo guardado');
   const saved = saves[0].incidents.at(-1);
@@ -157,8 +155,8 @@ test('con las fuentes de Google permitidas, la política de seguridad no bloquea
   } });
   const fontsLoaded = [];
   page.on('response', (r) => { if (/fonts\.gstatic\.com/.test(r.url()) && r.ok()) fontsLoaded.push(r.url()); });
-  await page.goto(site.url, { waitUntil: 'networkidle0' }).catch(() => {});
-  await wait(1500);
+  await loadApp(page, site.url);
+  await new Promise((r) => setTimeout(r, 1500)); // las fuentes tardan en pedirse tras pintar; única pausa fija, y es el punto de la prueba
   assert.deepEqual(problems.filter((p) => /CSP|Content Security/i.test(p)), []);
   // Si hay internet, las fuentes tienen que haber cargado; si no hay, la prueba no puede afirmar nada.
   const online = await page.evaluate(() => document.fonts.size > 0);
