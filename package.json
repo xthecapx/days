@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
-    "map:update": "node scripts/update-map.mjs"
+    "map:update": "node scripts/update-map.mjs",
+    "test": "node --test \"tests/**/*.test.js\""
   },
   "keywords": [
     "pixel-art",

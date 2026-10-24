@@ -71,7 +71,7 @@ const clean = (value, max) =>
 const isNum = (n, min, max) => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
 
 /** Deja pasar SOLO los campos conocidos y con la forma esperada: nada de campos inventados. */
-function sanitizeIncident(raw) {
+export function sanitizeIncident(raw) {
   if (!raw || typeof raw !== 'object') throw new HttpError(400, 'Falta el incidente.');
   const description = clean(raw.description, 500);
   if (!description) throw new HttpError(400, 'La descripción es obligatoria.');
@@ -105,7 +105,7 @@ function sanitizeIncident(raw) {
 }
 
 /** Aplica el cambio al contenido actual de main. Devuelve { data, title, summary }. */
-function applyChange(data, change) {
+export function applyChange(data, change) {
   if (!change || typeof change !== 'object') throw new HttpError(400, 'Falta el cambio (change).');
   const incidents = data.incidents;
   const now = new Date().toISOString();
