@@ -10,6 +10,10 @@ import { loadMapData } from './map/mapData.js';
 import { mountMapInput } from './ui/mapInput.js';
 import { mountHud } from './ui/hud.js';
 import { mountSheet } from './ui/sheet.js';
+import { createGps } from './services/gps.js';
+import { createWhatsApp } from './services/whatsapp.js';
+import { gpsToPixel } from './map/gpsGrid.js';
+import { detectSectorName } from './map/mapData.js';
 
 /**
  * Composición de la app (único lugar donde se conectan las piezas):
@@ -23,7 +27,15 @@ async function boot() {
   const store = createStore(createInitialState());
   const camera = createCamera();
   const incidents = createIncidentService(store);
-  const actions = createActions({ store, camera, incidents });
+  const gps = createGps();
+  const actions = createActions({ store, camera, incidents, gps });
+  const whatsapp = createWhatsApp({
+    gps,
+    sectorAt: (lat, lng) => {
+      const tile = gpsToPixel(lat, lng);
+      return tile.insideBounds ? detectSectorName(tile.pixelX, tile.pixelY) : null;
+    }
+  });
   const viewport = $('mapViewport');
   const world = await loadMapData();
   const renderer = createMapRenderer($('mapCanvas'), world);
@@ -38,11 +50,12 @@ async function boot() {
   window.addEventListener('resize', fit);
 
   mountMapInput({ viewport, tooltip: $('mapHoverTooltip'), store, camera, actions });
-  mountHud({ store, camera, actions });
+  mountHud({ store, camera, actions, gps, whatsapp });
   mountSheet({ store, actions, incidents });
 
   await incidents.load();
   actions.goHome();
+  gps.start(); // una sola lectura al cargar; después solo se relee si la posición venció
 
   requestAnimationFrame(function loop(ts) {
     const state = store.get();
@@ -58,7 +71,7 @@ async function boot() {
   });
 
   // Útil para depurar desde la consola del navegador.
-  window.__app = { store, camera, actions };
+  window.__app = { store, camera, actions, gps };
 }
 
 boot();

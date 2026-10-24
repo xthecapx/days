@@ -90,7 +90,7 @@ src/main.js            Conecta todas las piezas
 src/state/             Store con suscripciones, acciones y selectores
 src/core/geo.js        Área del mapa y tamaño de la grilla (única definición)
 src/domain/            Reglas puras de incidentes e historial (sin DOM ni red)
-src/services/          Casos de uso sobre los incidentes
+src/services/          Casos de uso (incidentes) y servicios del teléfono (gps.js, whatsapp.js)
 src/storage/           Adaptadores: repositorio, copia del navegador, disco local y puente (PR)
 src/map/               Cámara, grilla, modelo del mapa, mapa de calor
 src/map/render/        Una capa de dibujo por archivo (base, calor, etiquetas, marcadores…)

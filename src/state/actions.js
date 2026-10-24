@@ -11,7 +11,7 @@ let draftSession = 0;
  * Todas las operaciones de la app en un solo lugar. Los componentes de UI
  * solo llaman a estas funciones y leen el store; no se hablan entre sí.
  */
-export function createActions({ store, camera, incidents }) {
+export function createActions({ store, camera, incidents, gps }) {
   const ui = (partial) => store.patch('ui', partial);
 
   const isMobile = () => window.innerWidth < 600;
@@ -34,23 +34,19 @@ export function createActions({ store, camera, incidents }) {
     camera.focusTile(inc.pixelX, inc.pixelY, Math.max(camera.state.zoom, 1.8));
   }
 
-  function locateMe() {
+  /** Centra el mapa en la posición del teléfono; reutiliza la lectura reciente en vez de pedir otra. */
+  async function locateMe() {
     const fallback = () => {
       const { home } = getWorld();
       selectPixel(home.x, home.y);
       camera.focusTile(home.x, home.y, 1.8);
     };
-    if (!navigator.geolocation) return fallback();
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const p = gpsToPixel(pos.coords.latitude, pos.coords.longitude);
-        if (!p.insideBounds) return fallback();
-        selectPixel(p.pixelX, p.pixelY);
-        camera.focusTile(p.pixelX, p.pixelY, 2);
-      },
-      fallback,
-      { enableHighAccuracy: true, timeout: 5000 }
-    );
+    const position = gps.fix() || (await gps.read());
+    if (!position) return fallback();
+    const p = gpsToPixel(position.lat, position.lng);
+    if (!p.insideBounds) return fallback();
+    selectPixel(p.pixelX, p.pixelY);
+    camera.focusTile(p.pixelX, p.pixelY, 2);
   }
 
   // ----- UI -----------------------------------------------------------------

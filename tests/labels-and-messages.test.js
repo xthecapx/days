@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { formatSpanishDateLabel } from '../src/domain/incident.js';
-import { buildAlertMessage, buildPointMessage, whatsappUrl, mapsLink } from '../src/services/alertService.js';
+import { buildAlertMessage, buildPointMessage, whatsappUrl, mapsLink } from '../src/services/whatsapp.js';
 
 test('formatSpanishDateLabel: confirmada', () => {
   assert.equal(formatSpanishDateLabel('2026-10-22', '20:45', true, true), '22 de octubre - 8:45 p. m.');
