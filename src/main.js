@@ -12,6 +12,7 @@ import { mountHud } from './ui/hud.js';
 import { mountSheet } from './ui/sheet.js';
 import { createGps } from './services/gps.js';
 import { createWhatsApp } from './services/whatsapp.js';
+import { startDayClock } from './core/clock.js';
 import { gpsToPixel } from './map/gpsGrid.js';
 
 /**
@@ -55,6 +56,7 @@ async function boot() {
 
   await incidents.load();
   actions.goHome();
+  startDayClock(store); // "hoy" sigue al reloj (medianoche y al volver a la pestaña)
   gps.start(); // una sola lectura al cargar; después solo se relee si la posición venció
 
   requestAnimationFrame(function loop(ts) {

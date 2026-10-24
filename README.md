@@ -86,9 +86,13 @@ No hay edificios en esta zona: las casas del mapa son decoración generada por e
 index.html             Estructura de la pantalla
 data/                  map.json · map-overrides.json · incidents.json
 scripts/update-map.mjs Descarga de OpenStreetMap
+scripts/build-site.mjs Arma la carpeta que se publica (dist/)
+worker/                Puente (Cloudflare Worker) que abre un PR por cada reporte
+tests/                 Pruebas con node:test
 src/main.js            Conecta todas las piezas
 src/state/             Store con suscripciones, acciones y selectores
 src/core/geo.js        Área del mapa y tamaño de la grilla (única definición)
+src/core/clock.js      "Hoy" de la app: sigue al reloj del dispositivo
 src/domain/            Reglas puras de incidentes e historial (sin DOM ni red)
 src/services/          Casos de uso (incidentes) y servicios del teléfono (gps.js, whatsapp.js)
 src/storage/           Adaptadores: repositorio, copia del navegador, disco local y puente (PR)
@@ -102,8 +106,18 @@ src/styles/            base.css · hud.css · sheets.css
 ## Publicar gratis en GitHub Pages
 
 1. Sube este repositorio a GitHub.
-2. En **Settings → Pages → Build and deployment** elige **GitHub Actions** (el flujo `.github/workflows/deploy-pages.yml` ya está incluido) o **Deploy from a branch** con `main` (`/ (root)`).
+2. En **Settings → Pages → Build and deployment** elige **GitHub Actions**. El flujo `.github/workflows/deploy-pages.yml` ejecuta `node scripts/build-site.mjs dist` y publica solo `index.html`, `src/` y `data/` (el Worker, los scripts y las pruebas no se publican). Puedes ver ese mismo resultado en local con `npm run build`.
 3. *(Opcional, para que los vecinos editen sin cuenta de GitHub)*: despliega `worker/github-wiki-bridge.js` en Cloudflare Workers con un token restringido a `data/incidents.json`, y define la variable `GITHUB_TOKEN`.
+
+> Con **Deploy from a branch** también funciona, pero publica todo el repositorio tal cual.
+
+## Pruebas
+
+```bash
+npm test
+```
+
+Usa `node --test` (sin dependencias) y corre también en cada PR (`.github/workflows/test.yml`). Cubren las reglas de incidentes, el historial, el almacenamiento, el GPS, WhatsApp, el mapa de calor, los nombres de sector, el reloj y la validación del Worker.
 
 ## Créditos y licencia de datos
 

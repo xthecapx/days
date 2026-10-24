@@ -1,12 +1,22 @@
 import { $, toIsoDate, downloadJson } from '../../core/dom.js';
+import { startOfDay } from '../../core/clock.js';
+
+/**
+ * Qué guardar cuando la persona cambia "Fecha de hoy". Vacío o igual a hoy = automática (sigue al reloj);
+ * cualquier otra fecha se fija a mano. Puro: `now` se puede reemplazar en pruebas.
+ */
+export function pickReferenceDate(value, now = new Date()) {
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d || value === toIsoDate(now)) return { referenceDate: startOfDay(now), referenceOverride: false };
+  return { referenceDate: new Date(y, m - 1, d, 12), referenceOverride: true };
+}
 
 /** Ajustes del mapa (capas, modo de alerta, fecha de hoy) y herramientas de datos (historial, exportar, importar, restaurar). */
 export function mountSettingsPane({ store, actions, incidents }) {
   $('chkGrid').addEventListener('change', (e) => store.patch('settings', { showGrid: e.target.checked }));
   $('selDecay').addEventListener('change', (e) => store.patch('settings', { decayMode: e.target.value }));
   $('inpToday').addEventListener('change', (e) => {
-    const [y, m, d] = e.target.value.split('-').map(Number);
-    if (y && m && d) store.patch('settings', { referenceDate: new Date(y, m - 1, d, 12) });
+    store.patch('settings', pickReferenceDate(e.target.value));
   });
   store.subscribe((s) => [s.settings], ([st]) => {
     $('chkGrid').checked = st.showGrid;

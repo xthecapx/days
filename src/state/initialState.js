@@ -1,4 +1,4 @@
-import { REFERENCE_DATE } from '../core/config.js';
+import { startOfDay } from '../core/clock.js';
 
 /**
  * Forma del estado de la app:
@@ -10,13 +10,14 @@ import { REFERENCE_DATE } from '../core/config.js';
  *  ui        → hoja abierta, popup, tarjeta expandida, modal de ajustes
  *  draft     → formulario de reporte en curso (null si está cerrado)
  */
-export function createInitialState() {
+export function createInitialState(now = new Date()) {
   return {
     data: { incidents: [], revisions: [] },
     sync: { message: '' },
     settings: {
       decayMode: 'actual',
-      referenceDate: REFERENCE_DATE,
+      referenceDate: startOfDay(now), // "hoy"; lo mantiene al día core/clock.js
+      referenceOverride: false, // true = la persona eligió una fecha en Ajustes y no se actualiza sola
       showGrid: false
     },
     selection: { pixel: { x: 0, y: 0 }, incidentId: 'inc-006', hovered: null },

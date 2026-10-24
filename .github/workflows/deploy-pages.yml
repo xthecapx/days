@@ -27,10 +27,15 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      # Solo se publica lo que el navegador necesita (index.html, src/, data/); el Worker, los scripts,
+      # las pruebas y el CI se quedan fuera.
+      - name: Build site folder
+        run: node scripts/build-site.mjs dist
+
       - name: Upload static site artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "."
+          path: "dist"
 
       - name: Deploy to GitHub Pages
         id: deployment

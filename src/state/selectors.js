@@ -1,4 +1,5 @@
 import { computePixelHeatmap } from '../map/heatmapEngine.js';
+import { toIsoDate } from '../core/dom.js';
 
 export const selectIncidents = (s) => s.data.incidents || [];
 export const selectRevisions = (s) => s.data.revisions || [];
@@ -8,14 +9,14 @@ export function findIncident(state, id) {
 }
 
 /** El borrador del formulario se dibuja como "fantasma" en el mapa mientras se edita. */
-function draftToPreview(draft) {
+function draftToPreview(draft, fallbackDate) {
   if (!draft || Number.isNaN(draft.pixelX) || Number.isNaN(draft.pixelY)) return null;
   return {
     id: 'preview-inc',
     pixelX: draft.pixelX,
     pixelY: draft.pixelY,
     severity: draft.severity || 4,
-    date: draft.date || '2026-10-22',
+    date: draft.date || fallbackDate,
     impactType: draft.impactType || 'seguridad'
   };
 }
@@ -25,7 +26,7 @@ function draftToPreview(draft) {
  * descripción o el sector NO la cambia, así que no obliga a recalcular los 40 000 tiles.
  */
 export function selectPreviewKey(s) {
-  const p = draftToPreview(s.draft);
+  const p = draftToPreview(s.draft, toIsoDate(s.settings.referenceDate));
   return p ? `${p.pixelX},${p.pixelY},${p.severity},${p.date},${p.impactType}` : '';
 }
 
@@ -40,7 +41,7 @@ export function selectHeatmap(s) {
   const value = computePixelHeatmap(selectIncidents(s), {
     now: s.settings.referenceDate,
     decayMode: s.settings.decayMode,
-    previewIncident: draftToPreview(s.draft)
+    previewIncident: draftToPreview(s.draft, toIsoDate(s.settings.referenceDate))
   });
   heatCache = { deps, value };
   return value;
