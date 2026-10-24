@@ -9,12 +9,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { GEO_BOUNDS } from '../src/core/geo.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'data', 'map.json');
 
-// Área del juego (~2.8 km x 2.9 km). Cambia estos límites para ampliar el mapa.
-export const BOUNDS = { south: 6.995, north: 7.02, west: -73.076, east: -73.05 };
+// El área se define una sola vez, en src/core/geo.js (también la usan el mapa y el Worker).
+const BOUNDS = GEO_BOUNDS;
 
 const SERVERS = [
   'https://overpass-api.de/api/interpreter',

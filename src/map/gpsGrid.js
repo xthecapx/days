@@ -1,24 +1,17 @@
 /**
  * Grilla del juego sobre coordenadas reales.
  *
- * lat/lng es la fuente de verdad (así se guardan los incidentes); la grilla de
- * 200×200 tiles (~14 m por tile) es solo una vista sobre esas coordenadas.
+ * lat/lng es la fuente de verdad (así se guardan los incidentes); la grilla
+ * (200×200 tiles de ~14 m) es solo una vista sobre esas coordenadas.
  * Cambiar GEO_BOUNDS o el tamaño de grilla NO mueve ningún incidente.
  *
  * Convención de tiles: el centro del tile de índice i está en la coordenada
  * continua i (por eso geoToTileF resta 0.5).
  */
 
-export const GRID_WIDTH = 200;
-export const GRID_HEIGHT = 200;
-
-// Debe coincidir con BOUNDS de scripts/update-map.mjs
-export const GEO_BOUNDS = {
-  north: 7.02,
-  south: 6.995,
-  west: -73.076,
-  east: -73.05
-};
+// El área y el tamaño de la grilla se definen una sola vez, en core/geo.js.
+import { GEO_BOUNDS, GRID_WIDTH, GRID_HEIGHT } from '../core/geo.js';
+export { GEO_BOUNDS, GRID_WIDTH, GRID_HEIGHT };
 
 const LNG_SPAN = GEO_BOUNDS.east - GEO_BOUNDS.west;
 const LAT_SPAN = GEO_BOUNDS.north - GEO_BOUNDS.south;

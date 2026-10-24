@@ -25,10 +25,10 @@
  *     "commitMessage": "texto corto" }
  */
 
+import { GEO_BOUNDS as BOUNDS, GRID_WIDTH, GRID_HEIGHT } from '../src/core/geo.js';
+
 const FILE_PATH = 'data/incidents.json';
 const MAX_BODY_BYTES = 20_000;
-const BOUNDS = { south: 6.9, north: 7.1, west: -73.15, east: -72.98 };
-const GRID = 200;
 const IMPACTS = new Set(['seguridad', 'tranquilidad']);
 
 const DEFAULT_MAX_OPEN_REPORTS = 10;
@@ -79,7 +79,7 @@ export function sanitizeIncident(raw) {
   const time = /^\d{2}:\d{2}$/.test(raw.time || '') ? raw.time : '12:00';
   const severity = Math.round(Number(raw.severity));
   if (!(severity >= 1 && severity <= 5)) throw new HttpError(400, 'Gravedad inválida (1 a 5).');
-  if (!Number.isInteger(raw.pixelX) || !Number.isInteger(raw.pixelY) || raw.pixelX < 0 || raw.pixelY < 0 || raw.pixelX >= GRID || raw.pixelY >= GRID) {
+  if (!Number.isInteger(raw.pixelX) || !Number.isInteger(raw.pixelY) || raw.pixelX < 0 || raw.pixelY < 0 || raw.pixelX >= GRID_WIDTH || raw.pixelY >= GRID_HEIGHT) {
     throw new HttpError(400, 'Ubicación inválida.');
   }
   if (!isNum(raw.lat, BOUNDS.south, BOUNDS.north) || !isNum(raw.lng, BOUNDS.west, BOUNDS.east)) {

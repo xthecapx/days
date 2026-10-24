@@ -1,4 +1,5 @@
 import { gpsToPixel } from '../map/gpsGrid.js';
+import { GEO_BOUNDS } from '../core/geo.js';
 
 /**
  * lat/lng es la fuente de verdad del incidente; el tile se recalcula en cada carga
@@ -18,10 +19,9 @@ export function normalizeStore(data) {
     schemaVersion: 3,
     neighborhood: data.neighborhood || 'Sendero Río del Hato y Ciudad Tierrabuena',
     referenceCenter: data.referenceCenter || {
-      lat: 7.0060325,
-      lng: -73.0640861,
-      zoom: 16.21,
-      userPositionPixel: { x: 68, y: 49, label: 'Hogar' }
+      lat: (GEO_BOUNDS.north + GEO_BOUNDS.south) / 2,
+      lng: (GEO_BOUNDS.east + GEO_BOUNDS.west) / 2,
+      zoom: 16.21
     },
     lastUpdated: data.lastUpdated || new Date().toISOString(),
     incidents,

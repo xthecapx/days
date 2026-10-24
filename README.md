@@ -44,14 +44,14 @@ Los incidentes se guardan con `lat`/`lng`. El tile `(pixelX, pixelY)` se recalcu
 npm run map:update
 ```
 
-Descarga el área definida en `BOUNDS` de `scripts/update-map.mjs` y reescribe `data/map.json`. Si el servidor público (Overpass) está saturado, el script reintenta con otros servidores; si falla del todo, espera unos minutos y repite. Después recarga la app y haz `git add data/map.json`.
+Descarga el área definida en `src/core/geo.js` y reescribe `data/map.json`. Si el servidor público (Overpass) está saturado, el script reintenta con otros servidores; si falla del todo, espera unos minutos y repite. Después recarga la app y haz `git add data/map.json`.
 
 ### Cambiar o ampliar el área
 
-1. Edita `BOUNDS` en `scripts/update-map.mjs` (`south`, `north`, `west`, `east`).
-2. Pon **los mismos valores** en `GEO_BOUNDS` de `src/map/gpsGrid.js`.
-3. Ajusta `GRID_WIDTH`/`GRID_HEIGHT` de ese archivo para mantener tiles de ~14 m (área en metros ÷ 14).
-4. Ejecuta `npm run map:update`.
+1. Edita `GEO_BOUNDS` (`south`, `north`, `west`, `east`) y, si hace falta, `GRID_WIDTH`/`GRID_HEIGHT` en `src/core/geo.js`. Es el único lugar: el mapa, el script y el Worker que valida los reportes lo leen de ahí.
+2. Mantén tiles de ~14 m (área en metros ÷ 14).
+3. Ejecuta `npm run map:update`.
+4. Si cambiaste el Worker o los límites, se vuelve a desplegar solo al hacer push a `main`.
 
 Los incidentes se reubican solos. Áreas mucho mayores (toda una ciudad) necesitan otra arquitectura: el mapa se dibuja en un solo lienzo y los datos viven en un solo archivo.
 
@@ -88,6 +88,7 @@ data/                  map.json · map-overrides.json · incidents.json
 scripts/update-map.mjs Descarga de OpenStreetMap
 src/main.js            Conecta todas las piezas
 src/state/             Store con suscripciones, acciones y selectores
+src/core/geo.js        Área del mapa y tamaño de la grilla (única definición)
 src/domain/            Reglas puras de incidentes e historial (sin DOM ni red)
 src/services/          Casos de uso sobre los incidentes
 src/storage/           Adaptadores: repositorio, copia del navegador, disco local y puente (PR)
