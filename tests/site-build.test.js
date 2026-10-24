@@ -1,70 +1,89 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, readdirSync, statSync, existsSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, readdirSync, statSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve, relative } from 'node:path';
-import { buildSite, SITE_PATHS } from '../scripts/build-site.mjs';
+import { fileURLToPath } from 'node:url';
 
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = mkdtempSync(join(tmpdir(), 'site-'));
-buildSite(out);
+// Construye con Vite de verdad (el mismo comando que usa el despliegue), en una carpeta temporal.
+execFileSync('npx', ['vite', 'build', '--outDir', out, '--emptyOutDir'], { cwd: ROOT, stdio: 'pipe' });
 test.after(() => rmSync(out, { recursive: true, force: true }));
 
 const walk = (d) => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]));
 const read = (p) => readFileSync(p, 'utf8');
+const html = read(join(out, 'index.html'));
 
-test('el sitio publicado incluye solo index.html, src/ y data/', () => {
-  assert.deepEqual(readdirSync(out).sort(), [...SITE_PATHS].sort());
-  for (const secret of ['worker', 'scripts', 'tests', '.github', 'server.mjs', 'package.json', 'wrangler.jsonc']) {
-    assert.equal(existsSync(join(out, secret)), false, `${secret} no debe publicarse`);
+test('el sitio publicado tiene index.html, assets/ y data/, y nada del repositorio', () => {
+  assert.deepEqual(readdirSync(out).sort(), ['assets', 'data', 'index.html']);
+  for (const leak of ['worker', 'scripts', 'tests', '.github', 'src', 'package.json', 'vite.config.js', 'wrangler.jsonc', 'node_modules']) {
+    assert.equal(existsSync(join(out, leak)), false, `${leak} no debe publicarse`);
   }
 });
 
-test('cada import relativo del código publicado apunta a un archivo que también se publica', () => {
-  const broken = [];
-  for (const file of walk(join(out, 'src')).filter((f) => f.endsWith('.js'))) {
-    for (const m of read(file).matchAll(/(?:from|import)\s*\(?\s*['"](\.{1,2}\/[^'"]+)['"]/g)) {
-      const target = resolve(dirname(file), m[1]);
-      if (!existsSync(target)) broken.push(`${relative(out, file)} -> ${m[1]}`);
-    }
-  }
-  assert.deepEqual(broken, []);
-});
-
-test('ningún archivo publicado importa código que se queda fuera (worker/, scripts/)', () => {
-  for (const file of walk(join(out, 'src')).filter((f) => f.endsWith('.js'))) {
-    assert.doesNotMatch(read(file), /from\s+['"][^'"]*(worker|scripts)\//, relative(out, file));
+test('index.html referencia solo archivos que existen, con rutas relativas (sirve en un subdirectorio de Pages)', () => {
+  const refs = [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1]).filter((r) => !/^(https?:|#|data:)/.test(r));
+  assert.ok(refs.some((r) => r.endsWith('.js')) && refs.some((r) => r.endsWith('.css')), refs.join());
+  for (const r of refs) {
+    assert.doesNotMatch(r, /^\//, `${r} debe ser relativa`);
+    assert.ok(existsSync(join(out, r)), r);
   }
 });
 
-test('index.html: sus hojas de estilo y su script existen en el sitio', () => {
-  const html = read(join(out, 'index.html'));
-  const refs = [...html.matchAll(/(?:href|src)="(\.\/[^"]+)"/g)].map((m) => m[1]);
-  assert.ok(refs.includes('./src/main.js') && refs.some((r) => r.endsWith('.css')));
-  for (const r of refs) assert.ok(existsSync(join(out, r)), r);
+test('el código va empaquetado: un solo .js y un solo .css con nombre con hash', () => {
+  const assets = readdirSync(join(out, 'assets'));
+  assert.equal(assets.filter((f) => f.endsWith('.js')).length, 1, assets.join());
+  assert.equal(assets.filter((f) => f.endsWith('.css')).length, 1, assets.join());
+  assert.ok(assets.every((f) => /-[A-Za-z0-9_-]{8}\./.test(f)), 'los nombres llevan hash: un despliegue nuevo no mezcla archivos viejos y nuevos');
 });
 
-test('los datos que la app descarga con fetch("./data/...") están en el sitio', () => {
+test('el bundle no arrastra código del Worker ni de los scripts', () => {
+  const js = read(join(out, 'assets', readdirSync(join(out, 'assets')).find((f) => f.endsWith('.js'))));
+  assert.doesNotMatch(js, /PUENTE ANÓNIMO|GITHUB_TOKEN|overpass/i);
+});
+
+test('data/ queda en la ruta original y con los tres archivos que la app descarga', () => {
   const wanted = new Set();
-  for (const file of walk('src').filter((f) => f.endsWith('.js'))) {
+  for (const file of walk(join(ROOT, 'src')).filter((f) => f.endsWith('.js'))) {
     for (const m of read(file).matchAll(/['"`]\.\/(data\/[A-Za-z0-9_.-]+\.json)/g)) wanted.add(m[1]);
   }
   assert.ok(wanted.has('data/incidents.json') && wanted.has('data/map.json') && wanted.has('data/map-overrides.json'), [...wanted].join());
-  for (const f of wanted) assert.ok(existsSync(join(out, f)), f);
+  for (const f of wanted) {
+    assert.ok(existsSync(join(out, f)), f);
+    assert.equal(read(join(out, f)), read(join(ROOT, f)), `${f} se copia sin cambios`);
+    JSON.parse(read(join(out, f)));
+  }
 });
 
-test('reconstruir limpia la carpeta de salida (no quedan archivos viejos)', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'site2-'));
-  buildSite(dir);
-  const stale = join(dir, 'viejo.txt'); // simula un archivo de una versión anterior
-  writeFileSync(stale, 'x');
-  buildSite(dir);
-  assert.equal(existsSync(stale), false);
-  rmSync(dir, { recursive: true, force: true });
+test('cada $("id") del bundle existe en el index.html publicado', () => {
+  const js = read(join(out, 'assets', readdirSync(join(out, 'assets')).find((f) => f.endsWith('.js'))));
+  const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  const missing = [...new Set([...js.matchAll(/\$\("([A-Za-z0-9_]+)"\)/g)].map((m) => m[1]))].filter((id) => !ids.has(id));
+  assert.deepEqual(missing, []);
 });
 
-test('el flujo de despliegue usa el script y publica dist/', () => {
-  const wf = read(new URL('../.github/workflows/deploy-pages.yml', import.meta.url));
-  assert.match(wf, /node scripts\/build-site\.mjs dist/);
-  assert.match(wf, /path:\s*"dist"/);
-  assert.doesNotMatch(wf, /path:\s*"\."/);
+test('la configuración de Vite sigue guardando en dev y copiando data/', () => {
+  const cfg = read(join(ROOT, 'vite.config.js'));
+  assert.match(cfg, /base:\s*'\.\/'/);
+  assert.match(cfg, /\/api\/local-wiki-save/);
+  assert.match(cfg, /closeBundle/);
+});
+
+test('los flujos de CI instalan, prueban y construyen con npm', () => {
+  const deploy = read(join(ROOT, '.github/workflows/deploy-pages.yml'));
+  assert.match(deploy, /npm ci/);
+  assert.match(deploy, /npm run build/);
+  assert.match(deploy, /path:\s*"dist"/);
+  assert.doesNotMatch(deploy, /build-site/);
+  const ci = read(join(ROOT, '.github/workflows/test.yml'));
+  assert.match(ci, /npm ci/);
+  assert.match(ci, /npm test/);
+  assert.match(ci, /npm run build/);
+});
+
+test('el servidor y el script de build caseros ya no existen', () => {
+  assert.equal(existsSync(join(ROOT, 'server.mjs')), false);
+  assert.equal(existsSync(join(ROOT, 'scripts/build-site.mjs')), false);
 });

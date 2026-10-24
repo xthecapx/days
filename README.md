@@ -12,13 +12,14 @@ Aplicación web **100% en español**, **100% anónima** y lista para publicar gr
 
 ## Uso local
 
+Necesitas Node 20.19+ o 22.12+ (hay un `.nvmrc`).
+
 ```bash
-npm run dev
+npm install     # una sola vez
+npm run dev     # servidor de desarrollo (Vite) en http://localhost:5173
 ```
 
-Abre `http://localhost:5173` (en el celular: `http://<IP-de-tu-computador>:5173`, misma red Wi-Fi). En local, cada cambio hecho desde la interfaz se guarda en `data/incidents.json`.
-
-> ⚠️ Mientras no cambies la configuración del puente, **guardar un reporte también hace un commit en GitHub** a través del Worker de Cloudflare. Para probar sin publicar, ejecuta una vez en la consola del navegador y recarga:
+Abre `http://localhost:5173`. En `localhost` cada cambio hecho desde la interfaz se guarda directo en `data/incidents.json` y **no** se envía al puente. En el celular usa `http://<IP-de-tu-computador>:5173` (misma red Wi-Fi), pero ojo: con una IP la app se comporta como en producción y **guardar un reporte abre un Pull Request** a través del Worker de Cloudflare. Para probar desde el celular sin publicar, ejecuta una vez en la consola del navegador y recarga:
 >
 > ```js
 > localStorage.setItem('vecinos_rio_hato_github_bridge_v1', JSON.stringify({bridgeUrl:'', githubRepo:'xthecapx/days'}))
@@ -86,7 +87,7 @@ No hay edificios en esta zona: las casas del mapa son decoración generada por e
 index.html             Estructura de la pantalla
 data/                  map.json · map-overrides.json · incidents.json
 scripts/update-map.mjs Descarga de OpenStreetMap
-scripts/build-site.mjs Arma la carpeta que se publica (dist/)
+vite.config.js        Vite: servidor de desarrollo, empaquetado y copia de data/
 worker/                Puente (Cloudflare Worker) que abre un PR por cada reporte
 tests/                 Pruebas con node:test
 src/main.js            Conecta todas las piezas
@@ -106,7 +107,7 @@ src/styles/            base.css · hud.css · sheets.css
 ## Publicar gratis en GitHub Pages
 
 1. Sube este repositorio a GitHub.
-2. En **Settings → Pages → Build and deployment** elige **GitHub Actions**. El flujo `.github/workflows/deploy-pages.yml` ejecuta `node scripts/build-site.mjs dist` y publica solo `index.html`, `src/` y `data/` (el Worker, los scripts y las pruebas no se publican). Puedes ver ese mismo resultado en local con `npm run build`.
+2. En **Settings → Pages → Build and deployment** elige **GitHub Actions**. El flujo `.github/workflows/deploy-pages.yml` ejecuta `npm ci && npm run build` y publica solo `dist/`: `index.html`, un `.js` y un `.css` empaquetados por Vite (con hash en el nombre, así un despliegue nuevo nunca se mezcla con archivos viejos en caché) y `data/` copiada tal cual. El Worker, los scripts y las pruebas no se publican. Para ver ese mismo resultado en local: `npm run build && npm run preview`.
 3. *(Opcional, para que los vecinos editen sin cuenta de GitHub)*: despliega `worker/github-wiki-bridge.js` en Cloudflare Workers con un token restringido a `data/incidents.json`, y define la variable `GITHUB_TOKEN`.
 
 > Con **Deploy from a branch** también funciona, pero publica todo el repositorio tal cual.
@@ -117,7 +118,7 @@ src/styles/            base.css · hud.css · sheets.css
 npm test
 ```
 
-Usa `node --test` (sin dependencias) y corre también en cada PR (`.github/workflows/test.yml`). Cubren las reglas de incidentes, el almacenamiento, el GPS, WhatsApp, el mapa de calor, los nombres de sector, el reloj y la validación del Worker.
+Usa `node --test` (sin librerías de pruebas) y corre en cada PR junto con `npm run build` (`.github/workflows/test.yml`). Cubren las reglas de incidentes, el almacenamiento, el GPS, WhatsApp, el mapa de calor, los nombres de sector, el reloj y la validación del Worker.
 
 ## Créditos y licencia de datos
 

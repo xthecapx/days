@@ -27,10 +27,18 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # Solo se publica lo que el navegador necesita (index.html, src/, data/); el Worker, los scripts,
-      # las pruebas y el CI se quedan fuera.
-      - name: Build site folder
-        run: node scripts/build-site.mjs dist
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Vite empaqueta index.html y src/ y copia data/ tal cual; el Worker, los scripts, las pruebas y el
+      # CI se quedan fuera.
+      - name: Build site
+        run: npm run build
 
       - name: Upload static site artifact
         uses: actions/upload-pages-artifact@v3

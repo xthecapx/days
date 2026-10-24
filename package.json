@@ -4,10 +4,10 @@
   "description": "Monitor vecinal 100% anónimo en 2D Pixel Art para el Sendero Río del Hato y Ciudad Tierrabuena",
   "type": "module",
   "scripts": {
-    "dev": "node server.mjs",
-    "start": "node server.mjs",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "map:update": "node scripts/update-map.mjs",
-    "build": "node scripts/build-site.mjs",
     "test": "node --test \"tests/**/*.test.js\""
   },
   "keywords": [
@@ -17,5 +17,11 @@
     "wiki",
     "rio-del-hato"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^8.3.5"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  }
 }
