@@ -1,6 +1,5 @@
 import { $, setHidden, showToast } from '../core/dom.js';
 import { pixelToGps } from '../map/gpsGrid.js';
-import { detectSectorName } from '../map/mapData.js';
 
 // Punto de estado del GPS sobre el botón: verde = listo, ámbar = buscando o vencido, rojo = no disponible.
 export const GPS_LABELS = {
@@ -21,7 +20,7 @@ export const noLocationMessage = (error) =>
  * Botón de WhatsApp: el icono abre un menú de dos acciones; nada se envía sin que la persona pulse enviar
  * en WhatsApp. También pinta el punto de estado del GPS.
  */
-export function mountWhatsAppMenu({ store, gps, whatsapp }) {
+export function mountWhatsAppMenu({ store, gps, whatsapp, sectorName }) {
   gps.subscribe((status, fix) => {
     const dot = $('gpsDot');
     dot.dataset.status = status;
@@ -80,6 +79,6 @@ export function mountWhatsAppMenu({ store, gps, whatsapp }) {
     closeWaMenu();
     const { pixel } = store.get().selection;
     const point = pixelToGps(pixel.x, pixel.y);
-    whatsapp.sharePoint({ lat: point.lat, lng: point.lng }, detectSectorName(point.pixelX, point.pixelY));
+    whatsapp.sharePoint({ lat: point.lat, lng: point.lng }, sectorName(point.pixelX, point.pixelY));
   });
 }

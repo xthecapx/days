@@ -1,6 +1,6 @@
 import { $, setHidden } from '../core/dom.js';
 import { calculateDaysSince, latestIncident } from '../domain/incident.js';
-import { selectHeatmap, selectIncidents } from '../state/selectors.js';
+import { selectHeatmap, selectIncidents, selectPreviewKey } from '../state/selectors.js';
 
 const HEADLINE = 'DÍAS DESDE EL ÚLTIMO INCIDENTE';
 
@@ -24,7 +24,7 @@ export function mountAlertCard({ store, actions, measureInsets }) {
   $('alertToggle').addEventListener('click', () => actions.toggleAlert());
 
   store.subscribe(
-    (s) => [s.data.incidents, s.settings.referenceDate, s.settings.decayMode, s.draft],
+    (s) => [s.data.incidents, s.settings.referenceDate, s.settings.decayMode, selectPreviewKey(s)],
     () => render(store.get())
   );
 

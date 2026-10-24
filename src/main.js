@@ -6,14 +6,13 @@ import { createIncidentService } from './services/incidentService.js';
 import { createActions } from './state/actions.js';
 import { createCamera } from './map/camera.js';
 import { createMapRenderer } from './map/mapRenderer.js';
-import { loadMapData } from './map/mapData.js';
+import { loadMapData, createSectorNamer } from './map/mapData.js';
 import { mountMapInput } from './ui/mapInput.js';
 import { mountHud } from './ui/hud.js';
 import { mountSheet } from './ui/sheet.js';
 import { createGps } from './services/gps.js';
 import { createWhatsApp } from './services/whatsapp.js';
 import { gpsToPixel } from './map/gpsGrid.js';
-import { detectSectorName } from './map/mapData.js';
 
 /**
  * Composición de la app (único lugar donde se conectan las piezas):
@@ -24,20 +23,21 @@ import { detectSectorName } from './map/mapData.js';
  *   map/*      → cámara + renderer por capas (sin conocer el DOM de la HUD)
  */
 async function boot() {
+  const world = await loadMapData();
+  const sectorName = createSectorNamer(world);
   const store = createStore(createInitialState());
   const camera = createCamera();
-  const incidents = createIncidentService(store);
+  const incidents = createIncidentService(store, { sectorName });
   const gps = createGps();
-  const actions = createActions({ store, camera, incidents, gps });
+  const actions = createActions({ store, camera, incidents, gps, world, sectorName });
   const whatsapp = createWhatsApp({
     gps,
     sectorAt: (lat, lng) => {
       const tile = gpsToPixel(lat, lng);
-      return tile.insideBounds ? detectSectorName(tile.pixelX, tile.pixelY) : null;
+      return tile.insideBounds ? sectorName(tile.pixelX, tile.pixelY) : null;
     }
   });
   const viewport = $('mapViewport');
-  const world = await loadMapData();
   const renderer = createMapRenderer($('mapCanvas'), world);
 
   const fit = () => {
@@ -49,8 +49,8 @@ async function boot() {
   fit();
   window.addEventListener('resize', fit);
 
-  mountMapInput({ viewport, tooltip: $('mapHoverTooltip'), store, camera, actions });
-  mountHud({ store, camera, actions, gps, whatsapp });
+  mountMapInput({ viewport, tooltip: $('mapHoverTooltip'), store, camera, actions, sectorName });
+  mountHud({ store, camera, actions, gps, whatsapp, sectorName });
   mountSheet({ store, actions, incidents });
 
   await incidents.load();
@@ -71,7 +71,7 @@ async function boot() {
   });
 
   // Útil para depurar desde la consola del navegador.
-  window.__app = { store, camera, actions, gps };
+  window.__app = { store, camera, actions, gps, world };
 }
 
 boot();

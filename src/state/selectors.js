@@ -20,11 +20,20 @@ function draftToPreview(draft) {
   };
 }
 
+/**
+ * Clave de lo que el borrador aporta al mapa de calor (ubicación, gravedad, fecha, tipo). Escribir la
+ * descripción o el sector NO la cambia, así que no obliga a recalcular los 40 000 tiles.
+ */
+export function selectPreviewKey(s) {
+  const p = draftToPreview(s.draft);
+  return p ? `${p.pixelX},${p.pixelY},${p.severity},${p.date},${p.impactType}` : '';
+}
+
 let heatCache = { deps: null, value: null };
 
 /** Mapa de calor memoizado: solo se recalcula si cambia alguna de sus entradas. */
 export function selectHeatmap(s) {
-  const deps = [s.data.incidents, s.settings.decayMode, s.settings.referenceDate, s.draft];
+  const deps = [s.data.incidents, s.settings.decayMode, s.settings.referenceDate, selectPreviewKey(s)];
   if (heatCache.deps && deps.every((d, i) => Object.is(d, heatCache.deps[i]))) {
     return heatCache.value;
   }

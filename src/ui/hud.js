@@ -9,11 +9,11 @@ import { mountWhatsAppMenu } from './whatsappMenu.js';
  * Barra superior, banner de modo, controles del mapa y zona inferior (tarjeta + navegación).
  * Cada pieza vive en su archivo; aquí solo se conectan y quedan los controles sencillos.
  */
-export function mountHud({ store, camera, actions, gps, whatsapp }) {
+export function mountHud({ store, camera, actions, gps, whatsapp, sectorName }) {
   const measureInsets = mountInsets({ camera });
   mountAlertCard({ store, actions, measureInsets });
-  mountPeek({ store, actions, measureInsets });
-  mountWhatsAppMenu({ store, gps, whatsapp });
+  mountPeek({ store, actions, measureInsets, sectorName });
+  mountWhatsAppMenu({ store, gps, whatsapp, sectorName });
 
   // ----- Controles del mapa y navegación --------------------------------------
   $('btnZoomIn').addEventListener('click', () => camera.zoomBy(1.3));

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { computePixelHeatmap, getTemporalWeight } from '../src/map/heatmapEngine.js';
+import { getHeatPixelColor } from '../src/map/render/heat.js';
 import { isTranquilityIncident } from '../src/domain/incident.js';
 import { GRID_WIDTH } from '../src/map/gpsGrid.js';
 
@@ -52,4 +53,17 @@ test('isTranquilityIncident y getTemporalWeight', () => {
   assert.equal(getTemporalWeight(1), 1);
   assert.ok(getTemporalWeight(100) < getTemporalWeight(10));
   assert.equal(getTemporalWeight(500, 'historico'), 1);
+});
+
+test('getHeatPixelColor: epicentro, escala de seguridad, tranquilidad y celda vacía', () => {
+  const cell = (o) => ({ heat: 0, tranquilityHeat: 0, maxFreshness: 1, isCenter: false, isTranquilityCenter: false, ...o });
+  assert.equal(getHeatPixelColor(null), null);
+  assert.equal(getHeatPixelColor(cell({})), null);
+  assert.equal(getHeatPixelColor(cell({ heat: 1, isCenter: true })).level, 'EPICENTRO');
+  assert.equal(getHeatPixelColor(cell({ heat: 0.7 })).level, 'ALTO');
+  assert.equal(getHeatPixelColor(cell({ heat: 0.4 })).level, 'MEDIO');
+  assert.equal(getHeatPixelColor(cell({ heat: 0.1 })).level, 'PERIFERIA');
+  assert.match(getHeatPixelColor(cell({ tranquilityHeat: 0.5, isTranquilityCenter: true })).level, /TRANQUILIDAD/);
+  // lo viejo es más naranja que lo reciente
+  assert.notEqual(getHeatPixelColor(cell({ heat: 0.4, maxFreshness: 1 })).fill, getHeatPixelColor(cell({ heat: 0.4, maxFreshness: 0.5 })).fill);
 });

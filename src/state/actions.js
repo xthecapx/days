@@ -1,7 +1,6 @@
 import { CATEGORIES, DEFAULT_CATEGORY } from '../core/config.js';
 import { toIsoDate } from '../core/dom.js';
 import { gpsToPixel, pixelToGps } from '../map/gpsGrid.js';
-import { detectSectorName, getWorld } from '../map/mapData.js';
 import { isTranquilityIncident } from '../domain/incident.js';
 import { findIncident } from './selectors.js';
 
@@ -11,14 +10,14 @@ let draftSession = 0;
  * Todas las operaciones de la app en un solo lugar. Los componentes de UI
  * solo llaman a estas funciones y leen el store; no se hablan entre sí.
  */
-export function createActions({ store, camera, incidents, gps }) {
+export function createActions({ store, camera, incidents, gps, world, sectorName }) {
+  const { home } = world;
   const ui = (partial) => store.patch('ui', partial);
 
   const isMobile = () => window.innerWidth < 600;
 
   // ----- Cámara / selección -------------------------------------------------
   function goHome(zoom) {
-    const { home } = getWorld();
     camera.focusTile(home.x, home.y - 1, zoom ?? (isMobile() ? 1.45 : 1.75));
     store.patch('selection', { pixel: { x: home.x, y: home.y } });
   }
@@ -37,8 +36,7 @@ export function createActions({ store, camera, incidents, gps }) {
   /** Centra el mapa en la posición del teléfono; reutiliza la lectura reciente en vez de pedir otra. */
   async function locateMe() {
     const fallback = () => {
-      const { home } = getWorld();
-      selectPixel(home.x, home.y);
+        selectPixel(home.x, home.y);
       camera.focusTile(home.x, home.y, 1.8);
     };
     const position = gps.fix() || (await gps.read());
@@ -107,7 +105,7 @@ export function createActions({ store, camera, incidents, gps }) {
           number: incident.number,
           pixelX: gps.pixelX,
           pixelY: gps.pixelY,
-          sector: incident.sector || detectSectorName(gps.pixelX, gps.pixelY),
+          sector: incident.sector || sectorName(gps.pixelX, gps.pixelY),
           sectorTouched: false,
           impactType: calm ? 'tranquilidad' : 'seguridad',
           category: incident.category || DEFAULT_CATEGORY,
@@ -124,7 +122,7 @@ export function createActions({ store, camera, incidents, gps }) {
           editingId: null,
           pixelX: gps.pixelX,
           pixelY: gps.pixelY,
-          sector: detectSectorName(gps.pixelX, gps.pixelY),
+          sector: sectorName(gps.pixelX, gps.pixelY),
           sectorTouched: false,
           impactType: 'seguridad',
           category: DEFAULT_CATEGORY,
@@ -196,7 +194,7 @@ export function createActions({ store, camera, incidents, gps }) {
 
     if (mode.type === 'pick' && draft) {
       const gps = pixelToGps(x, y);
-      const sector = draft.sectorTouched ? draft.sector : detectSectorName(gps.pixelX, gps.pixelY);
+      const sector = draft.sectorTouched ? draft.sector : sectorName(gps.pixelX, gps.pixelY);
       store.set({
         mode: { type: 'browse' },
         draft: { ...draft, pixelX: gps.pixelX, pixelY: gps.pixelY, sector },

@@ -1,5 +1,4 @@
 import { pixelToGps } from '../map/gpsGrid.js';
-import { detectSectorName } from '../map/mapData.js';
 import { planSave, planConfirm, planRevert } from '../domain/storePlans.js';
 import { loadStore, persistStore, loadSeed } from '../storage/incidentStore.js';
 
@@ -7,7 +6,7 @@ import { loadStore, persistStore, loadSeed } from '../storage/incidentStore.js';
  * Casos de uso sobre los incidentes: arma el cambio con las reglas de `domain/`, lo guarda con
  * `storage/` y deja el resultado en el store. La UI nunca toca el almacenamiento.
  */
-export function createIncidentService(store) {
+export function createIncidentService(store, { sectorName = () => 'Sector Piedecuesta' } = {}) {
   const commit = ({ store: data, syncStatus }) => {
     store.set({ data });
     if (syncStatus) store.patch('sync', { message: syncStatus.message });
@@ -21,7 +20,7 @@ export function createIncidentService(store) {
 
   async function save(payload, editingId = null) {
     const coords = pixelToGps(payload.pixelX, payload.pixelY);
-    const sector = payload.sector?.trim() || detectSectorName(coords.pixelX, coords.pixelY);
+    const sector = payload.sector?.trim() || sectorName(coords.pixelX, coords.pixelY);
     const plan = planSave(current(), payload, editingId, { coords, sector });
     return (await apply(plan)).savedIncident;
   }
@@ -40,7 +39,7 @@ export function createIncidentService(store) {
     async move(id, pixelX, pixelY) {
       const incident = current().incidents.find((i) => i.id === id);
       if (!incident) return null;
-      return save({ ...incident, pixelX, pixelY, sector: detectSectorName(pixelX, pixelY) }, id);
+      return save({ ...incident, pixelX, pixelY, sector: sectorName(pixelX, pixelY) }, id);
     },
 
     async revert(revId) {

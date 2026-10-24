@@ -92,8 +92,8 @@ src/core/geo.js        Área del mapa y tamaño de la grilla (única definición
 src/domain/            Reglas puras de incidentes e historial (sin DOM ni red)
 src/services/          Casos de uso (incidentes) y servicios del teléfono (gps.js, whatsapp.js)
 src/storage/           Adaptadores: repositorio, copia del navegador, disco local y puente (PR)
-src/map/               Cámara, grilla, modelo del mapa, mapa de calor
-src/map/render/        Una capa de dibujo por archivo (base, calor, etiquetas, marcadores…)
+src/map/               Cámara, grilla, modelo del mapa (`buildWorld`, `createSectorNamer`), mapa de calor
+src/map/render/        Una capa de dibujo por archivo (base, calor y sus colores, etiquetas, marcadores…)
 src/ui/                HUD (hud, alertCard, peek, whatsappMenu, insets), hoja inferior y gestos del mapa
 src/ui/panes/          Un panel de la hoja por archivo: incidents, history, settings, report
 src/styles/            base.css · hud.css · sheets.css

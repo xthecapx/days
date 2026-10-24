@@ -1,5 +1,4 @@
 import { GRID_WIDTH, GRID_HEIGHT, pixelToGps } from '../map/gpsGrid.js';
-import { detectSectorName } from '../map/mapData.js';
 import { layoutMarkers, markerWidth, MARKER_BOX } from '../map/render/markers.js';
 import { TILE_SIZE } from '../map/worldSize.js';
 import { selectHeatmap, selectIncidents } from '../state/selectors.js';
@@ -22,7 +21,7 @@ export function hoverHtml(tile, cell, sector) {
 }
 
 /** Gestos del mapa: arrastre, pellizco, rueda, tap y hover de escritorio. */
-export function mountMapInput({ viewport, tooltip, store, camera, actions }) {
+export function mountMapInput({ viewport, tooltip, store, camera, actions, sectorName }) {
   const pointers = new Map();
   let startPan = { x: 0, y: 0 };
   let startPt = { x: 0, y: 0 };
@@ -60,7 +59,7 @@ export function mountMapInput({ viewport, tooltip, store, camera, actions }) {
 
   function showHover(clientX, clientY, tile) {
     const cell = selectHeatmap(store.get()).grid[tile.y * GRID_WIDTH + tile.x];
-    tooltip.innerHTML = hoverHtml(tile, cell, detectSectorName(tile.x, tile.y));
+    tooltip.innerHTML = hoverHtml(tile, cell, sectorName(tile.x, tile.y));
     tooltip.classList.remove('hidden');
     tooltip.style.left = `${Math.min(window.innerWidth - 270, Math.max(10, clientX + 12))}px`;
     tooltip.style.top = `${Math.min(window.innerHeight - 160, Math.max(90, clientY - 20))}px`;

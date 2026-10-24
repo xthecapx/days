@@ -7,9 +7,6 @@ import { geoToTileF, METERS_PER_TILE_AVG, distanceToPolyline } from './gpsGrid.j
  * Todo vive en lat/lng en disco; aquí se proyecta a la grilla una sola vez.
  */
 
-let world = null;
-export const getWorld = () => world;
-
 async function fetchJson(url, fallback) {
   try {
     const res = await fetch(url, { cache: 'no-cache' });
@@ -101,8 +98,7 @@ export async function loadMapData() {
     fetchJson('./data/map.json'),
     fetchJson('./data/map-overrides.json', {})
   ]);
-  world = buildWorld(map, overrides);
-  return world;
+  return buildWorld(map, overrides);
 }
 
 const near = (bbox, x, y, pad) => x >= bbox.x0 - pad && x <= bbox.x1 + pad && y >= bbox.y0 - pad && y <= bbox.y1 + pad;
@@ -122,7 +118,7 @@ function nearest(features, x, y, maxDist, accept = () => true) {
 }
 
 /** Nombre del sector de un tile: sectores manuales → calle cercana → lugar cercano → río → zona. */
-export function detectSectorName(px, py) {
+export function detectSectorName(world, px, py) {
   if (!world) return 'Sector Piedecuesta';
 
   for (const s of world.sectors) {
@@ -149,3 +145,6 @@ export function detectSectorName(px, py) {
   if (nearest(world.water, px, py, 3)) return 'Ronda del Río del Hato';
   return nearest(world.roads, px, py, 6) ? 'Sector Piedecuesta' : 'Zona verde / Cuenca Río del Hato';
 }
+
+/** `(px, py) => nombre` ya atado a un mapa: es lo que se le pasa a la UI y a los servicios. */
+export const createSectorNamer = (world) => (px, py) => detectSectorName(world, px, py);
