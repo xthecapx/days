@@ -166,7 +166,14 @@ test('cuerpo: JSON roto, no-objeto o tipo no soportado', async () => {
   for (const raw of ['{nope', 'null', '[1,2]', '"texto"', '']) assert.equal((await json(raw)).body.code, 'bad_body', JSON.stringify(raw));
   const plain = await s.json('/signal', { method: 'POST', raw: 'lat=7', headers: { 'Content-Type': 'text/plain' } });
   assert.deepEqual([plain.status, plain.body.code], [415, 'bad_content_type']);
-  assert.equal((await s.json('/signal', { method: 'POST', raw: '{}', headers: { 'Content-Type': '' } })).status, 415);
+  // Sin cabecera, el contenido decide; un tipo equivocado sigue rechazado.
+  const none = (raw, ip) => s.json('/signal', { method: 'POST', raw, headers: { 'Content-Type': '', 'CF-Connecting-IP': ip } });
+  assert.equal((await none('lat=7.005&lng=-73.064', '198.51.100.1')).status, 200, 'formulario sin cabecera');
+  assert.equal((await none('{"lat":7.005,"lng":-73.064}', '198.51.100.2')).status, 200, 'JSON sin cabecera');
+  assert.equal((await none('   {"lat":"7,005","lng":"-73,064"}', '198.51.100.3')).status, 200, 'JSON con espacios delante');
+  assert.equal((await none('basura sin sentido', '198.51.100.4')).status, 400, 'sin lat ni lng: llega al tablero y se rechaza ahí (bad_coordinates)');
+  assert.equal((await none('', '198.51.100.5')).status, 400, 'cuerpo vacío');
+  assert.equal((await s.json('/signal', { method: 'POST', raw: 'lat=7', headers: { 'Content-Type': 'application/xml' } })).status, 415);
 });
 
 test('Atajos de iPhone: también se acepta un formulario, con números como texto y coma decimal', async () => {

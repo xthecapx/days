@@ -95,3 +95,19 @@ export function apiErrorMessage(error) {
     default: return 'No se pudo contactar al servidor de ayuda.';
   }
 }
+
+/**
+ * Cómo se ve el botón 🆘 del mapa: la cifra de vecinos escuchando va sobre el botón, visible para todos sin abrir nada.
+ * Solo existe si hay servidor de señal; la cifra aparece cuando ya llegó la primera respuesta (antes sería un "0" falso).
+ * Puro: devuelve datos, no toca el DOM.
+ */
+export function helpButtonView({ enabled = false, loaded = false, listeners = 0 } = {}) {
+  const n = Number.isFinite(listeners) ? Math.max(0, Math.floor(listeners)) : 0;
+  return {
+    hidden: !enabled,
+    badgeHidden: !(enabled && loaded),
+    badge: n > 99 ? '99+' : String(n),
+    badgeDim: n === 0, // 0 = nadie escucha: se atenúa para que no parezca que hay alguien
+    label: `Pedir ayuda a los vecinos${loaded ? `. ${listenersLabel(n)}` : ''}`
+  };
+}

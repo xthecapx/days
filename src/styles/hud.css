@@ -292,7 +292,24 @@
 .boot-error p { max-width: 32ch; font-size: 0.85rem; color: #cbd5e1; }
 
 /* ---------- Señal de ayuda ---------- */
-.fab-help { background: var(--red); border-color: #ff8a80; color: #fff; }
+.fab-help { position: relative; background: var(--red); border-color: #ff8a80; color: #fff; }
+.fab-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--green);
+  border: 2px solid #000;
+  color: #04130d;
+  font: 800 0.66rem var(--font-mono);
+  line-height: 1;
+}
+.fab-badge.dim { background: #475569; color: #e2e8f0; }
 .help-banner {
   position: fixed;
   left: 8px;

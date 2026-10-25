@@ -214,3 +214,33 @@ test('el manifiesto es válido y el icono se puede instalar en la pantalla de in
   assert.deepEqual(problems, [], 'sin errores de "Manifest" en la consola');
   await page.close();
 });
+
+test('la cifra de vecinos escuchando se ve sobre el botón 🆘, sin abrir nada, y se actualiza al escuchar', async () => {
+  const signalServer = fakeServer({ listeners: 2 });
+  const { page, problems } = await openApp(browser, site.url, { signalServer });
+  await page.goto(site.url, { waitUntil: 'load' });
+  // Antes de la primera respuesta no hay cifra.
+  await page.waitForFunction(() => document.getElementById('daysValue').textContent !== '--');
+  await page.waitForFunction(() => !document.getElementById('helpCount').classList.contains('hidden'));
+  assert.equal(await text(page, '#helpCount'), '2');
+  assert.match(await page.$eval('#btnHelp', (e) => e.getAttribute('aria-label')), /2 vecinos escuchan/);
+  assert.equal(await page.$eval('#helpCount', (e) => e.classList.contains('dim')), false);
+  // La cifra queda dentro de la pantalla y no tapa el botón.
+  const box = await page.$eval('#helpCount', (e) => { const r = e.getBoundingClientRect(); return [r.left >= 0, r.right <= innerWidth, r.top >= 0]; });
+  assert.deepEqual(box, [true, true, true]);
+
+  await openHelp(page);
+  await page.click('#chkListen');
+  await page.waitForFunction(() => document.getElementById('helpCount').textContent === '3');
+  assert.deepEqual(problems, []);
+  await page.close();
+});
+
+test('con nadie escuchando la cifra es 0 y se ve atenuada', async () => {
+  const { page } = await openApp(browser, site.url, { signalServer: fakeServer({ listeners: 0 }) });
+  await loadApp(page, site.url);
+  await page.waitForFunction(() => !document.getElementById('helpCount').classList.contains('hidden'));
+  assert.equal(await text(page, '#helpCount'), '0');
+  assert.equal(await page.$eval('#helpCount', (e) => e.classList.contains('dim')), true);
+  await page.close();
+});

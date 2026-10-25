@@ -96,11 +96,13 @@ async function readLimited(request, max) {
 /** JSON, formulario o multipart (el "Formulario" de los Atajos de iPhone). Siempre devuelve un objeto plano. */
 async function readBody(request) {
   const header = request.headers.get('Content-Type') || '';
-  const type = header.split(';')[0].trim().toLowerCase();
-  if (!['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data'].includes(type)) {
-    throw new HttpError(415, 'bad_content_type', 'Envía JSON (application/json) o un formulario.');
-  }
+  let type = header.split(';')[0].trim().toLowerCase();
+  const known = ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data'];
+  // Sin cabecera Content-Type (algunos clientes simples no la mandan) se adivina por el contenido. Con una cabecera de otro
+  // tipo (p. ej. text/plain) se sigue rechazando: eso sí es un error del que envía.
+  if (type && !known.includes(type)) throw new HttpError(415, 'bad_content_type', 'Envía JSON (application/json) o un formulario.');
   const bytes = await readLimited(request, MAX_BODY);
+  if (!type) type = new TextDecoder().decode(bytes).trimStart().startsWith('{') ? 'application/json' : 'application/x-www-form-urlencoded';
   try {
     if (type === 'application/json') {
       const parsed = JSON.parse(new TextDecoder().decode(bytes));

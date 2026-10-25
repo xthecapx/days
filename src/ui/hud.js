@@ -6,7 +6,7 @@ import { mountPeek } from './peek.js';
 import { mountWhatsAppMenu } from './whatsappMenu.js';
 import { mountSyncToast } from './syncToast.js';
 import { mountHelpBanner } from './helpBanner.js';
-import { listenersLabel } from '../domain/signals.js';
+import { listenersLabel, helpButtonView } from '../domain/signals.js';
 
 /**
  * Barra superior, banner de modo, controles del mapa y zona inferior (tarjeta + navegación).
@@ -29,7 +29,12 @@ export function mountHud({ store, camera, actions, gps, whatsapp, sectorName }) 
   // 🆘 solo existe si la versión tiene servidor de señal configurado; sin él, la interfaz queda igual que antes.
   $('btnHelp').addEventListener('click', () => actions.openSheet('help'));
   store.subscribe((s) => [s.signals.enabled, s.signals.loaded, s.signals.listeners], ([enabled, loaded, n]) => {
-    setHidden($('btnHelp'), !enabled);
+    const v = helpButtonView({ enabled, loaded, listeners: n });
+    setHidden($('btnHelp'), v.hidden);
+    setHidden($('helpCount'), v.badgeHidden);
+    $('helpCount').textContent = v.badge;
+    $('helpCount').classList.toggle('dim', v.badgeDim);
+    $('btnHelp').setAttribute('aria-label', v.label);
     setHidden($('listenersChip'), !(enabled && loaded));
     $('listenersChip').textContent = `👂 ${listenersLabel(n)}`;
   });

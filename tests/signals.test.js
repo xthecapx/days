@@ -273,3 +273,25 @@ test('feed: stop() limpia temporizador y escuchas', async () => {
   assert.equal(r.handlers.length, 0);
   assert.equal(r.feed.isListening(), false);
 });
+
+// ---------- botón 🆘 con la cifra de oyentes ----------
+import { helpButtonView } from '../src/domain/signals.js';
+
+test('helpButtonView: sin servidor no hay botón; sin primera respuesta no hay cifra (un "0" falso engañaría)', () => {
+  assert.deepEqual(helpButtonView({ enabled: false, loaded: true, listeners: 5 }).hidden, true);
+  const waiting = helpButtonView({ enabled: true, loaded: false, listeners: 0 });
+  assert.deepEqual([waiting.hidden, waiting.badgeHidden], [false, true]);
+  assert.equal(waiting.label, 'Pedir ayuda a los vecinos');
+});
+
+test('helpButtonView: la cifra, el 0 atenuado, el tope 99+ y la etiqueta para lectores de pantalla', () => {
+  const some = helpButtonView({ enabled: true, loaded: true, listeners: 3 });
+  assert.deepEqual([some.badge, some.badgeDim, some.badgeHidden], ['3', false, false]);
+  assert.match(some.label, /3 vecinos escuchan/);
+  const none = helpButtonView({ enabled: true, loaded: true, listeners: 0 });
+  assert.deepEqual([none.badge, none.badgeDim], ['0', true]);
+  assert.match(none.label, /Nadie escucha/);
+  assert.equal(helpButtonView({ enabled: true, loaded: true, listeners: 100 }).badge, '99+');
+  assert.equal(helpButtonView({ enabled: true, loaded: true, listeners: 99 }).badge, '99');
+  for (const bad of [undefined, NaN, -3, 'x', Infinity]) assert.equal(helpButtonView({ enabled: true, loaded: true, listeners: bad }).badge, '0', String(bad));
+});
