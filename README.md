@@ -90,7 +90,7 @@ data/                  map.json · map-overrides.json · incidents.json
 scripts/update-map.mjs Descarga de OpenStreetMap
 vite.config.js        Vite: servidor de desarrollo, empaquetado y copia de data/
 services/signal/       Servidor de la señal de ayuda (Cloudflare Worker + Durable Object), independiente de la interfaz
-worker/                Puente (Cloudflare Worker) que abre un PR por cada reporte
+worker/                Puente de reportes (Cloudflare Worker + su wrangler.jsonc): abre un PR por cada reporte
 tests/                 Pruebas con node:test (lógica) y tests/e2e (navegador real)
 public/                Archivos que se copian tal cual al sitio (favicon)
 src/main.js            Conecta todas las piezas
@@ -111,7 +111,7 @@ src/styles/            base.css · hud.css · sheets.css
 
 1. Sube este repositorio a GitHub.
 2. En **Settings → Pages → Build and deployment** elige **GitHub Actions**. El flujo `.github/workflows/deploy-pages.yml` ejecuta `npm ci && npm run build` y publica solo `dist/`: `index.html`, un `.js` y un `.css` empaquetados por Vite (con hash en el nombre, así un despliegue nuevo nunca se mezcla con archivos viejos en caché) y `data/` copiada tal cual. El Worker, los scripts y las pruebas no se publican. Para ver ese mismo resultado en local: `npm run build && npm run preview`.
-3. *(Opcional, para que los vecinos editen sin cuenta de GitHub)*: despliega `worker/github-wiki-bridge.js` en Cloudflare Workers con un token restringido a `data/incidents.json`, y define la variable `GITHUB_TOKEN`.
+3. *(Opcional, para que los vecinos editen sin cuenta de GitHub)*: despliega `worker/` (su `wrangler.jsonc` está ahí) en Cloudflare Workers con un token restringido a `data/incidents.json`, y define la variable `GITHUB_TOKEN`.
 
 > Con **Deploy from a branch** también funciona, pero publica todo el repositorio tal cual.
 
@@ -194,7 +194,16 @@ Para pedir ayuda sin abrir la app. **Hay que crearlos una vez en cada teléfono.
 |---|---|---|---|
 | Interfaz (mapa, reportes) | GitHub Pages | `src/`, `index.html`, `public/`, **`data/`**, `vite.config.js`, dependencias | `deploy-pages.yml` |
 | Servidor de la señal de ayuda | Cloudflare Worker (`days-signal`) | `services/signal/` y los límites del mapa que comparte (`src/core/geo.js`, `src/map/gpsGrid.js`) | Cloudflare Workers Builds (conexión a GitHub en el panel; ver abajo) |
-| Puente de reportes (abre el Pull Request) | Cloudflare Worker (`days`) | `worker/` | Cloudflare Workers Builds |
+| Puente de reportes (abre el Pull Request) | Cloudflare Worker (`days`) | `worker/` y los límites del mapa que comparte (`src/core/geo.js`) | Cloudflare Workers Builds (ver abajo) |
+
+**Cada Worker tiene su carpeta y su `wrangler.jsonc`; en la raíz del repositorio no hay ninguno.** Con un `wrangler.jsonc` en la raíz, Cloudflare construye ese Worker en *cada* push a `main`, toque o no su código. Para que cada uno se construya solo cuando cambia lo suyo, en el panel de Cloudflare de **cada** Worker hay que poner dos cosas:
+
+| Worker | *Root directory* | *Build watch paths* (incluir) |
+|---|---|---|
+| `days` (puente de reportes) | `worker` | `worker/*`, `src/core/geo.js` |
+| `days-signal` (señal de ayuda) | `services/signal` | `services/signal/*`, `src/core/geo.js`, `src/map/gpsGrid.js` |
+
+`Deploy command` queda en el valor por defecto (`npx wrangler deploy`) y `Build command` vacío. Si un Worker sigue construyéndose en cada push, casi siempre es que su *Root directory* está vacío (usa la raíz) o que le falta el *watch path*. `tests/workflows.test.js` comprueba que no vuelva a haber un `wrangler.jsonc` en la raíz.
 
 **Conectar el servidor de la señal (una sola vez, en el panel de Cloudflare):** Workers & Pages → *Create application* → importar este repositorio, con estos valores:
 

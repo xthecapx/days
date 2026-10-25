@@ -1,7 +1,8 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
+  // Puente de reportes: abre un Pull Request por cada reporte vecinal. Se despliega desde esta carpeta
+  // (en Cloudflare: Root directory = worker). Independiente del servidor de la señal (../services/signal).
   "name": "days",
-  "main": "worker/github-wiki-bridge.js",
+  "main": "github-wiki-bridge.js",
   "compatibility_date": "2025-01-01",
   "vars": {
     "GITHUB_REPO": "xthecapx/days"

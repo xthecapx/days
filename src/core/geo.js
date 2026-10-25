@@ -1,7 +1,7 @@
 /**
  * Geografía del mapa: la ÚNICA definición del área y del tamaño de la grilla.
  * La leen el navegador (src/map/gpsGrid.js), el script que baja OpenStreetMap (scripts/update-map.mjs)
- * y el Worker que valida los reportes (worker/github-wiki-bridge.js). Para ampliar el área, cambia solo esto
+ * y el Worker que valida los reportes (worker/github-wiki-bridge.js) y el de la señal (services/signal). Para ampliar el área, cambia solo esto
  * y ejecuta `npm run map:update`.
  *
  * Es un módulo JS (no un .json) porque los tres entornos lo importan igual, sin atributos de importación.

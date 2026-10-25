@@ -66,3 +66,48 @@ test('el servidor de señal está en el workspace y sus pruebas corren con `npm 
   assert.deepEqual(pkg.workspaces, ['services/*']);
   assert.match(pkg.scripts.test, /services\/\*\/test/);
 });
+
+// ---------- cada Worker, en su carpeta (si no, Cloudflare construye todo en cada push) ----------
+
+const stripComments = (jsonc) => JSON.parse(jsonc.replace(/^\s*\/\/.*$/gm, ''));
+
+test('no hay ningún wrangler.jsonc/.toml en la raíz: cada Worker vive en su carpeta', () => {
+  for (const f of ['wrangler.jsonc', 'wrangler.json', 'wrangler.toml']) {
+    assert.equal(existsSync(join(ROOT, f)), false, `${f} en la raíz hace que Cloudflare construya ese Worker en CADA push a main`);
+  }
+});
+
+test('cada Worker tiene su wrangler.jsonc junto a su código, con `main` relativo a esa carpeta', () => {
+  const workers = { 'worker': 'days', 'services/signal': 'days-signal' };
+  for (const [dir, name] of Object.entries(workers)) {
+    const cfgPath = join(ROOT, dir, 'wrangler.jsonc');
+    assert.ok(existsSync(cfgPath), `${dir}/wrangler.jsonc`);
+    const cfg = stripComments(readFileSync(cfgPath, 'utf8'));
+    assert.equal(cfg.name, name);
+    assert.ok(existsSync(join(ROOT, dir, cfg.main)), `${dir}/${cfg.main} (el "main" se resuelve desde la carpeta del wrangler.jsonc)`);
+    assert.doesNotMatch(cfg.main, /^(worker|services)\//, '"main" no debe llevar el prefijo de la carpeta: ya se resuelve desde ella');
+  }
+});
+
+test('los dos Workers tienen nombres distintos y ningún límite de ritmo comparte namespace_id', () => {
+  const a = stripComments(read('worker/wrangler.jsonc'));
+  const b = stripComments(read('services/signal/wrangler.jsonc'));
+  assert.notEqual(a.name, b.name);
+  const ids = [...a.ratelimits, ...b.ratelimits].map((r) => r.namespace_id);
+  assert.equal(new Set(ids).size, ids.length);
+});
+
+test('lo que cada Worker importa de fuera de su carpeta está en su lista de rutas de Cloudflare (README)', () => {
+  const readme = read('README.md');
+  const imports = (file) => [...read(file).matchAll(/from\s+'(\.\.[^']+)'/g)].map((m) => m[1]);
+  // worker/ importa ../src/core/geo.js → debe figurar en sus "watch paths"; igual para la señal con gpsGrid.js
+  assert.deepEqual(imports('worker/github-wiki-bridge.js'), ['../src/core/geo.js']);
+  assert.match(readme, /`days` \(puente de reportes\) \| `worker` \| `worker\/\*`, `src\/core\/geo\.js`/);
+  assert.deepEqual(imports('services/signal/src/board.js'), ['../../../src/map/gpsGrid.js']);
+  assert.match(readme, /`days-signal` \(señal de ayuda\) \| `services\/signal` \| `services\/signal\/\*`, `src\/core\/geo\.js`, `src\/map\/gpsGrid\.js`/);
+});
+
+test('el sitio publicado no incluye ninguna carpeta de Worker', () => {
+  const ui = read('.github/workflows/deploy-pages.yml');
+  assert.doesNotMatch(ui, /"worker\/|"services\//, 'cambiar un Worker no debe volver a publicar la interfaz');
+});

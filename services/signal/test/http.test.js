@@ -345,7 +345,7 @@ test('wrangler.jsonc: nombre propio, Durable Object con SQLite, límites con nam
   assert.deepEqual(cfg.migrations[0].new_sqlite_classes, ['SignalBoard']);
   assert.equal(cfg.vars.ALLOW_LOCAL, 'false', 'producción no acepta localhost');
   assert.equal(cfg.observability.enabled, false, 'las ubicaciones no deben llegar a ningún registro');
-  const root = JSON.parse(readFileSync(new URL('../../../wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
+  const root = JSON.parse(readFileSync(new URL('../../../worker/wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
   const ids = [...root.ratelimits, ...cfg.ratelimits].map((r) => r.namespace_id);
   assert.equal(new Set(ids).size, ids.length, 'ningún namespace_id repetido entre los dos Workers');
   for (const r of cfg.ratelimits) assert.ok([10, 60].includes(r.simple.period), 'Cloudflare solo admite 10 o 60 s');

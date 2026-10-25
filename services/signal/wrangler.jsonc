@@ -1,5 +1,5 @@
 {
-  // Servidor de la señal de ayuda. Independiente del Worker de reportes (../../wrangler.jsonc, nombre "days").
+  // Servidor de la señal de ayuda. Independiente del Worker de reportes (../../worker/wrangler.jsonc, nombre "days").
   "name": "days-signal",
   "main": "src/index.js",
   "compatibility_date": "2026-07-01",

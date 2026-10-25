@@ -18,7 +18,7 @@ const html = read(join(out, 'index.html'));
 
 test('el sitio publicado tiene index.html, assets/ y data/, y nada del repositorio', () => {
   assert.deepEqual(readdirSync(out).sort(), ['apple-touch-icon.png', 'assets', 'data', 'favicon.svg', 'icon-192.png', 'icon-512-maskable.png', 'icon-512.png', 'index.html', 'manifest.webmanifest']);
-  for (const leak of ['worker', 'scripts', 'tests', '.github', 'src', 'package.json', 'vite.config.js', 'wrangler.jsonc', 'node_modules']) {
+  for (const leak of ['worker', 'services', 'scripts', 'tests', '.github', 'src', 'package.json', 'vite.config.js', 'wrangler.jsonc', 'node_modules']) {
     assert.equal(existsSync(join(out, leak)), false, `${leak} no debe publicarse`);
   }
 });

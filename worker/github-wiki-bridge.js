@@ -13,7 +13,7 @@
  *   MAX_OPEN_REPORTS (opcional) Máximo de PR de reportes abiertos a la vez. Por defecto 10.
  *
  * Límites anti-spam:
- *   1. Ráfaga por visitante: binding REPORT_LIMITER (ver wrangler.jsonc). Es aproximado y solo
+ *   1. Ráfaga por visitante: binding REPORT_LIMITER (ver wrangler.jsonc, en esta misma carpeta). Es aproximado y solo
  *      admite ventanas de 10 o 60 s. La clave es un hash de la IP; la IP no se guarda.
  *   2. Tope de PR abiertos: si ya hay MAX_OPEN_REPORTS sin revisar, se rechazan nuevos reportes.
  *      Es exacto y no depende de quién envía, así que nadie puede llenar tu bandeja de revisión.
