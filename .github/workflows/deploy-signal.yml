@@ -1,0 +1,61 @@
+name: Deploy signal server
+
+# Despliega el servidor de la señal de ayuda (Cloudflare Worker) por separado de la interfaz.
+# Solo corre cuando cambia el servidor o el código que comparte con el mapa (límites y grilla).
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "services/signal/**"
+      - "src/core/geo.js"
+      - "src/map/gpsGrid.js"
+      - ".github/workflows/deploy-signal.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-signal
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Nunca se despliega con pruebas en rojo.
+      - name: Test signal server
+        run: npm run signal:test
+
+      # Antes de que existan las credenciales (o el wrangler.jsonc) esto avisa en amarillo en vez de fallar en rojo.
+      - name: Check deploy prerequisites
+        id: ready
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ ! -f services/signal/wrangler.jsonc ]; then
+            echo "::warning::services/signal/wrangler.jsonc todavía no existe: no hay nada que desplegar."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$TOKEN" ] || [ -z "$ACCOUNT" ]; then
+            echo "::warning::Faltan los secretos CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID: se probó pero NO se desplegó."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to Cloudflare
+        if: steps.ready.outputs.go == 'true'
+        working-directory: services/signal
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run deploy

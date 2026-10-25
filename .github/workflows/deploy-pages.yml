@@ -3,6 +3,19 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
+    # Solo se vuelve a publicar la interfaz cuando cambia algo que ella usa. El servidor de la señal de ayuda
+    # (services/signal) se despliega por su cuenta. OJO: `data/**` debe seguir aquí; es lo que cambia cuando se
+    # aprueba un reporte vecinal (Pull Request) y tiene que publicarse.
+    paths:
+      - "src/**"
+      - "index.html"
+      - "public/**"
+      - "data/**"
+      - "vite.config.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".npmrc"
+      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:

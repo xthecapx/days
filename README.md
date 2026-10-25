@@ -88,6 +88,7 @@ index.html             Estructura de la pantalla
 data/                  map.json · map-overrides.json · incidents.json
 scripts/update-map.mjs Descarga de OpenStreetMap
 vite.config.js        Vite: servidor de desarrollo, empaquetado y copia de data/
+services/signal/       Servidor de la señal de ayuda (Cloudflare Worker), independiente de la interfaz
 worker/                Puente (Cloudflare Worker) que abre un PR por cada reporte
 tests/                 Pruebas con node:test (lógica) y tests/e2e (navegador real)
 public/                Archivos que se copian tal cual al sitio (favicon)
@@ -112,6 +113,16 @@ src/styles/            base.css · hud.css · sheets.css
 3. *(Opcional, para que los vecinos editen sin cuenta de GitHub)*: despliega `worker/github-wiki-bridge.js` en Cloudflare Workers con un token restringido a `data/incidents.json`, y define la variable `GITHUB_TOKEN`.
 
 > Con **Deploy from a branch** también funciona, pero publica todo el repositorio tal cual.
+
+## Dos despliegues independientes
+
+| Qué | Dónde | Se publica cuando cambia… | Flujo |
+|---|---|---|---|
+| Interfaz (mapa, reportes) | GitHub Pages | `src/`, `index.html`, `public/`, **`data/`**, `vite.config.js`, dependencias | `deploy-pages.yml` |
+| Servidor de la señal de ayuda | Cloudflare Worker (`days-signal`) | `services/signal/` y los límites del mapa que comparte (`src/core/geo.js`, `src/map/gpsGrid.js`) | `deploy-signal.yml` |
+| Puente de reportes (abre el Pull Request) | Cloudflare Worker (`days`) | `worker/` | Cloudflare Workers Builds |
+
+`data/` está en la lista de la interfaz a propósito: un reporte aprobado cambia `data/incidents.json` y tiene que publicarse (`tests/workflows.test.js` lo comprueba). Las pruebas (`test.yml`) corren siempre. `.npmrc` fija el registro público de npm: sin eso, un registro privado en tu configuración personal se cuela en `package-lock.json` y GitHub Actions no puede instalar (hay una prueba que lo vigila).
 
 ## Seguridad
 
