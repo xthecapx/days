@@ -295,3 +295,37 @@ test('helpButtonView: the count, the dimmed 0, the 99+ cap and the screen-reader
   assert.equal(helpButtonView({ enabled: true, loaded: true, listeners: 99 }).badge, '99');
   for (const bad of [undefined, NaN, -3, 'x', Infinity]) assert.equal(helpButtonView({ enabled: true, loaded: true, listeners: bad }).badge, '0', String(bad));
 });
+
+// ---------- SOS mode: listening replaces the history ----------
+import { selectSosMode, selectHistoryVisible } from '../src/state/selectors.js';
+import { listenBarText } from '../src/domain/signals.js';
+import { createInitialState } from '../src/state/initialState.js';
+
+const withState = (patch = {}) => {
+  const base = createInitialState();
+  return { ...base, ...patch, signals: { ...base.signals, ...(patch.signals || {}) }, ui: { ...base.ui, ...(patch.ui || {}) }, mode: patch.mode || base.mode };
+};
+
+test('SOS mode: not listening = history visible; listening = history hidden', () => {
+  assert.equal(selectSosMode(withState()), false);
+  assert.equal(selectHistoryVisible(withState()), true);
+  const listening = withState({ signals: { listening: true } });
+  assert.equal(selectSosMode(listening), true);
+  assert.equal(selectHistoryVisible(listening), false);
+});
+
+test('SOS mode: the history comes back while the person looks at an incident, reports, or picks/moves a point', () => {
+  const sos = { signals: { listening: true } };
+  assert.equal(selectHistoryVisible(withState({ ...sos, ui: { popupIncidentId: 'inc-001' } })), true, 'looking at an incident');
+  assert.equal(selectHistoryVisible(withState({ ...sos, mode: { type: 'pick' } })), true, 'picking a point for a report');
+  assert.equal(selectHistoryVisible(withState({ ...sos, mode: { type: 'move', incidentId: 'x' } })), true, 'moving an incident');
+  assert.equal(selectHistoryVisible(withState({ ...sos, draft: { session: 1 } })), true, 'a report draft is open');
+  assert.equal(selectHistoryVisible(withState(sos)), false, 'nothing of that: stays hidden');
+});
+
+test('listenBarText: count, and the connection state', () => {
+  assert.equal(listenBarText({ listeners: 0 }), '👂 Escuchando alertas · Nadie escucha ahora');
+  assert.equal(listenBarText({ listeners: 3 }), '👂 Escuchando alertas · 3 vecinos escuchan');
+  assert.match(listenBarText({ listeners: 1, status: 'error' }), /sin conexión$/);
+  assert.equal(listenBarText(), '👂 Escuchando alertas · Nadie escucha ahora');
+});

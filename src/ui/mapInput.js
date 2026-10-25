@@ -1,6 +1,6 @@
 import { GRID_WIDTH, GRID_HEIGHT, pixelToGps } from '../map/gpsGrid.js';
 import { incidentAtPoint } from '../map/markerLayout.js';
-import { selectHeatmap, selectIncidents } from '../state/selectors.js';
+import { selectHeatmap, selectIncidents, selectHistoryVisible } from '../state/selectors.js';
 import { escapeHtml, toNumber } from '../core/dom.js';
 import { ZOOM } from '../core/config.js';
 
@@ -32,10 +32,12 @@ export function mountMapInput({ viewport, tooltip, store, camera, actions, secto
 
   /** A tap counts as "touched an incident" if it lands on its label or near its pixel. */
   const incidentAt = (cx, cy) =>
-    incidentAtPoint(selectIncidents(store.get()), camera.screenToWorld(cx, cy), camera.state.zoom);
+    selectHistoryVisible(store.get())
+      ? incidentAtPoint(selectIncidents(store.get()), camera.screenToWorld(cx, cy), camera.state.zoom)
+      : null; // in SOS mode the markers are not drawn, so they do not answer taps either
 
   function showHover(clientX, clientY, tile) {
-    const cell = selectHeatmap(store.get()).grid[tile.y * GRID_WIDTH + tile.x];
+    const cell = selectHistoryVisible(store.get()) ? selectHeatmap(store.get()).grid[tile.y * GRID_WIDTH + tile.x] : undefined;
     tooltip.innerHTML = hoverHtml(tile, cell, sectorName(tile.x, tile.y));
     tooltip.classList.remove('hidden');
     tooltip.style.left = `${Math.min(window.innerWidth - 270, Math.max(10, clientX + 12))}px`;

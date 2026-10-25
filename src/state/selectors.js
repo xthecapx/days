@@ -3,6 +3,14 @@ import { toIsoDate } from '../core/dom.js';
 
 export const selectIncidents = (s) => s.data.incidents || [];
 
+/**
+ * SOS mode = the person is listening for help signals. It is either that or the history: while listening, the days card,
+ * the incident markers and the heat map are hidden so only help signals are on screen. The history comes back by itself
+ * whenever the person is doing something that needs it: looking at an incident, reporting, picking or moving a point.
+ */
+export const selectSosMode = (s) => Boolean(s.signals.listening);
+export const selectHistoryVisible = (s) => !selectSosMode(s) || Boolean(s.ui.popupIncidentId) || s.mode.type !== 'browse' || Boolean(s.draft);
+
 export function findIncident(state, id) {
   return selectIncidents(state).find((i) => i.id === id) || null;
 }

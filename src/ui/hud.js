@@ -1,12 +1,12 @@
 import { $, setHidden } from '../core/dom.js';
-import { selectIncidents, findIncident } from '../state/selectors.js';
+import { selectIncidents, findIncident, selectSosMode, selectHistoryVisible } from '../state/selectors.js';
 import { mountInsets } from './insets.js';
 import { mountAlertCard } from './alertCard.js';
 import { mountPeek } from './peek.js';
 import { mountWhatsAppMenu } from './whatsappMenu.js';
 import { mountSyncToast } from './syncToast.js';
 import { mountHelpBanner } from './helpBanner.js';
-import { listenersLabel, helpButtonView } from '../domain/signals.js';
+import { listenersLabel, helpButtonView, listenBarText } from '../domain/signals.js';
 
 /**
  * Top bar, mode banner, map controls and bottom area (card + navigation).
@@ -39,6 +39,18 @@ export function mountHud({ store, camera, actions, gps, whatsapp, sectorName }) 
     $('listenersChip').textContent = `👂 ${listenersLabel(n)}`;
   });
   $('btnCancelMode').addEventListener('click', () => actions.cancelMode());
+
+  // SOS mode (listening) vs history: either one or the other. While listening, the days card is replaced by a slim bar
+  // and the incident markers / heat map are not drawn (see main.js). The history reappears whenever the person starts
+  // doing something that needs it (looking at an incident, reporting, picking a point).
+  $('listenBar').addEventListener('click', () => actions.openSheet('help'));
+  store.subscribe((s) => [selectSosMode(s), selectHistoryVisible(s), s.signals.listeners, s.signals.status, s.signals.enabled], ([sos, history, n, status, enabled]) => {
+    const showBar = enabled && sos && !history;
+    setHidden($('listenBar'), !showBar);
+    setHidden($('alertCard'), showBar);
+    $('listenBarText').textContent = listenBarText({ listeners: n, status });
+    measureInsets();
+  });
 
   $('navIncidents').addEventListener('click', () => actions.openSheet('incidents'));
   $('navSettings').addEventListener('click', () => actions.openSheet('settings'));

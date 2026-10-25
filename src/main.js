@@ -1,7 +1,7 @@
 import { $, showToast } from './core/dom.js';
 import { createStore } from './state/store.js';
 import { createInitialState } from './state/initialState.js';
-import { selectHeatmap, selectIncidents } from './state/selectors.js';
+import { selectHeatmap, selectIncidents, selectHistoryVisible } from './state/selectors.js';
 import { createIncidentService } from './services/incidentService.js';
 import { createActions } from './state/actions.js';
 import { createCamera } from './map/camera.js';
@@ -78,10 +78,12 @@ async function boot() {
 
   requestAnimationFrame(function loop(ts) {
     const state = store.get();
+    const history = selectHistoryVisible(state);
     renderer.frame({
       camera: camera.state,
-      heatmap: selectHeatmap(state),
-      incidents: selectIncidents(state),
+      // In SOS mode the heat map is not even computed.
+      heatmap: history ? selectHeatmap(state) : null,
+      incidents: history ? selectIncidents(state) : [],
       selection: state.selection,
       settings: state.settings,
       helpSignals: state.signals.active,

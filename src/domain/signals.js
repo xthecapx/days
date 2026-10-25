@@ -100,3 +100,9 @@ export function helpButtonView({ enabled = false, loaded = false, listeners = 0 
     label: `Pedir ayuda a los vecinos${loaded ? `. ${listenersLabel(n)}` : ''}`
   };
 }
+
+/** Text of the slim bar shown at the top while listening (SOS mode). Pure. */
+export function listenBarText({ listeners = 0, status = 'ok' } = {}) {
+  const base = `👂 Escuchando alertas · ${listenersLabel(listeners)}`;
+  return status === 'error' ? `${base} · sin conexión` : base;
+}

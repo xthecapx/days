@@ -255,3 +255,93 @@ test('tests never reach the real server: any call to days-signal is answered ins
   assert.deepEqual(reached, [], 'no response came from the Cloudflare server');
   await page.close();
 });
+
+// ---------- SOS mode (listening) vs history ----------
+
+/** Counts non-background pixels in a region of the map canvas: red incident labels and heat tiles leave a lot of them. */
+const redPixels = (page) => page.$eval('#mapCanvas', (c) => {
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let n = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 60 && d[i + 2] < 90) n++; // incident label red (#dc2626 / #ff1744 family)
+  return n;
+});
+
+test('turning on listening hides the days card, the incident list, and the markers; turning it off brings them back', async () => {
+  const signalServer = fakeServer({ listeners: 1 });
+  const { page, problems } = await openApp(browser, site.url, { signalServer });
+  await loadApp(page, site.url);
+  await page.waitForFunction(() => !document.getElementById('helpCount').classList.contains('hidden'));
+  assert.equal(await visible(page, '#alertCard'), true, 'history mode: the days card is shown');
+  assert.equal(await visible(page, '#listenBar'), false);
+  const markersBefore = await redPixels(page);
+  assert.ok(markersBefore > 200, `the incident markers are drawn at first (${markersBefore} red px)`);
+
+  await openHelp(page);
+  await page.click('#chkListen');
+  await page.waitForFunction(() => document.getElementById('listenBar') && !document.getElementById('listenBar').classList.contains('hidden'));
+  assert.equal(await visible(page, '#alertCard'), false, 'listening: the days card is gone');
+  assert.match(await text(page, '#listenBarText'), /Escuchando alertas/);
+  await page.click('#btnCloseSheet');
+  await waitHidden(page, '#sheet', true);
+  await new Promise((r) => setTimeout(r, 250)); // let the render loop draw a frame
+  const markersDuring = await redPixels(page);
+  assert.ok(markersDuring < markersBefore * 0.2, `incident markers/heat map are not drawn while listening (${markersBefore} -> ${markersDuring} red px)`);
+
+  // tapping the slim bar opens the help sheet, where listening is turned off
+  await page.click('#listenBar');
+  await waitHidden(page, '#paneHelp', false);
+  await page.click('#chkListen');
+  await page.waitForFunction(() => !document.getElementById('alertCard').classList.contains('hidden'));
+  assert.equal(await visible(page, '#listenBar'), false);
+  await page.click('#btnCloseSheet');
+  await new Promise((r) => setTimeout(r, 250));
+  assert.ok((await redPixels(page)) > markersBefore * 0.8, 'the history is back');
+  assert.deepEqual(problems, []);
+  await page.close();
+});
+
+test('while listening, a help signal still shows on the map and the history stays out of the way', async () => {
+  const signalServer = fakeServer({ listeners: 2, signals: [other(2)] });
+  const { page } = await openApp(browser, site.url, { signalServer });
+  await loadApp(page, site.url);
+  await openHelp(page);
+  await page.click('#chkListen');
+  await page.waitForFunction(() => !document.getElementById('listenBar').classList.contains('hidden'));
+  await page.click('#btnCloseSheet');
+  await waitHidden(page, '#sheet', true);
+  assert.equal(await visible(page, '#helpBanner'), true, 'the SOS banner is shown');
+  // the banner must sit under the slim bar, not overlap it
+  const [barBottom, bannerTop] = await page.evaluate(() => [document.getElementById('listenBar').getBoundingClientRect().bottom, document.getElementById('helpBanner').getBoundingClientRect().top]);
+  assert.ok(bannerTop >= barBottom - 1, `banner (${Math.round(bannerTop)}) is below the listening bar (${Math.round(barBottom)})`);
+  await page.close();
+});
+
+test('the listening choice survives a reload: the page opens straight in SOS mode', async () => {
+  const signalServer = fakeServer({ listeners: 1 });
+  const { page } = await openApp(browser, site.url, { signalServer });
+  await loadApp(page, site.url);
+  await openHelp(page);
+  await page.click('#chkListen');
+  await page.waitForFunction(() => !document.getElementById('listenBar').classList.contains('hidden'));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => !document.getElementById('listenBar').classList.contains('hidden'));
+  assert.equal(await visible(page, '#alertCard'), false);
+  await page.close();
+});
+
+test('while listening, reporting an incident brings the history back for the form, then hides it again', async () => {
+  const { page } = await openApp(browser, site.url, { signalServer: fakeServer({ listeners: 1 }) });
+  await loadApp(page, site.url);
+  await openHelp(page);
+  await page.click('#chkListen');
+  await page.waitForFunction(() => !document.getElementById('listenBar').classList.contains('hidden'));
+  await page.click('#btnCloseSheet');
+  await waitHidden(page, '#sheet', true);
+  await page.click('#navReport');
+  await waitHidden(page, '#paneReport', false);
+  await page.waitForFunction(() => !document.getElementById('alertCard').classList.contains('hidden'));
+  await page.click('#btnCancelReport');
+  await waitHidden(page, '#sheet', true);
+  await page.waitForFunction(() => !document.getElementById('listenBar').classList.contains('hidden'));
+  await page.close();
+});

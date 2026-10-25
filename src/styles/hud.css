@@ -330,3 +330,27 @@
 .help-banner-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 @keyframes help-blink { 50% { background: #b3002a; } }
 @media (prefers-reduced-motion: reduce) { .help-banner { animation: none; } }
+
+/* ---------- SOS mode (listening): slim bar instead of the days card ---------- */
+.listen-bar {
+  position: fixed;
+  top: var(--safe-top);
+  left: 8px;
+  right: 8px;
+  max-width: 500px;
+  margin: 0 auto;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 2px solid var(--green);
+  box-shadow: 4px 4px 0 #000;
+  color: #fff;
+  font: 800 0.78rem var(--font-mono);
+  text-align: left;
+  cursor: pointer;
+}
+.listen-bar-hint { font-weight: 400; font-size: 0.64rem; color: var(--muted); }
