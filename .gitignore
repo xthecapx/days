@@ -1,2 +1,7 @@
 dist/
 node_modules/
+
+# Estado local de `wrangler dev` y secretos locales (nunca se suben)
+.wrangler/
+.dev.vars
+.dev.vars.*

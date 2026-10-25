@@ -5,7 +5,7 @@
   "description": "Servidor de la señal de ayuda (Cloudflare Worker + Durable Object). Independiente de la interfaz y de los reportes.",
   "type": "module",
   "scripts": {
-    "dev": "npx --yes wrangler@4.152.0 dev --port 8787",
+    "dev": "npx --yes wrangler@4.152.0 dev --port 8787 --var ALLOW_LOCAL:true --var SIGNAL_PEPPER:pepper-solo-para-desarrollo",
     "deploy": "npx --yes wrangler@4.152.0 deploy",
     "test": "node --test --test-timeout=30000 \"test/**/*.test.js\""
   },

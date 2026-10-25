@@ -1,0 +1,30 @@
+{
+  // Servidor de la señal de ayuda. Independiente del Worker de reportes (../../wrangler.jsonc, nombre "days").
+  "name": "days-signal",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-01",
+  "workers_dev": true,
+
+  "vars": {
+    // Páginas que pueden llamar a este servidor desde un navegador (separadas por coma). Los Atajos del teléfono
+    // no mandan "Origin", así que no se ven afectados.
+    "ALLOWED_ORIGINS": "https://xthecapx.github.io",
+    // Solo `npm run dev` lo pone en true (permite localhost y la red local). En producción, siempre false.
+    "ALLOW_LOCAL": "false"
+  },
+
+  "durable_objects": {
+    "bindings": [{ "name": "SIGNAL_BOARD", "class_name": "SignalBoard" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SignalBoard"] }],
+
+  // Límites de ritmo por visitante (hash de IP con secreto). Los namespace_id deben ser únicos en tu cuenta de
+  // Cloudflare; el Worker de reportes usa 7421. Mucha gente comparte IP en una red móvil, por eso son holgados.
+  "ratelimits": [
+    { "name": "SIGNAL_LIMITER", "namespace_id": "7431", "simple": { "limit": 6, "period": 60 } },
+    { "name": "POLL_LIMITER", "namespace_id": "7432", "simple": { "limit": 30, "period": 60 } }
+  ],
+
+  // Sin registros: las ubicaciones no deben acabar en ningún log.
+  "observability": { "enabled": false }
+}
