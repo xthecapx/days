@@ -25,6 +25,13 @@
     { "name": "POLL_LIMITER", "namespace_id": "7432", "simple": { "limit": 30, "period": 60 } }
   ],
 
-  // Sin registros: las ubicaciones no deben acabar en ningún log.
-  "observability": { "enabled": false }
+  // Registros de Cloudflare activados (Workers Logs): un registro por petición, para ver errores y uso mientras es una prueba.
+  // Nuestro código NO escribe nada en el registro (ni coordenadas ni IP): las coordenadas viajan en el cuerpo del POST, no en
+  // la URL. Qué metadatos de la petición añade Cloudflare por su cuenta (p. ej. la IP del cliente) no lo he podido confirmar.
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  }
 }

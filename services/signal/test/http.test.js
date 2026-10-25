@@ -336,7 +336,7 @@ test('el tablero funciona igual con el almacén SQL que con el de memoria', () =
 
 // ---------- configuración ----------
 
-test('wrangler.jsonc: nombre propio, Durable Object con SQLite, límites con namespace_id propios y sin registros', () => {
+test('wrangler.jsonc: nombre propio, Durable Object con SQLite, límites con namespace_id propios y registros de Cloudflare activos', () => {
   const raw = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
   const cfg = JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ''));
   assert.equal(cfg.name, 'days-signal');
@@ -344,7 +344,7 @@ test('wrangler.jsonc: nombre propio, Durable Object con SQLite, límites con nam
   assert.deepEqual(cfg.durable_objects.bindings, [{ name: 'SIGNAL_BOARD', class_name: 'SignalBoard' }]);
   assert.deepEqual(cfg.migrations[0].new_sqlite_classes, ['SignalBoard']);
   assert.equal(cfg.vars.ALLOW_LOCAL, 'false', 'producción no acepta localhost');
-  assert.equal(cfg.observability.enabled, false, 'las ubicaciones no deben llegar a ningún registro');
+  assert.deepEqual(cfg.observability, { logs: { enabled: true, invocation_logs: true } });
   const root = JSON.parse(readFileSync(new URL('../../../worker/wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
   const ids = [...root.ratelimits, ...cfg.ratelimits].map((r) => r.namespace_id);
   assert.equal(new Set(ids).size, ids.length, 'ningún namespace_id repetido entre los dos Workers');
@@ -360,4 +360,20 @@ test('index.js: no hay secretos ni coordenadas escritas, y el Durable Object exp
   assert.doesNotMatch(src, /searchParams|\broom\b\s*[,)]/, 'el servidor ya no elige tablero por parámetro');
   assert.doesNotMatch(src, /SIGNAL_PEPPER\s*=|console\.log/, 'nada que registre datos');
   assert.doesNotMatch(readFileSync(new URL('../src/http.js', import.meta.url), 'utf8'), /console\./);
+});
+
+test('con los registros de Cloudflare activos, NUESTRO código no escribe nada en ellos (ni coordenadas ni IP ni identificadores)', () => {
+  for (const f of ['board.js', 'http.js', 'index.js', 'rpc.js', 'sqlStorage.js', 'memoryStorage.js']) {
+    const src = readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(src, /\bconsole\s*\./, `${f} no debe usar console.*`);
+  }
+});
+
+test('las coordenadas viajan en el cuerpo del POST, nunca en la URL (la URL sí queda en los registros de Cloudflare)', async () => {
+  const s = server();
+  const r = await s.call('/signal?lat=7.005&lng=-73.064', { method: 'POST', body: {} });
+  assert.equal(r.status, 400, 'lat/lng en la URL no se leen: sin cuerpo no hay ubicación');
+  assert.equal(s.calls.length === 0 || s.calls.at(-1).input.lat === undefined, true);
+  const src = readFileSync(new URL('../src/http.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /searchParams\.get\(['"](lat|lng)/);
 });
