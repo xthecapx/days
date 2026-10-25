@@ -61,7 +61,7 @@ test('sitio publicado: con el servidor activo aparece el botón 🆘 y el contad
   assert.equal(await visible(page, '#btnHelp'), true);
   await page.waitForFunction(() => !document.getElementById('listenersChip').classList.contains('hidden'));
   assert.match(await text(page, '#listenersChip'), /2 vecinos escuchan/);
-  assert.deepEqual(signalServer.calls, ['GET /state?room=dev'], 'una sola lectura al abrir, y en la sala dev (la página corre en 127.0.0.1)');
+  assert.deepEqual(signalServer.calls, ['GET /state'], 'una sola lectura al abrir');
   assert.deepEqual(problems, []);
   await page.close();
 });
@@ -145,7 +145,7 @@ test('un doble toque en "Sí, pedir ayuda" envía una sola alerta', async () => 
   await openHelp(page); await askForHelp(page);
   await page.evaluate(() => { const b = document.getElementById('btnHelpYes'); b.click(); b.click(); b.click(); });
   await waitHidden(page, '#helpMine', false);
-  assert.equal(signalServer.calls.filter((c) => c.startsWith('POST /signal?')).length, 1);
+  assert.equal(signalServer.calls.filter((c) => c === 'POST /signal').length, 1, `llamadas: ${signalServer.calls}`);
   await page.close();
 });
 
@@ -242,5 +242,16 @@ test('con nadie escuchando la cifra es 0 y se ve atenuada', async () => {
   await page.waitForFunction(() => !document.getElementById('helpCount').classList.contains('hidden'));
   assert.equal(await text(page, '#helpCount'), '0');
   assert.equal(await page.$eval('#helpCount', (e) => e.classList.contains('dim')), true);
+  await page.close();
+});
+
+test('las pruebas nunca llegan al servidor real: cualquier llamada a days-signal se responde dentro de la prueba', async () => {
+  // Ya no hay una sala de pruebas: la protección es que el navegador de las pruebas intercepta la dirección del servidor.
+  const { page } = await openApp(browser, site.url); // sin servidor falso: se usa el vacío por defecto
+  const reached = [];
+  page.on('response', (r) => { if (r.url().includes('days-signal.xthecapx.workers.dev') && r.headers()['server'] === 'cloudflare') reached.push(r.url()); });
+  await loadApp(page, site.url);
+  await page.waitForFunction(() => !document.getElementById('btnHelp').classList.contains('hidden'));
+  assert.deepEqual(reached, [], 'ninguna respuesta vino del servidor de Cloudflare');
   await page.close();
 });

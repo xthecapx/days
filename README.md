@@ -143,7 +143,7 @@ Un aviso de «necesito ayuda aquí» entre vecinos. **No reemplaza al 123**: la 
 | `POST /signal` `{lat, lng}` | Crea tu alerta (reemplaza la anterior de la misma conexión). Devuelve el token para retirarla. |
 | `POST /signal/cancel` `{id, token}` | Retira una alerta con su token. |
 
-Todas aceptan `?room=main|dev` (por defecto `main`). **`dev` es una sala aparte para ensayar**: lo que se envía allí no lo ve nadie en la app publicada. Las coordenadas pueden llegar como número o como texto, incluso con coma decimal (`"7,005"`), y el cuerpo puede ser JSON o un formulario: así lo envían los Atajos de iPhone.
+**Todo es real: no hay salas ni modo de pruebas.** Lo que se envía lo ve cualquiera que abra la app. (Los enlaces o atajos antiguos con `?room=…` siguen funcionando: el parámetro se ignora.) Las coordenadas pueden llegar como número o como texto, incluso con coma decimal (`"7,005"`), y el cuerpo puede ser JSON o un formulario: así lo envían los Atajos de iPhone.
 
 **Límites del servidor:** solo dentro del área del mapa · 6 alertas/min y 30 consultas/min por conexión (aprox.) · una alerta por persona · máximo 20 alertas y 1000 oyentes · cuerpos de hasta 2 KB · solo `https://xthecapx.github.io` puede llamar desde un navegador (los atajos del teléfono no mandan `Origin`).
 
@@ -151,23 +151,23 @@ Todas aceptan `?room=main|dev` (por defecto `main`). **`dev` es una sala aparte 
 
 ```bash
 npm run signal:dev   # servidor local en http://localhost:8787 (acepta localhost y la red local)
-npm run dev          # la app, apuntando a ese servidor y a la sala «dev»
+npm run dev          # la app, apuntando a ese servidor local
 ```
 
-`vite dev` — y cualquier copia de la app servida desde `localhost`, una IP local o `.local` — usa **siempre la sala `dev`**, así ensayar no avisa a los vecinos de verdad. Solo desde el dominio publicado se usa `main`.
+`vite dev` usa ese servidor local porque el publicado solo acepta llamadas desde `https://xthecapx.github.io` (CORS). **El servidor local tiene su propia memoria: lo que envíes ahí no llega a la app publicada.** Una copia construida (`npm run preview`) servida desde tu computador **no** puede hablar con el servidor publicado (el navegador la bloquea por CORS), así que ahí la señal de ayuda aparece como «sin conexión»: para probar la señal de punta a punta usa el sitio publicado o `npm run dev` con `npm run signal:dev`.
 
 ### Atajos del teléfono
 
 Para pedir ayuda sin abrir la app. **Hay que crearlos una vez en cada teléfono.**
 
-**Qué sala usar.** La app publicada lee la sala `main`, así que **un atajo que envía a `main` (la dirección sin `?room=`) aparece en la app publicada y lo ve cualquiera que la abra durante 30 min**. Una sala `dev` (`…/signal?room=dev`) es aparte: sirve para comprobar que el atajo funciona sin avisar a nadie, pero esa alerta solo se ve en una app que lea `dev` (la de `npm run dev`). Para ver el aviso de punta a punta en el teléfono, envía a `main`.
+**Todo es real.** Un atajo envía una alerta de verdad: aparece en la app publicada durante 30 minutos y la ve cualquiera que la abra. Avisa a quienes te rodean antes de probar, o prueba tú con dos teléfonos.
 
 **iPhone (app Atajos)** — una acción «Obtener ubicación actual» y una «Obtener contenido de URL»:
 
 1. Atajos → **+** → nombre «Pedir ayuda».
 2. **Obtener ubicación actual**.
 3. **Obtener contenido de URL**:
-   - URL: `https://days-signal.xthecapx.workers.dev/signal` (sala `main`; añade `?room=dev` para un ensayo silencioso)
+   - URL: `https://days-signal.xthecapx.workers.dev/signal`
    - *Mostrar más* → Método **POST** → Cuerpo de la solicitud **Formulario** (o JSON).
    - Dos campos de **Texto**: `lat` = *Ubicación actual* → **Latitud**, y `lng` = *Ubicación actual* → **Longitud**.
 4. **Mostrar notificación** con el resultado, para saber que salió.

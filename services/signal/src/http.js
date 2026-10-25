@@ -2,10 +2,9 @@ import { runBoard } from './rpc.js';
 
 /**
  * Capa HTTP del servidor de señal: rutas, CORS, límites, lectura del cuerpo. No importa nada de Cloudflare, así que se
- * prueba entera en Node. Recibe `getBoard(room)` → { run(op, input) } (en producción, el Durable Object de esa sala).
+ * prueba entera en Node. Recibe `getBoard()` → { run(op, input) } (en producción, el Durable Object único del servidor).
  */
 
-export const ROOMS = Object.freeze(['main', 'dev']);
 export const MAX_BODY = 2048;
 const DEFAULT_ORIGINS = 'https://xthecapx.github.io';
 const BASE_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
@@ -157,11 +156,8 @@ export async function handle(request, env = {}, { getBoard }) {
     }
 
     if (path === '/') {
-      return respond({ ok: true, service: 'days-signal', rooms: ROOMS, pepperConfigured: Boolean(env.SIGNAL_PEPPER), limiters: { signal: Boolean(env.SIGNAL_LIMITER), poll: Boolean(env.POLL_LIMITER) } }, 200, cors);
+      return respond({ ok: true, service: 'days-signal', pepperConfigured: Boolean(env.SIGNAL_PEPPER), limiters: { signal: Boolean(env.SIGNAL_LIMITER), poll: Boolean(env.POLL_LIMITER) } }, 200, cors);
     }
-
-    const room = url.searchParams.get('room') ?? 'main';
-    if (!ROOMS.includes(room)) return fail(400, 'bad_room', `La sala debe ser una de: ${ROOMS.join(', ')}.`, cors);
 
     const client = await clientHash(request, env);
     if (await overLimit(env, route.limiter, client)) {
@@ -169,7 +165,7 @@ export async function handle(request, env = {}, { getBoard }) {
     }
 
     const body = route.pick ? route.pick(await readBody(request)) : undefined;
-    const result = await getBoard(room).run(route.op, route.withClient ? { ...body, client } : body);
+    const result = await getBoard().run(route.op, route.withClient ? { ...body, client } : body);
     if (!result.ok) return fail(result.status, result.code, result.message, cors);
     return respond({ ok: true, ...result.data }, 200, cors);
   } catch (err) {

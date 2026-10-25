@@ -2,7 +2,7 @@
  * Cliente del servidor de la señal de ayuda. NUNCA lanza: siempre devuelve { ok: true, data } o
  * { ok: false, error, status? }, para que la pantalla decida qué mostrar sin try/catch por todos lados.
  *
- *   const api = createSignalApi({ baseUrl, room });
+ *   const api = createSignalApi({ baseUrl });
  *   const r = await api.state();          // lectura pública, no cuenta como oyente
  *   await api.poll({ listener, listening });
  *   await api.send({ lat, lng });
@@ -11,7 +11,7 @@
 
 const TIMEOUT_MS = 8000;
 
-export function createSignalApi({ baseUrl, room = 'main', fetchImpl = globalThis.fetch?.bind(globalThis), timeoutMs = TIMEOUT_MS } = {}) {
+export function createSignalApi({ baseUrl, fetchImpl = globalThis.fetch?.bind(globalThis), timeoutMs = TIMEOUT_MS } = {}) {
   const enabled = typeof baseUrl === 'string' && /^https?:\/\//.test(baseUrl);
   const base = enabled ? baseUrl.replace(/\/+$/, '') : '';
 
@@ -20,7 +20,7 @@ export function createSignalApi({ baseUrl, room = 'main', fetchImpl = globalThis
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetchImpl(`${base}${path}${path.includes('?') ? '&' : '?'}room=${encodeURIComponent(room)}`, {
+      const res = await fetchImpl(`${base}${path}`, {
         method,
         cache: 'no-store',
         signal: controller.signal,

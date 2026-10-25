@@ -58,30 +58,18 @@ export function newListenerId(random = (n) => crypto.getRandomValues(new Uint8Ar
 /** Servidor de producción de la señal de ayuda (Cloudflare Worker `days-signal`). */
 export const DEFAULT_SIGNAL_URL = 'https://days-signal.xthecapx.workers.dev/';
 
+
 /**
- * Qué servidor y qué sala usa esta copia de la app.
- *   - Sitio publicado: el servidor real, sala "main".
- *   - Desarrollo (`vite dev`): el servidor LOCAL (`npm run signal:dev`, puerto 8787) y la sala "dev", así probar nunca avisa
- *     a los vecinos de verdad, ni siquiera desde un celular conectado a tu red.
- *   - `override` = { baseUrl, room } guardado en este navegador, para apuntar a otro servidor (o a ninguno: baseUrl "").
+ * Qué servidor usa esta copia de la app. Hay un solo servidor y todo es real: no hay salas ni modo de pruebas.
+ *   - Por defecto: el servidor publicado.
+ *   - `vite dev`: el servidor LOCAL (`npm run signal:dev`, puerto 8787), porque el publicado no acepta peticiones de
+ *     `localhost` (CORS). Es el único caso especial.
+ *   - `override` = { baseUrl } guardado en este navegador, para apuntar a otro servidor (o a ninguno: baseUrl "").
  */
 export function resolveSignalConfig({ dev = false, hostname = 'localhost', override = null } = {}) {
-  if (override && typeof override.baseUrl === 'string') {
-    return { baseUrl: override.baseUrl.trim(), room: override.room === 'main' ? 'main' : 'dev' };
-  }
-  if (dev) return { baseUrl: `http://${hostname}:8787/`, room: 'dev' };
-  // Un sitio construido pero servido desde esta máquina o una red local (`vite preview`, pruebas en el navegador) NO es el
-  // sitio real: usa la sala "dev" para no avisar a los vecinos de verdad. Servidor real = solo desde el dominio publicado.
-  if (isLocalHostname(hostname)) return { baseUrl: DEFAULT_SIGNAL_URL, room: 'dev' };
-  return { baseUrl: DEFAULT_SIGNAL_URL, room: 'main' };
-}
-
-/** localhost, direcciones de red local y nombres .local. */
-export function isLocalHostname(host) {
-  return (
-    host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host.endsWith('.local') ||
-    /^10\.\d+\.\d+\.\d+$/.test(host) || /^192\.168\.\d+\.\d+$/.test(host) || /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(host)
-  );
+  if (override && typeof override.baseUrl === 'string') return { baseUrl: override.baseUrl.trim() };
+  if (dev) return { baseUrl: `http://${hostname}:8787/` };
+  return { baseUrl: DEFAULT_SIGNAL_URL };
 }
 
 /** Texto para la persona según el motivo del fallo. */
@@ -95,6 +83,7 @@ export function apiErrorMessage(error) {
     default: return 'No se pudo contactar al servidor de ayuda.';
   }
 }
+
 
 /**
  * Cómo se ve el botón 🆘 del mapa: la cifra de vecinos escuchando va sobre el botón, visible para todos sin abrir nada.

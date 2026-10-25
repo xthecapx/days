@@ -76,7 +76,7 @@ export const writeSignalPrefs = (prefs) =>
     return true;
   });
 
-/** Servidor de señal alternativo ({ baseUrl, room }) fijado a mano desde la consola; null si no hay. */
+/** Servidor de señal alternativo ({ baseUrl }) fijado a mano desde la consola; null si no hay. */
 export const readSignalOverride = () =>
   attempt('leer el servidor de señal', null, () => {
     const raw = localStorage.getItem(SIGNAL_OVERRIDE_KEY);

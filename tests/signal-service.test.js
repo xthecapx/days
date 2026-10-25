@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createStore } from '../src/state/store.js';
 import { createInitialState } from '../src/state/initialState.js';
 import { createSignalService } from '../src/services/signalService.js';
-import { resolveSignalConfig, DEFAULT_SIGNAL_URL, isLocalHostname } from '../src/domain/signals.js';
+import { resolveSignalConfig, DEFAULT_SIGNAL_URL } from '../src/domain/signals.js';
 import * as cache from '../src/storage/localCache.js';
 
 const NOW = 1_800_000_000_000;
@@ -46,21 +46,22 @@ function rig({ enabled = true, saved = { listening: false, listenerId: null, min
 
 // ---------- configuración ----------
 
-test('resolveSignalConfig: producción usa el servidor real y la sala main; desarrollo, el local y la sala dev', () => {
-  assert.deepEqual(resolveSignalConfig({ hostname: 'xthecapx.github.io' }), { baseUrl: DEFAULT_SIGNAL_URL, room: 'main' });
+test('resolveSignalConfig: el sitio publicado usa el servidor real; solo `vite dev` usa el local (el real no acepta localhost)', () => {
+  assert.deepEqual(resolveSignalConfig({ hostname: 'xthecapx.github.io' }), { baseUrl: DEFAULT_SIGNAL_URL });
   assert.equal(DEFAULT_SIGNAL_URL, 'https://days-signal.xthecapx.workers.dev/');
-  assert.deepEqual(resolveSignalConfig({ dev: true, hostname: 'localhost' }), { baseUrl: 'http://localhost:8787/', room: 'dev' });
-  assert.deepEqual(resolveSignalConfig({ dev: true, hostname: '192.168.68.54' }), { baseUrl: 'http://192.168.68.54:8787/', room: 'dev' }, 'desde el celular, el servidor local de tu computador');
+  assert.deepEqual(resolveSignalConfig({ dev: true, hostname: 'localhost' }), { baseUrl: 'http://localhost:8787/' });
+  assert.deepEqual(resolveSignalConfig({ dev: true, hostname: '192.168.68.54' }), { baseUrl: 'http://192.168.68.54:8787/' }, 'desde el celular, el servidor local de tu computador');
 });
 
-test('resolveSignalConfig: en desarrollo NUNCA se llega a la sala de producción por accidente', () => {
-  for (const hostname of ['localhost', '127.0.0.1', '192.168.1.5', 'mi-mac.local']) assert.equal(resolveSignalConfig({ dev: true, hostname }).room, 'dev');
-  assert.equal(resolveSignalConfig({ dev: true, override: { baseUrl: 'https://x.example', room: 'cualquier-cosa' } }).room, 'dev');
-  assert.equal(resolveSignalConfig({ override: { baseUrl: 'https://x.example', room: 'main' } }).room, 'main', 'solo "main" explícito sale de dev');
+test('resolveSignalConfig: no hay salas ni modo de pruebas; el resultado solo lleva la URL', () => {
+  for (const cfg of [resolveSignalConfig({}), resolveSignalConfig({ dev: true }), resolveSignalConfig({ override: { baseUrl: 'https://x.example', room: 'dev' } })]) {
+    assert.deepEqual(Object.keys(cfg), ['baseUrl']);
+  }
 });
 
-test('resolveSignalConfig: un override con URL vacía apaga la función', () => {
+test('resolveSignalConfig: un override con URL vacía apaga la función; con URL, la reemplaza', () => {
   assert.equal(resolveSignalConfig({ override: { baseUrl: '' } }).baseUrl, '');
+  assert.equal(resolveSignalConfig({ override: { baseUrl: '  https://x.example/ ' } }).baseUrl, 'https://x.example/');
   assert.deepEqual(resolveSignalConfig({ override: null, hostname: 'xthecapx.github.io' }), resolveSignalConfig({ hostname: 'xthecapx.github.io' }));
 });
 
@@ -207,13 +208,4 @@ test('el estado de conexión del sondeo llega al estado de la pantalla', () => {
   const r = rig();
   r.feeds[0].opts.onStatus('error');
   assert.equal(r.state().status, 'error');
-});
-
-test('seguridad de sala: el sitio construido pero servido en esta máquina o en una red local NUNCA usa la sala de producción', () => {
-  for (const hostname of ['localhost', '127.0.0.1', '[::1]', '10.0.0.5', '192.168.1.20', '172.16.0.9', '172.31.255.1', 'mi-mac.local']) {
-    assert.equal(resolveSignalConfig({ hostname }).room, 'dev', hostname);
-  }
-  for (const hostname of ['xthecapx.github.io', 'ejemplo.com', '172.32.0.1', '8.8.8.8']) assert.equal(resolveSignalConfig({ hostname }).room, 'main', hostname);
-  assert.equal(isLocalHostname('localhost'), true);
-  assert.equal(isLocalHostname('xthecapx.github.io'), false);
 });

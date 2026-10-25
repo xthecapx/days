@@ -83,18 +83,18 @@ test('api: sin URL configurada no hace nada y lo dice', async () => {
   assert.equal(f.calls.length, 0);
 });
 
-test('api: arma la URL con la sala, sin dobles barras, y manda JSON', async () => {
+test('api: arma la URL sin dobles barras y sin parámetros, y manda JSON', async () => {
   const f = fakeFetch(() => reply(200, { ok: true, signals: [], listeners: 0 }));
-  const api = createSignalApi({ baseUrl: 'https://s.example/', room: 'dev', fetchImpl: f });
+  const api = createSignalApi({ baseUrl: 'https://s.example/', fetchImpl: f });
   await api.state();
   await api.poll({ listener: 'abc12345', listening: true });
   await api.send({ lat: 7.005, lng: -73.064 });
   await api.cancel({ id: 'i', token: 't' });
   assert.deepEqual(f.calls.map((c) => [c.method, c.url]), [
-    ['GET', 'https://s.example/state?room=dev'],
-    ['POST', 'https://s.example/poll?room=dev'],
-    ['POST', 'https://s.example/signal?room=dev'],
-    ['POST', 'https://s.example/signal/cancel?room=dev']
+    ['GET', 'https://s.example/state'],
+    ['POST', 'https://s.example/poll'],
+    ['POST', 'https://s.example/signal'],
+    ['POST', 'https://s.example/signal/cancel']
   ]);
   assert.deepEqual(f.calls[1].body, { listener: 'abc12345', listening: true });
   assert.equal(f.calls[0].cache, 'no-store');

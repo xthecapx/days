@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { handle, originAllowed, clientHash, MAX_BODY, ROOMS } from '../src/http.js';
+import { handle, originAllowed, clientHash, MAX_BODY } from '../src/http.js';
 import { createBoard } from '../src/board.js';
 import { createMemoryStorage } from '../src/memoryStorage.js';
 import { runBoard } from '../src/rpc.js';
@@ -13,20 +13,16 @@ const HOME = { lat: 7.005, lng: -73.064 };
 /** Servidor completo en memoria: una sala por nombre, como los Durable Objects. */
 function server(env = {}) {
   const clock = { t: 1_800_000_000_000 };
-  const boards = new Map();
   const calls = [];
-  const getBoard = (room) => {
-    if (!boards.has(room)) boards.set(room, createBoard({ storage: createMemoryStorage(), now: () => clock.t }));
-    const board = boards.get(room);
-    return { run: async (op, input) => { calls.push({ room, op, input }); return runBoard(board, op, input); } };
-  };
+  const board = createBoard({ storage: createMemoryStorage(), now: () => clock.t });
+  const getBoard = () => ({ run: async (op, input) => { calls.push({ op, input }); return runBoard(board, op, input); } });
   const call = (path, { method = 'GET', body, headers = {}, raw } = {}) => {
     const init = { method, headers: { 'CF-Connecting-IP': '203.0.113.7', ...headers } };
     if (body !== undefined) { init.body = JSON.stringify(body); init.headers['Content-Type'] ??= 'application/json'; }
     if (raw !== undefined) init.body = raw;
     return handle(new Request(`https://signal.test${path}`, init), { SIGNAL_PEPPER: 'pimienta', ...env }, { getBoard });
   };
-  return { call, calls, clock, boards, json: async (p, o) => { const r = await call(p, o); return { status: r.status, headers: r.headers, body: await r.json() }; } };
+  return { call, calls, clock, board, json: async (p, o) => { const r = await call(p, o); return { status: r.status, headers: r.headers, body: await r.json() }; } };
 }
 const post = (body, headers) => ({ method: 'POST', body, headers });
 
@@ -36,7 +32,8 @@ test('GET / dice que el servicio vive y qué falta configurar (sin revelar secre
   const s = server();
   const r = await s.json('/');
   assert.equal(r.status, 200);
-  assert.deepEqual([r.body.service, r.body.rooms, r.body.pepperConfigured], ['days-signal', ROOMS, true]);
+  assert.deepEqual([r.body.service, r.body.pepperConfigured], ['days-signal', true]);
+  assert.equal('rooms' in r.body, false, 'ya no hay salas');
   assert.doesNotMatch(JSON.stringify(r.body), /pimienta/);
   assert.equal((await server({ SIGNAL_PEPPER: '' }).json('/')).body.pepperConfigured, false);
 });
@@ -61,16 +58,20 @@ test('ruta inexistente = 404; método equivocado = 405 con Allow; barra final to
   assert.equal((await s.json('/state/')).status, 200);
 });
 
-// ---------- salas ----------
+// ---------- un solo tablero (sin salas) ----------
 
-test('la sala por defecto es "main"; "dev" es independiente; otra cosa = 400', async () => {
+test('hay un solo tablero: lo que se envía lo ve cualquiera, y un ?room=... antiguo se ignora sin error', async () => {
   const s = server();
-  await s.json('/signal?room=dev', post({ ...HOME }));
-  assert.equal((await s.json('/state?room=dev')).body.signals.length, 1);
-  assert.equal((await s.json('/state')).body.signals.length, 0, 'main no ve lo de dev');
-  assert.equal((await s.json('/state?room=main')).body.signals.length, 0);
-  for (const room of ['prod', '', 'MAIN', '../x', 'main,dev']) assert.equal((await s.json(`/state?room=${encodeURIComponent(room)}`)).body.code, 'bad_room', room);
-  assert.ok(s.calls.every((c) => ROOMS.includes(c.room)), 'ninguna sala inválida llegó al almacén');
+  await s.json('/signal', post({ ...HOME }));
+  assert.equal((await s.json('/state')).body.signals.length, 1);
+  for (const room of ['dev', 'main', 'prod', '', '../x']) {
+    const r = await s.json(`/state?room=${encodeURIComponent(room)}`);
+    assert.equal(r.status, 200, `room=${room}`);
+    assert.equal(r.body.signals.length, 1, 'todos los enlaces viejos ven el mismo tablero');
+  }
+  // un atajo antiguo que aún apunte a ?room=dev envía al tablero real
+  await s.json('/signal?room=dev', { ...post({ ...HOME }), headers: { 'CF-Connecting-IP': '198.51.100.9' } });
+  assert.equal((await s.json('/state')).body.signals.length, 2);
 });
 
 // ---------- flujo completo ----------
@@ -355,7 +356,8 @@ test('wrangler.jsonc: nombre propio, Durable Object con SQLite, límites con nam
 test('index.js: no hay secretos ni coordenadas escritas, y el Durable Object expone solo `run` y `alarm`', () => {
   const src = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
   assert.match(src, /export class SignalBoard extends DurableObject/);
-  assert.match(src, /idFromName\(room\)/);
+  assert.match(src, /idFromName\('main'\)/, 'el Durable Object ya desplegado se sigue usando');
+  assert.doesNotMatch(src, /searchParams|\broom\b\s*[,)]/, 'el servidor ya no elige tablero por parámetro');
   assert.doesNotMatch(src, /SIGNAL_PEPPER\s*=|console\.log/, 'nada que registre datos');
   assert.doesNotMatch(readFileSync(new URL('../src/http.js', import.meta.url), 'utf8'), /console\./);
 });

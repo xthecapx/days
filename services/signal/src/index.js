@@ -5,7 +5,7 @@ import { handle } from './http.js';
 import { runBoard } from './rpc.js';
 
 /**
- * Una instancia por sala ("main", "dev"). Las señales viven en el SQLite del objeto (se escriben poco); quién escucha
+ * Una sola instancia. Las señales viven en el SQLite del objeto (se escriben poco); quién escucha
  * vive solo en memoria (se escribe en cada sondeo, y si el objeto se reinicia se recupera en ≤30 s).
  */
 export class SignalBoard extends DurableObject {
@@ -38,8 +38,10 @@ export class SignalBoard extends DurableObject {
 export default {
   fetch(request, env) {
     return handle(request, env, {
-      getBoard: (room) => {
-        const stub = env.SIGNAL_BOARD.get(env.SIGNAL_BOARD.idFromName(room));
+      // Un solo tablero. El nombre se queda en "main" para seguir usando el Durable Object que ya está desplegado. Un
+      // `?room=...` de enlaces o atajos antiguos simplemente se ignora.
+      getBoard: () => {
+        const stub = env.SIGNAL_BOARD.get(env.SIGNAL_BOARD.idFromName('main'));
         return { run: (op, input) => stub.run(op, input) };
       }
     });

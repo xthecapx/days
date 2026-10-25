@@ -42,7 +42,7 @@ async function boot() {
       return tile.insideBounds ? sectorName(tile.pixelX, tile.pixelY) : null;
     }
   });
-  // Señal de ayuda: servidor aparte. `vite dev` usa el servidor local y la sala "dev" (nunca la de producción).
+  // Señal de ayuda: servidor aparte, un solo tablero. `vite dev` usa el servidor local (el publicado no acepta localhost).
   const signalConfig = resolveSignalConfig({ dev: Boolean(import.meta.env?.DEV), hostname: location.hostname, override: readSignalOverride() });
   const signals = createSignalService({
     store, gps,
