@@ -20,12 +20,12 @@ import { readSignalPrefs, writeSignalPrefs, readSignalOverride } from './storage
 import { gpsToPixel } from './map/gpsGrid.js';
 
 /**
- * Composición de la app (único lugar donde se conectan las piezas):
- *   store      → estado único, con suscripción por selectores
- *   services   → casos de uso sobre los datos (persistencia)
- *   actions    → operaciones de la app (cámara + store + services)
- *   ui/*       → componentes que leen el store y llaman a actions
- *   map/*      → cámara + renderer por capas (sin conocer el DOM de la HUD)
+ * App composition (the only place where the pieces are wired together):
+ *   store      → single state, with selector-based subscription
+ *   services   → use cases over the data (persistence)
+ *   actions    → app operations (camera + store + services)
+ *   ui/*       → components that read the store and call actions
+ *   map/*      → camera + layered renderer (unaware of the HUD DOM)
  */
 async function boot() {
   const world = await loadMapData();
@@ -42,7 +42,7 @@ async function boot() {
       return tile.insideBounds ? sectorName(tile.pixelX, tile.pixelY) : null;
     }
   });
-  // Señal de ayuda: servidor aparte, un solo tablero. `vite dev` usa el servidor local (el publicado no acepta localhost).
+  // Help signal: separate server, a single board. `vite dev` uses the local server (the published one does not accept localhost).
   const signalConfig = resolveSignalConfig({ dev: Boolean(import.meta.env?.DEV), hostname: location.hostname, override: readSignalOverride() });
   const signals = createSignalService({
     store, gps,
@@ -71,10 +71,10 @@ async function boot() {
 
   await incidents.load();
   actions.goHome();
-  startDayClock(store); // "hoy" sigue al reloj (medianoche y al volver a la pestaña)
-  signals.start(); // una lectura al abrir; sondea cada 30 s solo si la persona activó la escucha
-  if (new URLSearchParams(location.search).get('sos') === '1' && store.get().signals.enabled) actions.openSheet('help'); // acceso directo desde el icono
-  gps.start(); // una sola lectura al cargar; después solo se relee si la posición venció
+  startDayClock(store); // "today" follows the clock (midnight and when returning to the tab)
+  signals.start(); // one read on open; polls every 30 s only if the person turned listening on
+  if (new URLSearchParams(location.search).get('sos') === '1' && store.get().signals.enabled) actions.openSheet('help'); // direct access from the icon
+  gps.start(); // a single read on load; afterwards it is re-read only if the position has expired
 
   requestAnimationFrame(function loop(ts) {
     const state = store.get();
@@ -91,13 +91,13 @@ async function boot() {
     requestAnimationFrame(loop);
   });
 
-  // Útil para depurar desde la consola; no se expone en el sitio publicado.
+  // Useful for debugging from the console; not exposed on the published site.
   if (import.meta.env?.DEV) window.__app = { store, camera, actions, gps, world, signals };
 }
 
-/** Si algo falla al arrancar, se avisa en pantalla con un botón para reintentar (en vez de dejarla en blanco). */
+/** If something fails at startup, it is reported on screen with a retry button (instead of leaving it blank). */
 function showBootError(err) {
-  console.error('No se pudo iniciar la app', err);
+  console.error('Could not start the app', err);
   $('bootErrorText').textContent = navigator.onLine === false
     ? 'Sin conexión. Conéctate a internet e inténtalo de nuevo.'
     : 'Revisa tu conexión e inténtalo de nuevo.';

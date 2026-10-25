@@ -1,8 +1,8 @@
 import { runBoard } from './rpc.js';
 
 /**
- * Capa HTTP del servidor de señal: rutas, CORS, límites, lectura del cuerpo. No importa nada de Cloudflare, así que se
- * prueba entera en Node. Recibe `getBoard()` → { run(op, input) } (en producción, el Durable Object único del servidor).
+ * HTTP layer of the signal server: routes, CORS, limits, body reading. It imports nothing from Cloudflare, so it is
+ * tested entirely in Node. It receives `getBoard()` → { run(op, input) } (in production, the server's single Durable Object).
  */
 
 export const MAX_BODY = 2048;
@@ -21,7 +21,7 @@ class HttpError extends Error {
 const respond = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { ...BASE_HEADERS, ...extra } });
 const fail = (status, code, message, extra) => respond({ ok: false, code, error: message }, status, extra);
 
-// ---------- origen (CORS) ----------
+// ---------- origin (CORS) ----------
 
 function isLocalHost(host) {
   return (
@@ -30,7 +30,7 @@ function isLocalHost(host) {
   );
 }
 
-/** Los navegadores mandan `Origin`; los Atajos del teléfono y curl no. Un origen desconocido se rechaza. */
+/** Browsers send `Origin`; phone Shortcuts and curl do not. An unknown origin is rejected. */
 export function originAllowed(origin, env = {}) {
   const list = String(env.ALLOWED_ORIGINS || DEFAULT_ORIGINS).split(',').map((s) => s.trim()).filter(Boolean);
   if (list.includes(origin)) return true;
@@ -53,12 +53,12 @@ const corsHeaders = (origin) => ({
   'Access-Control-Max-Age': '600'
 });
 
-// ---------- identidad anónima del cliente ----------
+// ---------- anonymous client identity ----------
 
 /**
- * Hash de la IP con un secreto (`SIGNAL_PEPPER`): sirve para "una señal por persona" y para el límite de ritmo sin
- * guardar la IP. Con el secreto, adivinar la IP a partir del hash no se puede hacer recorriendo las 4 000 millones de
- * IPv4; sin él, sí. Nunca sale en una respuesta.
+ * Hash of the IP with a secret (`SIGNAL_PEPPER`): used for "one signal per person" and for the rate limit without
+ * storing the IP. With the secret, the IP cannot be guessed from the hash by walking all 4 billion IPv4
+ * addresses; without it, it can. It never appears in a response.
  */
 export async function clientHash(request, env = {}) {
   const ip = request.headers.get('CF-Connecting-IP') || 'desconocida';
@@ -67,11 +67,11 @@ export async function clientHash(request, env = {}) {
   return [...new Uint8Array(digest)].slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ---------- cuerpo ----------
+// ---------- body ----------
 
 async function readLimited(request, max) {
   const declared = Number(request.headers.get('Content-Length'));
-  if (declared > max) throw new HttpError(413, 'too_large', 'Solicitud demasiado grande.');
+  if (declared > max) throw new HttpError(413, 'too_large', 'Request too large.');
   if (!request.body) return new Uint8Array(0);
   const reader = request.body.getReader();
   const chunks = [];
@@ -82,7 +82,7 @@ async function readLimited(request, max) {
     size += value.byteLength;
     if (size > max) {
       await reader.cancel();
-      throw new HttpError(413, 'too_large', 'Solicitud demasiado grande.');
+      throw new HttpError(413, 'too_large', 'Request too large.');
     }
     chunks.push(value);
   }
@@ -92,31 +92,31 @@ async function readLimited(request, max) {
   return out;
 }
 
-/** JSON, formulario o multipart (el "Formulario" de los Atajos de iPhone). Siempre devuelve un objeto plano. */
+/** JSON, form or multipart (the "Form" of iPhone Shortcuts). Always returns a plain object. */
 async function readBody(request) {
   const header = request.headers.get('Content-Type') || '';
   let type = header.split(';')[0].trim().toLowerCase();
   const known = ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data'];
-  // Sin cabecera Content-Type (algunos clientes simples no la mandan) se adivina por el contenido. Con una cabecera de otro
-  // tipo (p. ej. text/plain) se sigue rechazando: eso sí es un error del que envía.
-  if (type && !known.includes(type)) throw new HttpError(415, 'bad_content_type', 'Envía JSON (application/json) o un formulario.');
+  // Without a Content-Type header (some simple clients do not send it) the type is guessed from the content. With a header of
+  // another type (e.g. text/plain) it is still rejected: that is a mistake by the sender.
+  if (type && !known.includes(type)) throw new HttpError(415, 'bad_content_type', 'Send JSON (application/json) or a form.');
   const bytes = await readLimited(request, MAX_BODY);
   if (!type) type = new TextDecoder().decode(bytes).trimStart().startsWith('{') ? 'application/json' : 'application/x-www-form-urlencoded';
   try {
     if (type === 'application/json') {
       const parsed = JSON.parse(new TextDecoder().decode(bytes));
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('no es un objeto');
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object');
       return parsed;
     }
     if (type === 'application/x-www-form-urlencoded') return Object.fromEntries(new URLSearchParams(new TextDecoder().decode(bytes)));
     const form = await new Response(bytes, { headers: { 'Content-Type': header } }).formData();
     return Object.fromEntries([...form.entries()].filter(([, v]) => typeof v === 'string'));
   } catch {
-    throw new HttpError(400, 'bad_body', 'El cuerpo de la solicitud no es válido.');
+    throw new HttpError(400, 'bad_body', 'The request body is not valid.');
   }
 }
 
-// ---------- rutas ----------
+// ---------- routes ----------
 
 const ROUTES = {
   'GET /': { limiter: null },
@@ -132,7 +132,7 @@ async function overLimit(env, name, key) {
   try {
     return !(await limiter.limit({ key })).success;
   } catch {
-    return false; // si el limitador falla, una petición de ayuda no se bloquea
+    return false; // if the limiter fails, a help request is not blocked
   }
 }
 
@@ -140,7 +140,7 @@ export async function handle(request, env = {}, { getBoard }) {
   const origin = request.headers.get('Origin');
   let cors = {};
   if (origin) {
-    if (!originAllowed(origin, env)) return fail(403, 'origin_not_allowed', 'Origen no permitido.');
+    if (!originAllowed(origin, env)) return fail(403, 'origin_not_allowed', 'Origin not allowed.');
     cors = corsHeaders(origin);
   }
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...BASE_HEADERS, ...cors } });
@@ -151,8 +151,8 @@ export async function handle(request, env = {}, { getBoard }) {
     const route = ROUTES[`${request.method} ${path}`];
     if (!route) {
       const allowed = Object.keys(ROUTES).filter((k) => k.endsWith(` ${path}`)).map((k) => k.split(' ')[0]);
-      if (allowed.length) return fail(405, 'method_not_allowed', 'Método no permitido.', { ...cors, Allow: allowed.join(', ') });
-      return fail(404, 'not_found', 'No existe.', cors);
+      if (allowed.length) return fail(405, 'method_not_allowed', 'Method not allowed.', { ...cors, Allow: allowed.join(', ') });
+      return fail(404, 'not_found', 'Not found.', cors);
     }
 
     if (path === '/') {
@@ -161,7 +161,7 @@ export async function handle(request, env = {}, { getBoard }) {
 
     const client = await clientHash(request, env);
     if (await overLimit(env, route.limiter, client)) {
-      return fail(429, 'rate_limited', 'Demasiadas solicitudes seguidas. Espera un minuto.', { ...cors, 'Retry-After': '60' });
+      return fail(429, 'rate_limited', 'Too many requests in a row. Wait a minute.', { ...cors, 'Retry-After': '60' });
     }
 
     const body = route.pick ? route.pick(await readBody(request)) : undefined;
@@ -170,7 +170,7 @@ export async function handle(request, env = {}, { getBoard }) {
     return respond({ ok: true, ...result.data }, 200, cors);
   } catch (err) {
     if (err instanceof HttpError) return fail(err.status, err.code, err.message, { ...cors, ...err.headers });
-    return fail(500, 'internal', 'Error interno.', cors);
+    return fail(500, 'internal', 'Internal error.', cors);
   }
 }
 

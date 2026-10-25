@@ -4,9 +4,9 @@ import { selectHeatmap, selectIncidents } from '../state/selectors.js';
 import { escapeHtml, toNumber } from '../core/dom.js';
 import { ZOOM } from '../core/config.js';
 
-const TAP_SLOP = 8; // px de movimiento tolerado para seguir contando como "tap"
+const TAP_SLOP = 8; // px of movement tolerated to still count as a "tap"
 
-/** Contenido del cuadro que aparece al pasar el mouse por un tile. Puro; los estilos viven en base.css (.tip-*). */
+/** Content of the box shown when hovering over a tile. Pure; the styles live in base.css (.tip-*). */
 export function hoverHtml(tile, cell, sector) {
   const gps = pixelToGps(tile.x, tile.y);
   let html = `<div><strong>Píxel (${tile.x}, ${tile.y})</strong> · <span class="tip-coords">${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}</span></div>`;
@@ -20,7 +20,7 @@ export function hoverHtml(tile, cell, sector) {
   return html;
 }
 
-/** Gestos del mapa: arrastre, pellizco, rueda, tap y hover de escritorio. */
+/** Map gestures: drag, pinch, wheel, tap and desktop hover. */
 export function mountMapInput({ viewport, tooltip, store, camera, actions, sectorName }) {
   const pointers = new Map();
   let startPan = { x: 0, y: 0 };
@@ -30,7 +30,7 @@ export function mountMapInput({ viewport, tooltip, store, camera, actions, secto
 
   const tileAt = (cx, cy) => camera.screenToTile(cx, cy, GRID_WIDTH, GRID_HEIGHT);
 
-  /** Un tap cuenta como "tocó un incidente" si cae en su etiqueta o cerca de su píxel. */
+  /** A tap counts as "touched an incident" if it lands on its label or near its pixel. */
   const incidentAt = (cx, cy) =>
     incidentAtPoint(selectIncidents(store.get()), camera.screenToWorld(cx, cy), camera.state.zoom);
 
@@ -69,7 +69,7 @@ export function mountMapInput({ viewport, tooltip, store, camera, actions, secto
       const dist = Math.hypot(b.x - a.x, b.y - a.y);
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       const z = pinch.zoom * (dist / pinch.dist);
-      // Se fija el punto del mundo bajo los dedos; camera.set aplica los límites.
+      // The world point under the fingers is pinned; camera.set applies the limits.
       const clamped = Math.max(ZOOM.min, Math.min(ZOOM.max, z));
       camera.set(clamped, mid.x - pinch.world.x * clamped, mid.y - pinch.world.y * clamped);
       moved = 99;

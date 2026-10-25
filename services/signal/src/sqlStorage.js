@@ -1,7 +1,7 @@
 /**
- * Almacén de señales sobre el SQLite de un Durable Object. Cumple el mismo contrato que memoryStorage.js
- * (list / save / remove / removeExpired, todo síncrono): `sql` es `ctx.storage.sql`, o cualquier objeto con
- * `exec(consulta, ...valores)` que devuelva algo con `toArray()`.
+ * Signal storage on a Durable Object's SQLite. It meets the same contract as memoryStorage.js
+ * (list / save / remove / removeExpired, all synchronous): `sql` is `ctx.storage.sql`, or any object with
+ * `exec(query, ...values)` that returns something with `toArray()`.
  */
 export function createSqlStorage(sql) {
   sql.exec(`CREATE TABLE IF NOT EXISTS signals (

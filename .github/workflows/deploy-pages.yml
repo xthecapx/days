@@ -3,9 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
-    # Solo se vuelve a publicar la interfaz cuando cambia algo que ella usa. El servidor de la señal de ayuda
-    # (services/signal) se despliega por su cuenta. OJO: `data/**` debe seguir aquí; es lo que cambia cuando se
-    # aprueba un reporte vecinal (Pull Request) y tiene que publicarse.
+    # The interface is only republished when something it uses changes. The help signal server
+    # (services/signal) is deployed on its own. NOTE: `data/**` must stay here; it is what changes when a
+    # neighbour report (Pull Request) is approved, and it has to be published.
     paths:
       - "src/**"
       - "index.html"
@@ -49,8 +49,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Vite empaqueta index.html y src/ y copia data/ tal cual; el Worker, los scripts, las pruebas y el
-      # CI se quedan fuera.
+      # Vite bundles index.html and src/ and copies data/ as is; the Worker, the scripts, the tests and the
+      # CI stay out.
       - name: Build site
         run: npm run build
 

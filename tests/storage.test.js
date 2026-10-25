@@ -28,7 +28,7 @@ function env({ host = 'vecinos.example.com', routes = {}, storage = {} } = {}) {
   return mem;
 }
 
-test('sendChange: traduce cada respuesta del puente a un estado legible', async () => {
+test('sendChange: translates each bridge response into a readable status', async () => {
   const run = async (status) => {
     env({ routes: { 'bridge.test': [status, {}] } });
     return sendChange('https://bridge.test/', { type: 'confirm', id: 'x' }, 'resumen');
@@ -44,7 +44,7 @@ test('sendChange: traduce cada respuesta del puente a un estado legible', async 
   warn.mock.restore();
 });
 
-test('sendChange: el cuerpo lleva el prefijo del commit y el cambio', async () => {
+test('sendChange: the body carries the commit prefix and the change', async () => {
   let body;
   env({ routes: { 'bridge.test': [200, {}] } });
   const original = globalThis.fetch;
@@ -53,7 +53,7 @@ test('sendChange: el cuerpo lleva el prefijo del commit y el cambio', async () =
   assert.deepEqual(body, { commitMessage: 'Wiki Vecinal: resumen', change: { type: 'confirm', id: 'x' } });
 });
 
-test('localCache: nunca lanza aunque localStorage falle', () => {
+test('localCache: never throws even if localStorage fails', () => {
   env();
   const boom = () => { throw new Error('modo privado'); };
   globalThis.localStorage = { getItem: boom, setItem: boom, removeItem: boom };
@@ -65,12 +65,12 @@ test('localCache: nunca lanza aunque localStorage falle', () => {
   warn.mock.restore();
 });
 
-test('localCache: la configuración guardada completa los valores que faltan', () => {
+test('localCache: the saved config fills in the missing values', () => {
   env({ storage: { vecinos_rio_hato_github_bridge_v1: JSON.stringify({ bridgeUrl: '' , githubRepo: 'a/b' }) } });
   assert.deepEqual(cache.readBridgeConfig(), { bridgeUrl: cache.DEFAULT_BRIDGE_URL, githubRepo: 'a/b' });
 });
 
-test('loadStore: el repositorio gana sobre la copia del navegador y la refresca', async () => {
+test('loadStore: the repository wins over the browser copy and refreshes it', async () => {
   const mem = env({
     routes: { 'raw.githubusercontent.com': [200, remote] },
     storage: { vecinos_rio_hato_wiki_json_v4: JSON.stringify(cached), vecinos_rio_hato_wiki_json_v3: '{}' }
@@ -78,30 +78,30 @@ test('loadStore: el repositorio gana sobre la copia del navegador y la refresca'
   const store = await loadStore();
   assert.equal(store.incidents[0].id, 'r1');
   assert.equal(JSON.parse(mem.get('vecinos_rio_hato_wiki_json_v4')).incidents[0].id, 'r1');
-  assert.equal(mem.has('vecinos_rio_hato_wiki_json_v3'), false, 'borra la copia v3');
+  assert.equal(mem.has('vecinos_rio_hato_wiki_json_v3'), false, 'deletes the v3 copy');
 });
 
-test('loadStore: orden GitHub -> archivo servido -> copia local -> vacío', async () => {
-  env({ routes: { './data/incidents.json': [200, remote] } }); // GitHub cae, el archivo servido responde
+test('loadStore: order GitHub -> served file -> local copy -> empty', async () => {
+  env({ routes: { './data/incidents.json': [200, remote] } }); // GitHub is down, the served file responds
   assert.equal((await loadStore()).incidents[0].id, 'r1');
   assert.ok(calls[0].url.includes('raw.githubusercontent.com'));
   assert.ok(calls[1].url.startsWith('./data/incidents.json'));
 
   const warn = mock.method(console, 'warn', () => {});
-  env({ storage: { vecinos_rio_hato_wiki_json_v4: JSON.stringify(cached) } }); // sin red: copia local
+  env({ storage: { vecinos_rio_hato_wiki_json_v4: JSON.stringify(cached) } }); // no network: local copy
   assert.equal((await loadStore()).incidents[0].id, 'c1');
-  env(); // sin red y sin copia
+  env(); // offline, with no cached copy
   assert.deepEqual((await loadStore()).incidents, []);
   warn.mock.restore();
 });
 
-test('loadStore: en localhost no se consulta GitHub', async () => {
+test('loadStore: on localhost GitHub is not queried', async () => {
   env({ host: 'localhost', routes: { './data/incidents.json': [200, remote] } });
   await loadStore();
   assert.equal(calls.some((c) => c.url.includes('githubusercontent')), false);
 });
 
-test('persistStore: en producción manda al puente solo si hay cambio', async () => {
+test('persistStore: in production it sends to the bridge only if there is a change', async () => {
   env({ routes: { 'workers.dev': [200, {}] } });
   const withChange = await persistStore(cached, 'nota', { type: 'confirm', id: 'c1' });
   assert.equal(withChange.syncStatus.mode, 'pr');
@@ -113,20 +113,20 @@ test('persistStore: en producción manda al puente solo si hay cambio', async ()
   assert.equal(calls.length, 0);
 });
 
-test('persistStore: en localhost guarda en disco y nunca llama al puente', async () => {
+test('persistStore: on localhost it saves to disk and never calls the bridge', async () => {
   env({ host: 'localhost', routes: { '/api/local-wiki-save': [200, {}], 'workers.dev': [200, {}] } });
   const ok = await persistStore(cached, 'nota', { type: 'confirm', id: 'c1' });
   assert.equal(ok.syncStatus.mode, 'disk');
   assert.deepEqual(calls.map((c) => c.url), ['/api/local-wiki-save']);
 
   const warn = mock.method(console, 'warn', () => {});
-  env({ host: '127.0.0.1' }); // el servidor local no responde
+  env({ host: '127.0.0.1' }); // the local server does not respond
   const down = await persistStore(cached, 'nota', { type: 'confirm', id: 'c1' });
   assert.equal(down.syncStatus.mode, 'local');
   warn.mock.restore();
 });
 
-test('persistStore: sigue funcionando si localStorage está bloqueado', async () => {
+test('persistStore: keeps working if localStorage is blocked', async () => {
   env({ routes: { 'workers.dev': [200, {}] } });
   const boom = () => { throw new Error('lleno'); };
   globalThis.localStorage = { getItem: boom, setItem: boom, removeItem: boom };
@@ -136,7 +136,7 @@ test('persistStore: sigue funcionando si localStorage está bloqueado', async ()
   warn.mock.restore();
 });
 
-test('normalizeStore: ordena por número y completa los campos que faltan', () => {
+test('normalizeStore: sorts by number and fills in the missing fields', () => {
   const n = normalizeStore({ incidents: [{ id: 'b', number: 2 }, { id: 'a', number: 1 }] });
   assert.deepEqual(n.incidents.map((i) => i.id), ['a', 'b']);
   assert.equal(n.schemaVersion, 4);
@@ -144,13 +144,13 @@ test('normalizeStore: ordena por número y completa los campos que faltan', () =
   assert.ok(n.referenceCenter && n.lastUpdated);
 });
 
-test('normalizeStore: un incidents.json viejo con revisiones se limpia al cargar', () => {
+test('normalizeStore: an old incidents.json with revisions is cleaned on load', () => {
   const n = normalizeStore({ schemaVersion: 3, incidents: [{ id: 'a', number: 1 }], revisions: [{ revId: 'rev-001', previousIncidentsSnapshot: [] }] });
   assert.equal('revisions' in n, false);
   assert.equal(n.incidents.length, 1);
 });
 
-test('persistStore: lo que se guarda y se envía ya no lleva revisiones', async () => {
+test('persistStore: what is saved and sent no longer carries revisions', async () => {
   const mem = env({ routes: { 'workers.dev': [200, {}] } });
   await persistStore({ ...cached, revisions: [{ revId: 'x' }] }, 'nota', { type: 'confirm', id: 'c1' });
   assert.equal('revisions' in JSON.parse(mem.get('vecinos_rio_hato_wiki_json_v4')), false);

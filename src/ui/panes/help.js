@@ -1,7 +1,7 @@
 import { $, setHidden, showToast } from '../../core/dom.js';
 import { ageLabel, listenersLabel, sendHint, isActive, apiErrorMessage } from '../../domain/signals.js';
 
-/** Texto para quien intenta enviar y no se pudo. Puro. */
+/** Text for whoever tries to send and it failed. Pure. */
 export function sendErrorMessage(error) {
   switch (error) {
     case 'gps_denied': return 'No puedo ver tu ubicación: permite la ubicación para este sitio (Ajustes del teléfono) e inténtalo de nuevo.';
@@ -10,10 +10,10 @@ export function sendErrorMessage(error) {
   }
 }
 
-/** "Vence en 12 min" (mínimo 1). Puro. */
+/** "Vence en 12 min" (minimum 1). Pure. */
 export const expiresLabel = (expiresAt, now) => `Vence en ${Math.max(1, Math.ceil((expiresAt - now) / 60_000))} min`;
 
-/** Qué mostrar según el estado de la señal. Puro: recibe el estado y la hora, devuelve datos (no toca el DOM). */
+/** What to show depending on the signal state. Pure: receives the state and the time, returns data (does not touch the DOM). */
 export function helpView(signals, now) {
   const mineActive = Boolean(signals.mine && isActive(signals.mine, now));
   return {
@@ -29,7 +29,7 @@ export function helpView(signals, now) {
   };
 }
 
-/** Hoja "Ayuda": pedir ayuda (con confirmación), retirarla, activar la escucha y ver las alertas activas. */
+/** "Help" sheet: ask for help (with confirmation), withdraw it, turn listening on and see the active alerts. */
 export function mountHelpPane({ store, actions, signals, now = () => Date.now() }) {
   const clock = () => now() + (store.get().signals.skew || 0);
 
@@ -40,7 +40,7 @@ export function mountHelpPane({ store, actions, signals, now = () => Date.now() 
   $('btnHelpNo').addEventListener('click', () => store.patch('ui', { helpConfirm: false }));
   $('btnHelpYes').addEventListener('click', async () => {
     const btn = $('btnHelpYes');
-    if (btn.getAttribute('aria-busy') === 'true') return; // un doble toque no manda dos señales
+    if (btn.getAttribute('aria-busy') === 'true') return; // a double tap does not send two signals
     btn.setAttribute('aria-busy', 'true');
     try {
       const result = await signals.send();

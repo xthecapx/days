@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="./src/styles/sheets.css" />
 </head>
 <body>
-  <!-- MAPA (lienzo del tamaño de la pantalla; la cámara se dibuja dentro) -->
+  <!-- MAP (screen-sized canvas; the camera is drawn inside it) -->
   <div id="mapViewport" class="map-viewport">
     <canvas id="mapCanvas"></canvas>
     <div id="mapHoverTooltip" class="map-tooltip hidden"></div>
@@ -47,7 +47,7 @@
     </div>
   </header>
 
-  <!-- AVISO DE AYUDA: aparece mientras haya una señal de un vecino sin descartar -->
+  <!-- HELP NOTICE: shown while there is an undismissed signal from a neighbour -->
   <div id="helpBanner" class="help-banner hidden" role="alert">
     <span id="helpBannerText"></span>
     <span class="help-banner-actions">
@@ -56,7 +56,7 @@
     </span>
   </div>
 
-  <!-- BANNER DE MODO (mover / elegir píxel) -->
+  <!-- MODE BANNER (move / pick pixel) -->
   <div id="modeBanner" class="mode-banner hidden">
     <span id="modeBannerText"></span>
     <button id="btnCancelMode" class="btn btn-sm" type="button">Cancelar</button>
@@ -82,17 +82,17 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
-  <!-- Si la app no puede arrancar (p. ej. sin conexión al abrirla), se muestra esto en vez de una pantalla en blanco. -->
+  <!-- If the app cannot start (e.g. no connection when opening it), this is shown instead of a blank screen. -->
   <div id="bootError" class="boot-error hidden" role="alert">
     <strong>No se pudo cargar el mapa</strong>
     <p id="bootErrorText">Revisa tu conexión e inténtalo de nuevo.</p>
     <button id="btnRetryBoot" class="btn btn-accent" type="button">🔄 Reintentar</button>
   </div>
 
-  <!-- Atribución de los datos del mapa (siempre visible, licencia ODbL) -->
+  <!-- Map data attribution (always visible, ODbL licence) -->
   <a id="mapCredit" class="map-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>
 
-  <!-- ZONA INFERIOR: tarjeta de contexto + navegación -->
+  <!-- BOTTOM AREA: context card + navigation -->
   <div id="dock" class="dock">
     <section id="peek" class="peek">
       <div id="peekIncident" class="peek-incident hidden">
@@ -132,7 +132,7 @@
     </nav>
   </div>
 
-  <!-- HOJA INFERIOR ÚNICA (incidentes · ajustes · reporte · ayuda) -->
+  <!-- SINGLE BOTTOM SHEET (incidents · settings · report · help) -->
   <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
   <aside id="sheet" class="sheet hidden" role="dialog" aria-modal="true">
     <div class="sheet-grabber"><i></i></div>

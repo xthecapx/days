@@ -2,9 +2,9 @@ import { ZOOM } from '../core/config.js';
 import { TILE_SIZE, WORLD_WIDTH, WORLD_HEIGHT } from './worldSize.js';
 
 /**
- * Cámara 2D independiente del DOM. El mundo mide WORLD_WIDTH × WORLD_HEIGHT
- * unidades; `insets` reserva el espacio ocupado por la HUD (arriba/abajo)
- * para que "centrar" apunte al centro de la zona realmente visible.
+ * 2D camera independent of the DOM. The world measures WORLD_WIDTH × WORLD_HEIGHT
+ * units; `insets` reserves the space taken by the HUD (top/bottom)
+ * so that "center" points at the centre of the actually visible area.
  */
 export function createCamera() {
   const cam = {
@@ -69,7 +69,7 @@ export function createCamera() {
       this.zoomAt(factor, c.x, c.y);
     },
 
-    /** Centra el tile (tx, ty) en la zona libre de la pantalla. */
+    /** Centres tile (tx, ty) in the free area of the screen. */
     focusTile(tx, ty, zoom = cam.zoom) {
       const z = clampZoom(zoom);
       const c = freeCenter();
@@ -82,7 +82,7 @@ export function createCamera() {
       return { x: (sx - cam.panX) / cam.zoom, y: (sy - cam.panY) / cam.zoom };
     },
 
-    /** Tile bajo un punto de pantalla, o null si cae fuera del mapa. */
+    /** Tile under a screen point, or null if it falls outside the map. */
     screenToTile(sx, sy, gridW, gridH) {
       const w = this.screenToWorld(sx, sy);
       const tx = Math.floor(w.x / TILE_SIZE);
@@ -91,7 +91,7 @@ export function createCamera() {
       return { x: tx, y: ty };
     },
 
-    /** Posición de pantalla de un tile (esquina superior izquierda). */
+    /** Screen position of a tile (top-left corner). */
     tileToScreen(tx, ty) {
       return { x: tx * TILE_SIZE * cam.zoom + cam.panX, y: ty * TILE_SIZE * cam.zoom + cam.panY };
     }

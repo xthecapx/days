@@ -2,11 +2,11 @@ import { $, setHidden } from '../core/dom.js';
 import { pixelToGps } from '../map/gpsGrid.js';
 import { findIncident } from '../state/selectors.js';
 
-/** Título de la tarjeta de un incidente. Puro: no toca el DOM. */
+/** Title of an incident card. Pure: does not touch the DOM. */
 export const peekTitle = (inc) =>
   `#${inc.number} · ${inc.dateLabel || inc.date}${inc.resolvedBy === 'policia' ? ' · 👮 Resuelto' : ''}`;
 
-/** Tarjeta inferior: píxel/sector seleccionado y, si se tocó un incidente, su resumen con acciones. */
+/** Bottom card: selected pixel/sector and, if an incident was tapped, its summary with actions. */
 export function mountPeek({ store, actions, measureInsets, sectorName }) {
   const popupIncident = () => findIncident(store.get(), store.get().ui.popupIncidentId);
 

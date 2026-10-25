@@ -14,9 +14,9 @@ const inc = (o = {}) => ({
   severity: 3, description: 'd', sector: 's', pixelX: 1, pixelY: 2, confirmations: 2, ...o
 });
 
-// ---------- números que llegan a innerHTML ----------
+// ---------- numbers that reach innerHTML ----------
 
-test('toNumber: solo deja pasar números finitos', () => {
+test('toNumber: only lets finite numbers through', () => {
   assert.equal(toNumber('12'), 12);
   assert.equal(toNumber(evil), 0);
   assert.equal(toNumber(undefined, 5), 5);
@@ -25,7 +25,7 @@ test('toNumber: solo deja pasar números finitos', () => {
   assert.equal(toNumber(null), 0);
 });
 
-test('incidentCardHtml: ningún campo numérico puede inyectar HTML', () => {
+test('incidentCardHtml: no numeric field can inject HTML', () => {
   for (const field of ['number', 'severity', 'pixelX', 'pixelY', 'confirmations']) {
     const html = incidentCardHtml(inc({ [field]: evil }), today);
     assert.doesNotMatch(html, /<img/, field);
@@ -33,7 +33,7 @@ test('incidentCardHtml: ningún campo numérico puede inyectar HTML', () => {
   }
 });
 
-test('incidentCardHtml: valores raros caen en valores razonables', () => {
+test('incidentCardHtml: odd values fall back to reasonable values', () => {
   const html = incidentCardHtml(inc({ severity: 'x', confirmations: undefined, number: undefined }), today);
   assert.match(html, /🔴 3\/5/);
   assert.match(html, /👍 1/);
@@ -41,24 +41,24 @@ test('incidentCardHtml: valores raros caen en valores razonables', () => {
   assert.match(incidentCardHtml(inc({ confirmations: 0 }), today), /👍 1/);
 });
 
-test('hoverHtml: el número y la distancia tampoco inyectan', () => {
+test('hoverHtml: the number and the distance cannot inject either', () => {
   const cell = { incidents: [{ number: evil, dateLabel: 'x', description: 'y', distance: evil, impactType: 'seguridad' }] };
   const html = hoverHtml({ x: 1, y: 1 }, cell, 's');
   assert.doesNotMatch(html, /<img|onerror/);
 });
 
-// ---------- reintentos al cargar el mapa ----------
+// ---------- retries when loading the map ----------
 
-test('withRetry: reintenta y termina con el primer acierto', async () => {
+test('withRetry: retries and ends on the first success', async () => {
   let calls = 0;
   const waits = [];
   const out = await withRetry(async () => { if (++calls < 3) throw new Error('sin red'); return 'ok'; }, { wait: async (ms) => waits.push(ms), delayMs: 100 });
   assert.equal(out, 'ok');
   assert.equal(calls, 3);
-  assert.deepEqual(waits, [100, 200], 'espera cada vez más');
+  assert.deepEqual(waits, [100, 200], 'waits longer each time');
 });
 
-test('withRetry: tras agotar los intentos lanza el último error, sin esperar de más', async () => {
+test('withRetry: after running out of attempts it throws the last error, without waiting needlessly', async () => {
   let calls = 0;
   const waits = [];
   await assert.rejects(
@@ -69,46 +69,46 @@ test('withRetry: tras agotar los intentos lanza el último error, sin esperar de
   assert.equal(waits.length, 2);
 });
 
-test('withRetry: si funciona a la primera no espera nada', async () => {
+test('withRetry: if it works the first time it does not wait at all', async () => {
   const waits = [];
   assert.equal(await withRetry(async () => 1, { wait: async (ms) => waits.push(ms) }), 1);
   assert.deepEqual(waits, []);
 });
 
-// ---------- geometría de los marcadores (antes solo se probaba a ojo) ----------
+// ---------- marker geometry (previously only checked by eye) ----------
 
-test('layoutMarkers: un incidente solo va arriba; varios cercanos se reparten sin encimarse', () => {
+test('layoutMarkers: a lone incident goes on top; several nearby ones spread out without overlapping', () => {
   const alone = layoutMarkers([inc({ id: 'a', pixelX: 10, pixelY: 10 })], 1);
   assert.equal(alone.get('a').dx, 0);
   const group = layoutMarkers([inc({ id: 'a', pixelX: 10, pixelY: 10 }), inc({ id: 'b', pixelX: 11, pixelY: 10 }), inc({ id: 'c', pixelX: 10, pixelY: 11 })], 1);
   const xs = ['a', 'b', 'c'].map((id) => group.get(id).dx);
-  assert.equal(new Set(xs).size, 3, 'cada etiqueta en su sitio');
-  assert.ok(Math.abs(xs.reduce((a, b) => a + b, 0)) < 1e-9, 'centradas sobre el grupo');
+  assert.equal(new Set(xs).size, 3, 'each label in its own place');
+  assert.ok(Math.abs(xs.reduce((a, b) => a + b, 0)) < 1e-9, 'centred on the group');
 });
 
-test('markerWidth: crece con los dígitos y con el 👮', () => {
+test('markerWidth: grows with the digits and with the 👮', () => {
   assert.ok(markerWidth({ number: 10 }) > markerWidth({ number: 1 }));
   assert.equal(markerWidth({ number: 1, resolvedBy: 'policia' }) - markerWidth({ number: 1 }), 10);
 });
 
-test('incidentAtPoint: tocar el píxel o la etiqueta devuelve el incidente; tocar lejos, null', () => {
+test('incidentAtPoint: tapping the pixel or the label returns the incident; tapping far away returns null', () => {
   const list = [inc({ id: 'a', pixelX: 50, pixelY: 50 }), inc({ id: 'b', number: 9, pixelX: 120, pixelY: 120 })];
   const at = (id) => ({ x: (list.find((i) => i.id === id).pixelX + 0.5) * TILE_SIZE, y: (list.find((i) => i.id === id).pixelY + 0.5) * TILE_SIZE });
   assert.equal(incidentAtPoint(list, at('a'), 2).id, 'a');
   assert.equal(incidentAtPoint(list, at('b'), 2).id, 'b');
   const { dx, dy } = layoutMarkers(list, 2).get('a');
-  assert.equal(incidentAtPoint(list, { x: at('a').x + dx, y: at('a').y + dy }, 2).id, 'a', 'la etiqueta también responde');
+  assert.equal(incidentAtPoint(list, { x: at('a').x + dx, y: at('a').y + dy }, 2).id, 'a', 'the label responds too');
   assert.equal(incidentAtPoint(list, { x: 5, y: 5 }, 2), null);
   assert.equal(incidentAtPoint([], { x: 5, y: 5 }, 2), null);
 });
 
-test('incidentAtPoint: con dos incidentes cerca gana el más cercano al dedo', () => {
+test('incidentAtPoint: with two incidents nearby, the one closest to the finger wins', () => {
   const list = [inc({ id: 'a', pixelX: 50, pixelY: 50 }), inc({ id: 'b', number: 9, pixelX: 51, pixelY: 50 })];
   const near = (i) => ({ x: (i.pixelX + 0.5) * TILE_SIZE, y: (i.pixelY + 0.5) * TILE_SIZE });
   assert.equal(incidentAtPoint(list, near(list[1]), 2).id, 'b');
 });
 
-test('markerScale: el tamaño en pantalla se mantiene al hacer zoom (con límites)', () => {
+test('markerScale: the on-screen size holds when zooming (with limits)', () => {
   assert.equal(markerScale(1), 1);
   assert.equal(markerScale(5), 1 / 3);
   assert.equal(markerScale(0.1), 1 / 0.8);

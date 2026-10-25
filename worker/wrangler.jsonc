@@ -1,13 +1,13 @@
 {
-  // Puente de reportes: abre un Pull Request por cada reporte vecinal. Se despliega desde esta carpeta
-  // (en Cloudflare: Root directory = worker). Independiente del servidor de la señal (../services/signal).
+  // Report bridge: opens a Pull Request for each neighbour report. Deployed from this folder
+  // (in Cloudflare: Root directory = worker). Independent of the signal server (../services/signal).
   "name": "days",
   "main": "github-wiki-bridge.js",
   "compatibility_date": "2025-01-01",
   "vars": {
     "GITHUB_REPO": "xthecapx/days"
   },
-  // Límite de ráfaga por visitante: 3 reportes por minuto. namespace_id debe ser único en tu cuenta.
+  // Burst limit per visitor: 3 reports per minute. namespace_id must be unique in your account.
   "ratelimits": [
     {
       "name": "REPORT_LIMITER",

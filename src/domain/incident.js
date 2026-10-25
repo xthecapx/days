@@ -1,6 +1,6 @@
 /**
- * Reglas puras sobre incidentes: sin DOM, sin red, sin almacenamiento ni estado global.
- * Todo lo que necesita del mundo exterior (la hora, el sector, las coordenadas) entra por parámetros.
+ * Pure rules about incidents: no DOM, no network, no storage and no global state.
+ * Everything it needs from the outside world (the time, the sector, the coordinates) comes in as parameters.
  */
 
 const MONTHS = [
@@ -8,7 +8,7 @@ const MONTHS = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
 ];
 
-/** Días transcurridos desde una fecha YYYY-MM-DD hasta `nowDate` (por día de calendario, nunca negativo). */
+/** Days elapsed from a YYYY-MM-DD date to `nowDate` (by calendar day, never negative). */
 export function calculateDaysSince(dateStr, nowDate = new Date()) {
   if (!dateStr) return 30;
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -20,7 +20,7 @@ export function calculateDaysSince(dateStr, nowDate = new Date()) {
   return Math.max(0, days);
 }
 
-/** ¿Es de tranquilidad/convivencia (amarillo) y no de seguridad (rojo)? */
+/** Is it a calm/coexistence incident (yellow) rather than a security one (red)? */
 export function isTranquilityIncident(inc) {
   if (!inc) return false;
   if (inc.impactType === 'tranquilidad') return true;
@@ -28,7 +28,7 @@ export function isTranquilityIncident(inc) {
   return cat.includes('ruido') || cat.includes('convivencia') || cat.includes('tranquilidad');
 }
 
-/** Último incidente por fecha del hecho (`date`), nunca por cuándo se reportó. */
+/** Latest incident by the date it happened (`date`), never by when it was reported. */
 export function latestIncident(incidents) {
   if (!incidents.length) return null;
   return [...incidents].sort((a, b) => {
@@ -64,7 +64,7 @@ export function formatSpanishDateLabel(dateStr, timeStr, dateConfirmed = true, t
 
 const nextIncidentNumber = (incidents) => incidents.reduce((max, i) => Math.max(max, i.number || 0), 0) + 1;
 
-/** Campos que el formulario controla, ya normalizados. Los comparten crear y editar. */
+/** Fields the form controls, already normalised. Shared by create and edit. */
 function formFields(input, { coords, sector }) {
   const dateConfirmed = Boolean(input.dateConfirmed);
   const timeConfirmed = Boolean(input.timeConfirmed);
@@ -83,14 +83,14 @@ function formFields(input, { coords, sector }) {
     lng: coords.lng,
     sector,
     description: input.description.trim(),
-    // Quién resolvió el caso (por ahora solo 'policia'); null = sin resolver.
+    // Who resolved the case (for now only 'policia'); null = unresolved.
     resolvedBy: input.resolvedBy === 'policia' ? 'policia' : null
   };
 }
 
 /**
- * Incidente nuevo (sin `existing`) o editado (con `existing`).
- * `coords` = { pixelX, pixelY, lat, lng } ya acotado a la grilla; `sector` = nombre ya resuelto.
+ * New incident (without `existing`) or edited one (with `existing`).
+ * `coords` = { pixelX, pixelY, lat, lng } already clamped to the grid; `sector` = already-resolved name.
  */
 export function buildIncident(input, { existing = null, incidents = [], coords, sector, now = new Date() }) {
   const fields = formFields(input, { coords, sector });
@@ -108,14 +108,14 @@ export function buildIncident(input, { existing = null, incidents = [], coords, 
   };
 }
 
-/** Un voto de confirmación más. */
+/** One more confirmation vote. */
 export const confirmedIncident = (inc, now = new Date()) => ({
   ...inc,
   confirmations: (inc.confirmations || 1) + 1,
   updatedAt: now.toISOString()
 });
 
-/** Mensaje que se envía al puente (Worker) para abrir el PR: solo los campos que el Worker acepta. */
+/** Message sent to the bridge (Worker) to open the PR: only the fields the Worker accepts. */
 export function buildSaveChange(incident, isEdit) {
   return {
     type: isEdit ? 'edit' : 'create',

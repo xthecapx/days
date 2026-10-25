@@ -9,8 +9,8 @@ import { mountHelpBanner } from './helpBanner.js';
 import { listenersLabel, helpButtonView } from '../domain/signals.js';
 
 /**
- * Barra superior, banner de modo, controles del mapa y zona inferior (tarjeta + navegación).
- * Cada pieza vive en su archivo; aquí solo se conectan y quedan los controles sencillos.
+ * Top bar, mode banner, map controls and bottom area (card + navigation).
+ * Each piece lives in its own file; here they are only wired together and the simple controls remain.
  */
 export function mountHud({ store, camera, actions, gps, whatsapp, sectorName }) {
   const measureInsets = mountInsets({ camera });
@@ -20,13 +20,13 @@ export function mountHud({ store, camera, actions, gps, whatsapp, sectorName }) 
   mountSyncToast({ store });
   mountHelpBanner({ store, actions });
 
-  // ----- Controles del mapa y navegación --------------------------------------
+  // ----- Map controls and navigation --------------------------------------
   $('btnZoomIn').addEventListener('click', () => camera.zoomBy(1.3));
   $('btnZoomOut').addEventListener('click', () => camera.zoomBy(1 / 1.3));
   $('btnHome').addEventListener('click', () => actions.goHome());
   $('btnLocate').addEventListener('click', () => actions.locateMe());
 
-  // 🆘 solo existe si la versión tiene servidor de señal configurado; sin él, la interfaz queda igual que antes.
+  // 🆘 only exists if this build has a signal server configured; without one, the interface stays as it was before.
   $('btnHelp').addEventListener('click', () => actions.openSheet('help'));
   store.subscribe((s) => [s.signals.enabled, s.signals.loaded, s.signals.listeners], ([enabled, loaded, n]) => {
     const v = helpButtonView({ enabled, loaded, listeners: n });
@@ -56,7 +56,7 @@ export function mountHud({ store, camera, actions, gps, whatsapp, sectorName }) 
     } else if (mode.type === 'pick') {
       $('modeBannerText').textContent = '🎯 Toca el mapa para ubicar el reporte';
     }
-    // Con una hoja abierta el dock queda tapado por la hoja.
+    // With a sheet open the dock is covered by the sheet.
     setHidden($('dock'), Boolean(sheet));
     setHidden($('mapControls'), Boolean(sheet));
     setHidden($('mapCredit'), Boolean(sheet));

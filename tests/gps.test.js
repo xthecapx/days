@@ -5,7 +5,7 @@ import { createWhatsApp, buildAlertMessage } from '../src/services/whatsapp.js';
 
 const pos = (lat = 7.005, lng = -73.064, accuracy = 12.4) => ({ coords: { latitude: lat, longitude: lng, accuracy } });
 
-/** Geolocalización falsa: cada llamada queda pendiente hasta que el test la resuelve. */
+/** Fake geolocation: each call stays pending until the test resolves it. */
 function rig(overrides = {}) {
   const calls = [];
   const geolocation = { getCurrentPosition: (ok, fail, opts) => calls.push({ ok, fail, opts }) };
@@ -21,7 +21,7 @@ function rig(overrides = {}) {
   return { gps, calls, clock, timers };
 }
 
-test('start: una sola lectura y el estado pasa de searching a ok', async () => {
+test('start: a single read and the status goes from searching to ok', async () => {
   const { gps, calls } = rig();
   const seen = [];
   gps.subscribe((s) => seen.push(s));
@@ -35,7 +35,7 @@ test('start: una sola lectura y el estado pasa de searching a ok', async () => {
   assert.deepEqual(seen, ['searching', 'searching', 'ok']);
 });
 
-test('lecturas simultáneas comparten una sola petición al teléfono', async () => {
+test('simultaneous reads share a single request to the phone', async () => {
   const { gps, calls } = rig();
   const a = gps.read();
   const b = gps.read();
@@ -45,7 +45,7 @@ test('lecturas simultáneas comparten una sola petición al teléfono', async ()
   await a;
 });
 
-test('posición reciente: fix() responde al instante y ensureFresh() no vuelve a leer', async () => {
+test('recent position: fix() answers instantly and ensureFresh() does not read again', async () => {
   const { gps, calls, clock } = rig();
   const p = gps.read();
   calls[0].ok(pos());
@@ -53,10 +53,10 @@ test('posición reciente: fix() responde al instante y ensureFresh() no vuelve a
   clock.t += 119_000;
   assert.ok(gps.fix());
   gps.ensureFresh();
-  assert.equal(calls.length, 1, 'no hay lectura nueva antes de 2 minutos');
+  assert.equal(calls.length, 1, 'no new read before 2 minutes');
 });
 
-test('a los 2 minutos vence: estado stale, fix() = null y ensureFresh() relee UNA vez', async () => {
+test('after 2 minutes it expires: status stale, fix() = null and ensureFresh() re-reads ONCE', async () => {
   const { gps, calls, clock } = rig();
   const p = gps.read();
   calls[0].ok(pos());
@@ -73,7 +73,7 @@ test('a los 2 minutos vence: estado stale, fix() = null y ensureFresh() relee UN
   assert.equal(gps.fix().lat, 7.006);
 });
 
-test('el temporizador solo repinta el indicador, no lee el GPS', async () => {
+test('the timer only repaints the indicator, it does not read the GPS', async () => {
   const { gps, calls, clock, timers } = rig();
   const seen = [];
   gps.subscribe((s) => seen.push(s));
@@ -87,7 +87,7 @@ test('el temporizador solo repinta el indicador, no lee el GPS', async () => {
   assert.equal(calls.length, 1);
 });
 
-test('errores: denied, timeout y sin soporte; el motivo queda en error()', async () => {
+test('errors: denied, timeout and unsupported; the reason is left in error()', async () => {
   const denied = rig();
   const d = denied.gps.read();
   denied.calls[0].fail({ code: 1 });
@@ -100,14 +100,14 @@ test('errores: denied, timeout y sin soporte; el motivo queda en error()', async
   slow.calls[0].fail({ code: 3 });
   assert.equal(await t, null);
   assert.equal(slow.gps.error(), 'timeout');
-  assert.equal(slow.gps.status(), 'stale', 'sin posición previa un timeout queda pendiente: se reintenta al usarla');
+  assert.equal(slow.gps.status(), 'stale', 'with no previous position a timeout stays pending: it is retried on use');
 
   const none = createGps({ geolocation: null });
   assert.equal(await none.read(), null);
   assert.equal(none.status(), 'unavailable');
 });
 
-test('un fallo posterior conserva la última posición como stale', async () => {
+test('a later failure keeps the last position as stale', async () => {
   const { gps, calls, clock } = rig();
   const p = gps.read();
   calls[0].ok(pos());
@@ -120,7 +120,7 @@ test('un fallo posterior conserva la última posición como stale', async () => 
   assert.equal(gps.status(), 'unavailable');
 });
 
-test('subscribe devuelve la función para darse de baja', async () => {
+test('subscribe returns the unsubscribe function', async () => {
   const { gps, calls } = rig();
   const seen = [];
   const off = gps.subscribe((s) => seen.push(s));
@@ -133,14 +133,14 @@ test('subscribe devuelve la función para darse de baja', async () => {
 
 // ---------- WhatsApp ----------
 
-test('sendAlert con posición reciente abre WhatsApp en el acto (antes de cualquier await)', () => {
+test('sendAlert with a recent position opens WhatsApp immediately (before any await)', () => {
   const opened = [];
-  const gps = { fix: () => ({ lat: 7.005, lng: -73.064, accuracy: 10 }), read: async () => assert.fail('no debe leer'), error: () => null };
+  const gps = { fix: () => ({ lat: 7.005, lng: -73.064, accuracy: 10 }), read: async () => assert.fail('must not read'), error: () => null };
   const wa = createWhatsApp({ gps, sectorAt: () => 'Sector X', open: (u) => opened.push(u) });
   const promise = wa.sendAlert();
-  // Sin `await` previo, la parte síncrona de la función async ya navegó: es lo que exige iOS Safari
-  // (la navegación debe ocurrir dentro del toque, no después de esperar algo).
-  assert.equal(opened.length, 1, 'abre WhatsApp antes de devolver el control');
+  // With no prior `await`, the synchronous part of the async function has already navigated: this is what iOS Safari requires
+  // (navigation must happen within the tap, not after waiting for something).
+  assert.equal(opened.length, 1, 'opens WhatsApp before returning control');
   return promise.then((r) => {
     assert.equal(r.located, true);
     assert.equal(opened.length, 1);
@@ -148,7 +148,7 @@ test('sendAlert con posición reciente abre WhatsApp en el acto (antes de cualqu
   });
 });
 
-test('sendAlert sin posición espera la lectura y abre igual, con el motivo', async () => {
+test('sendAlert with no position waits for the read and opens anyway, with the reason', async () => {
   const opened = [];
   const gps = { fix: () => null, read: async () => null, error: () => 'denied' };
   const wa = createWhatsApp({ gps, open: (u) => opened.push(u) });
@@ -157,7 +157,7 @@ test('sendAlert sin posición espera la lectura y abre igual, con el motivo', as
   assert.match(decodeURIComponent(opened[0]), /No pude obtener mi ubicación/);
 });
 
-test('sendAlert: un punto fuera del mapa no agrega sector', async () => {
+test('sendAlert: a point outside the map adds no sector', async () => {
   const gps = { fix: () => ({ lat: 1, lng: 1 }), read: async () => null, error: () => null };
   const opened = [];
   const wa = createWhatsApp({ gps, sectorAt: () => null, open: (u) => opened.push(u) });
@@ -165,7 +165,7 @@ test('sendAlert: un punto fuera del mapa no agrega sector', async () => {
   assert.doesNotMatch(decodeURIComponent(opened[0]), /📌/);
 });
 
-test('sharePoint abre WhatsApp con el sector y el enlace', () => {
+test('sharePoint opens WhatsApp with the sector and the link', () => {
   const opened = [];
   const wa = createWhatsApp({ gps: {}, open: (u) => opened.push(u) });
   const { url } = wa.sharePoint({ lat: 7.0, lng: -73.06 }, 'Sector Y');
@@ -173,7 +173,7 @@ test('sharePoint abre WhatsApp con el sector y el enlace', () => {
   assert.match(decodeURIComponent(url), /📍 Ubicación compartida\nSector Y\nhttps:\/\/www\.google\.com\/maps/);
 });
 
-test('buildAlertMessage: el sector va entre el enlace y la precisión', () => {
+test('buildAlertMessage: the sector goes between the link and the accuracy', () => {
   const msg = buildAlertMessage({ lat: 7.005, lng: -73.064, accuracy: 8 }, { sector: 'Sector Z', now: new Date(2026, 9, 22, 9, 5) });
   const lines = msg.split('\n');
   assert.equal(lines[0], '🚨 NECESITO AYUDA');

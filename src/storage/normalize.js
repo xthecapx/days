@@ -2,8 +2,8 @@ import { gpsToPixel } from '../map/gpsGrid.js';
 import { GEO_BOUNDS } from '../core/geo.js';
 
 /**
- * lat/lng es la fuente de verdad del incidente; el tile se recalcula en cada carga
- * para que cambiar la grilla o el área del mapa nunca mueva un incidente.
+ * lat/lng is the incident's source of truth; the tile is recomputed on every load
+ * so that changing the grid or the map area never moves an incident.
  */
 function anchorToGrid(inc) {
   if (!Number.isFinite(inc.lat) || !Number.isFinite(inc.lng)) return inc;
@@ -11,7 +11,7 @@ function anchorToGrid(inc) {
   return insideBounds ? { ...inc, pixelX, pixelY } : inc;
 }
 
-/** Forma canónica de incidents.json, venga de donde venga (repositorio, caché, importación). */
+/** Canonical shape of incidents.json, wherever it comes from (repository, cache, import). */
 export function normalizeStore(data) {
   const incidents = (Array.isArray(data.incidents) ? data.incidents : []).map(anchorToGrid);
   incidents.sort((a, b) => (a.number || 0) - (b.number || 0));

@@ -20,13 +20,13 @@ test.after(async () => {
 
 const text = (page, sel) => page.$eval(sel, (e) => e.textContent);
 
-/** Abre la hoja de ayuda y espera a que esté de verdad en pantalla (entra con una animación). */
+/** Opens the help sheet and waits until it is truly on screen (it enters with an animation). */
 async function openHelp(page) {
   await page.click('#btnHelp');
   await waitHidden(page, '#paneHelp', false);
   await page.waitForSelector('#btnHelpSend', { visible: true });
 }
-/** Pulsa "Pedir ayuda" y espera a que aparezca la confirmación. */
+/** Presses "Pedir ayuda" and waits for the confirmation to appear. */
 async function askForHelp(page) {
   await page.click('#btnHelpSend');
   await waitHidden(page, '#helpConfirm', false);
@@ -34,7 +34,7 @@ async function askForHelp(page) {
 }
 const visible = (page, sel) => page.$eval(sel, (e) => !e.classList.contains('hidden'));
 
-/** Servidor de señal falso con estado mutable y registro de lo que se pidió. */
+/** Fake signal server with mutable state and a log of what was requested. */
 function fakeServer(initial = {}) {
   const server = { calls: [], signals: [], listeners: 0, ...initial };
   server.respond = (pathname, request) => {
@@ -53,7 +53,7 @@ function fakeServer(initial = {}) {
 }
 const other = (minAgo = 3) => ({ id: 'otra0001', x: 95, y: 118, at: Date.now() - minAgo * 60_000, expiresAt: Date.now() + (30 - minAgo) * 60_000 });
 
-test('sitio publicado: con el servidor activo aparece el botón 🆘 y el contador de oyentes', async () => {
+test('published site: with the server active the 🆘 button and the listener counter appear', async () => {
   const signalServer = fakeServer({ listeners: 2 });
   const { page, problems } = await openApp(browser, site.url, { signalServer });
   await loadApp(page, site.url);
@@ -61,37 +61,37 @@ test('sitio publicado: con el servidor activo aparece el botón 🆘 y el contad
   assert.equal(await visible(page, '#btnHelp'), true);
   await page.waitForFunction(() => !document.getElementById('listenersChip').classList.contains('hidden'));
   assert.match(await text(page, '#listenersChip'), /2 vecinos escuchan/);
-  assert.deepEqual(signalServer.calls, ['GET /state'], 'una sola lectura al abrir');
+  assert.deepEqual(signalServer.calls, ['GET /state'], 'a single read on opening');
   assert.deepEqual(problems, []);
   await page.close();
 });
 
-test('quien recarga ve una alerta activa, aunque no esté escuchando; y no se sondea', async () => {
+test('whoever reloads sees an active alert, even when not listening; and no polling happens', async () => {
   const signalServer = fakeServer({ signals: [other(3)], listeners: 1 });
   const { page, problems } = await openApp(browser, site.url, { signalServer });
   await loadApp(page, site.url);
   await page.waitForFunction(() => !document.getElementById('helpBanner').classList.contains('hidden'));
   assert.match(await text(page, '#helpBannerText'), /Alguien pidió ayuda hace 3 min/);
   await new Promise((r) => setTimeout(r, 400));
-  assert.ok(signalServer.calls.every((c) => c.startsWith('GET /state')), `solo lecturas, sin sondeo: ${signalServer.calls}`);
+  assert.ok(signalServer.calls.every((c) => c.startsWith('GET /state')), `reads only, no polling: ${signalServer.calls}`);
   assert.deepEqual(problems, []);
   await page.close();
 });
 
-test('el aviso se puede descartar y "Ver en el mapa" centra la alerta y cierra la hoja', async () => {
+test('the banner can be dismissed and "Ver en el mapa" centres the alert and closes the sheet', async () => {
   const signalServer = fakeServer({ signals: [other()] });
   const { page } = await openApp(browser, site.url, { signalServer });
   await loadApp(page, site.url);
   await page.waitForFunction(() => !document.getElementById('helpBanner').classList.contains('hidden'));
   await page.click('#btnHelpBannerView');
   const sel = await page.evaluate(() => window.__app?.store.get().selection.pixel ?? null);
-  assert.equal(sel, null, 'el depurador no existe en el sitio publicado, así que se comprueba por la interfaz');
+  assert.equal(sel, null, 'the debugger does not exist on the published site, so it is checked through the interface');
   await page.click('#btnHelpBannerClose');
   await waitHidden(page, '#helpBanner', true);
   await page.close();
 });
 
-test('pedir ayuda: confirmación, envío con la ubicación del teléfono, y se puede retirar', async () => {
+test('ask for help: confirmation, sending with the phone location, and it can be withdrawn', async () => {
   const signalServer = fakeServer({ listeners: 2 });
   const { page, problems } = await openApp(browser, site.url, { signalServer });
   await loadApp(page, site.url);
@@ -103,17 +103,17 @@ test('pedir ayuda: confirmación, envío con la ubicación del teléfono, y se p
 
   await page.click('#btnHelpSend');
   await waitHidden(page, '#helpConfirm', false);
-  assert.equal(await visible(page, '#btnHelpSend'), false, 'el botón rojo se oculta mientras se confirma');
+  assert.equal(await visible(page, '#btnHelpSend'), false, 'the red button is hidden while confirming');
   await page.click('#btnHelpNo');
   await waitHidden(page, '#helpConfirm', true);
-  assert.equal(signalServer.sent, undefined, 'cancelar la confirmación no envía nada');
+  assert.equal(signalServer.sent, undefined, 'cancelling the confirmation sends nothing');
 
   await page.click('#btnHelpSend');
   await page.click('#btnHelpYes');
   await waitHidden(page, '#helpMine', false);
   assert.deepEqual(signalServer.sent, { lat: 7.005, lng: -73.064 });
   assert.match(await text(page, '#helpMineText'), /Vence en \d+ min/);
-  assert.equal(await visible(page, '#btnHelpSend'), false, 'con una alerta activa no se ofrece enviar otra');
+  assert.equal(await visible(page, '#btnHelpSend'), false, 'with an active alert, sending another is not offered');
 
   await page.click('#btnHelpCancel');
   await waitHidden(page, '#helpMine', true);
@@ -123,7 +123,7 @@ test('pedir ayuda: confirmación, envío con la ubicación del teléfono, y se p
   await page.close();
 });
 
-test('el token para cancelar solo vive en el navegador de quien envió', async () => {
+test('the cancel token only lives in the browser of whoever sent', async () => {
   const signalServer = fakeServer();
   const { page } = await openApp(browser, site.url, { signalServer });
   await loadApp(page, site.url);
@@ -131,13 +131,13 @@ test('el token para cancelar solo vive en el navegador de quien envió', async (
   await openHelp(page); await askForHelp(page); await page.click('#btnHelpYes');
   await waitHidden(page, '#helpMine', false);
   const dom = await page.evaluate(() => document.documentElement.outerHTML);
-  assert.doesNotMatch(dom, /token-de-prueba-123/, 'el token no aparece en ninguna parte de la pantalla');
+  assert.doesNotMatch(dom, /token-de-prueba-123/, 'the token appears nowhere on screen');
   const stored = await page.evaluate(() => localStorage.getItem('vecinos_rio_hato_signal_v1'));
   assert.match(stored, /token-de-prueba-123/);
   await page.close();
 });
 
-test('un doble toque en "Sí, pedir ayuda" envía una sola alerta', async () => {
+test('a double tap on "Sí, pedir ayuda" sends a single alert', async () => {
   const signalServer = fakeServer();
   const { page } = await openApp(browser, site.url, { signalServer });
   await loadApp(page, site.url);
@@ -145,11 +145,11 @@ test('un doble toque en "Sí, pedir ayuda" envía una sola alerta', async () => 
   await openHelp(page); await askForHelp(page);
   await page.evaluate(() => { const b = document.getElementById('btnHelpYes'); b.click(); b.click(); b.click(); });
   await waitHidden(page, '#helpMine', false);
-  assert.equal(signalServer.calls.filter((c) => c === 'POST /signal').length, 1, `llamadas: ${signalServer.calls}`);
+  assert.equal(signalServer.calls.filter((c) => c === 'POST /signal').length, 1, `calls: ${signalServer.calls}`);
   await page.close();
 });
 
-test('escuchar: se activa, sondea y se recuerda al recargar; apagarlo avisa al servidor', async () => {
+test('listen: it turns on, polls and is remembered on reload; turning it off notifies the server', async () => {
   const signalServer = fakeServer({ listeners: 0 });
   const { page, problems } = await openApp(browser, site.url, { signalServer });
   await loadApp(page, site.url);
@@ -174,12 +174,12 @@ test('escuchar: se activa, sondea y se recuerda al recargar; apagarlo avisa al s
 
   await page.click('#chkListen');
   await page.waitForFunction(() => /Apagado/.test(document.getElementById('helpListenHint').textContent));
-  assert.equal(signalServer.calls.at(-1).startsWith('POST /poll'), true, 'al apagar se avisa para dejar de contar');
+  assert.equal(signalServer.calls.at(-1).startsWith('POST /poll'), true, 'turning off notifies the server so it stops counting');
   assert.deepEqual(problems, []);
   await page.close();
 });
 
-test('si el servidor de señal falla, la interfaz sigue viva y lo dice', async () => {
+test('if the signal server fails, the interface stays alive and says so', async () => {
   const signalServer = { calls: [], respond: () => { throw new Error('caído'); } };
   const { page } = await openApp(browser, site.url, { signalServer, intercept: (r) => {
     if (!r.url().includes('days-signal') && !r.url().includes(':8787')) return false;
@@ -187,14 +187,14 @@ test('si el servidor de señal falla, la interfaz sigue viva y lo dice', async (
     return true;
   } });
   await loadApp(page, site.url);
-  assert.match(await text(page, '#daysValue'), /^\d\d$/, 'el contador de días funciona igual');
+  assert.match(await text(page, '#daysValue'), /^\d\d$/, 'the day counter works the same');
   await openHelp(page); await askForHelp(page); await page.click('#btnHelpYes');
   await page.waitForFunction(() => !document.getElementById('helpError').classList.contains('hidden'));
-  assert.match(await text(page, '#helpError'), /123/, 'siempre queda a la vista la alternativa real');
+  assert.match(await text(page, '#helpError'), /123/, 'the real alternative always stays in view');
   await page.close();
 });
 
-test('el atajo ?sos=1 abre directamente la pantalla de ayuda', async () => {
+test('the ?sos=1 shortcut opens the help screen directly', async () => {
   const { page } = await openApp(browser, site.url, { signalServer: fakeServer() });
   await page.goto(`${site.url}?sos=1`, { waitUntil: 'load' });
   await page.waitForFunction(() => document.getElementById('daysValue').textContent !== '--');
@@ -203,7 +203,7 @@ test('el atajo ?sos=1 abre directamente la pantalla de ayuda', async () => {
   await page.close();
 });
 
-test('el manifiesto es válido y el icono se puede instalar en la pantalla de inicio', async () => {
+test('the manifest is valid and the icon can be installed on the home screen', async () => {
   const { page, problems } = await openApp(browser, site.url, { signalServer: fakeServer() });
   await loadApp(page, site.url);
   const manifest = await page.evaluate(async () => (await fetch(document.querySelector('link[rel=manifest]').href)).json());
@@ -211,21 +211,21 @@ test('el manifiesto es válido y el icono se puede instalar en la pantalla de in
   assert.equal(manifest.shortcuts[0].url, './?sos=1');
   for (const icon of manifest.icons) assert.equal((await fetch(new URL(icon.src, site.url))).status, 200, icon.src);
   assert.equal((await fetch(new URL('apple-touch-icon.png', site.url))).status, 200);
-  assert.deepEqual(problems, [], 'sin errores de "Manifest" en la consola');
+  assert.deepEqual(problems, [], 'no "Manifest" errors in the console');
   await page.close();
 });
 
-test('la cifra de vecinos escuchando se ve sobre el botón 🆘, sin abrir nada, y se actualiza al escuchar', async () => {
+test('the count of neighbours listening shows on the 🆘 button, without opening anything, and updates on listening', async () => {
   const signalServer = fakeServer({ listeners: 2 });
   const { page, problems } = await openApp(browser, site.url, { signalServer });
   await page.goto(site.url, { waitUntil: 'load' });
-  // Antes de la primera respuesta no hay cifra.
+  // Before the first response there is no count.
   await page.waitForFunction(() => document.getElementById('daysValue').textContent !== '--');
   await page.waitForFunction(() => !document.getElementById('helpCount').classList.contains('hidden'));
   assert.equal(await text(page, '#helpCount'), '2');
   assert.match(await page.$eval('#btnHelp', (e) => e.getAttribute('aria-label')), /2 vecinos escuchan/);
   assert.equal(await page.$eval('#helpCount', (e) => e.classList.contains('dim')), false);
-  // La cifra queda dentro de la pantalla y no tapa el botón.
+  // The count stays inside the screen and does not cover the button.
   const box = await page.$eval('#helpCount', (e) => { const r = e.getBoundingClientRect(); return [r.left >= 0, r.right <= innerWidth, r.top >= 0]; });
   assert.deepEqual(box, [true, true, true]);
 
@@ -236,7 +236,7 @@ test('la cifra de vecinos escuchando se ve sobre el botón 🆘, sin abrir nada,
   await page.close();
 });
 
-test('con nadie escuchando la cifra es 0 y se ve atenuada', async () => {
+test('with nobody listening the count is 0 and shown dimmed', async () => {
   const { page } = await openApp(browser, site.url, { signalServer: fakeServer({ listeners: 0 }) });
   await loadApp(page, site.url);
   await page.waitForFunction(() => !document.getElementById('helpCount').classList.contains('hidden'));
@@ -245,13 +245,13 @@ test('con nadie escuchando la cifra es 0 y se ve atenuada', async () => {
   await page.close();
 });
 
-test('las pruebas nunca llegan al servidor real: cualquier llamada a days-signal se responde dentro de la prueba', async () => {
-  // Ya no hay una sala de pruebas: la protección es que el navegador de las pruebas intercepta la dirección del servidor.
-  const { page } = await openApp(browser, site.url); // sin servidor falso: se usa el vacío por defecto
+test('tests never reach the real server: any call to days-signal is answered inside the test', async () => {
+  // There is no test room any more: the protection is that the test browser intercepts the server address.
+  const { page } = await openApp(browser, site.url); // no fake server: the default empty one is used
   const reached = [];
   page.on('response', (r) => { if (r.url().includes('days-signal.xthecapx.workers.dev') && r.headers()['server'] === 'cloudflare') reached.push(r.url()); });
   await loadApp(page, site.url);
   await page.waitForFunction(() => !document.getElementById('btnHelp').classList.contains('hidden'));
-  assert.deepEqual(reached, [], 'ninguna respuesta vino del servidor de Cloudflare');
+  assert.deepEqual(reached, [], 'no response came from the Cloudflare server');
   await page.close();
 });

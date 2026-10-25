@@ -1,21 +1,21 @@
 import { toIsoDate } from './dom.js';
 
 /**
- * "Hoy" de la app. Es la fecha del dispositivo, a mediodía (así sumar o restar horas no cambia el día).
- * Se actualiza sola al pasar la medianoche o al volver a la pestaña tras dejarla abierta días.
+ * The app's "today". It is the device date, at noon (so adding or subtracting hours does not change the day).
+ * It updates itself after midnight or when returning to the tab after leaving it open for days.
  */
 
 export const startOfDay = (now = new Date()) => new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
 
-/** Milisegundos hasta que el reloj del dispositivo marque el día siguiente (mínimo 1 s). */
+/** Milliseconds until the device clock reads the next day (minimum 1 s). */
 export function msUntilNextDay(now = new Date()) {
   const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
   return Math.max(1000, next.getTime() - now.getTime());
 }
 
 /**
- * Mantiene `settings.referenceDate` al día. Devuelve `stop()`.
- * `now`, `setTimer` y `clearTimer` se pueden reemplazar en pruebas.
+ * Keeps `settings.referenceDate` current. Returns `stop()`.
+ * `now`, `setTimer` and `clearTimer` can be replaced in tests.
  */
 export function startDayClock(store, { now = () => new Date(), setTimer = setTimeout, clearTimer = clearTimeout, doc = globalThis.document } = {}) {
   let timer = null;
@@ -35,7 +35,7 @@ export function startDayClock(store, { now = () => new Date(), setTimer = setTim
   const onVisible = () => {
     if (doc && !doc.hidden) {
       sync();
-      schedule(); // los temporizadores se atrasan con la pestaña en segundo plano
+      schedule(); // timers fall behind while the tab is in the background
     }
   };
   doc?.addEventListener('visibilitychange', onVisible);

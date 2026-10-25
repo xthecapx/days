@@ -44,28 +44,28 @@ function rig({ enabled = true, saved = { listening: false, listenerId: null, min
   return { store, service, calls, wrote, fresh, feeds, setServer: (s) => { signals = s; }, state: () => store.get().signals };
 }
 
-// ---------- configuración ----------
+// ---------- configuration ----------
 
-test('resolveSignalConfig: el sitio publicado usa el servidor real; solo `vite dev` usa el local (el real no acepta localhost)', () => {
+test('resolveSignalConfig: the published site uses the real server; only `vite dev` uses the local one (the real one does not accept localhost)', () => {
   assert.deepEqual(resolveSignalConfig({ hostname: 'xthecapx.github.io' }), { baseUrl: DEFAULT_SIGNAL_URL });
   assert.equal(DEFAULT_SIGNAL_URL, 'https://days-signal.xthecapx.workers.dev/');
   assert.deepEqual(resolveSignalConfig({ dev: true, hostname: 'localhost' }), { baseUrl: 'http://localhost:8787/' });
-  assert.deepEqual(resolveSignalConfig({ dev: true, hostname: '192.168.68.54' }), { baseUrl: 'http://192.168.68.54:8787/' }, 'desde el celular, el servidor local de tu computador');
+  assert.deepEqual(resolveSignalConfig({ dev: true, hostname: '192.168.68.54' }), { baseUrl: 'http://192.168.68.54:8787/' }, 'from the phone, the local server on your computer');
 });
 
-test('resolveSignalConfig: no hay salas ni modo de pruebas; el resultado solo lleva la URL', () => {
+test('resolveSignalConfig: there are no rooms or test mode; the result only carries the URL', () => {
   for (const cfg of [resolveSignalConfig({}), resolveSignalConfig({ dev: true }), resolveSignalConfig({ override: { baseUrl: 'https://x.example', room: 'dev' } })]) {
     assert.deepEqual(Object.keys(cfg), ['baseUrl']);
   }
 });
 
-test('resolveSignalConfig: un override con URL vacía apaga la función; con URL, la reemplaza', () => {
+test('resolveSignalConfig: an override with an empty URL turns the feature off; with a URL, it replaces it', () => {
   assert.equal(resolveSignalConfig({ override: { baseUrl: '' } }).baseUrl, '');
   assert.equal(resolveSignalConfig({ override: { baseUrl: '  https://x.example/ ' } }).baseUrl, 'https://x.example/');
   assert.deepEqual(resolveSignalConfig({ override: null, hostname: 'xthecapx.github.io' }), resolveSignalConfig({ hostname: 'xthecapx.github.io' }));
 });
 
-// ---------- preferencias del navegador ----------
+// ---------- browser preferences ----------
 
 function fakeStorage(initial = {}) {
   const mem = new Map(Object.entries(initial));
@@ -73,21 +73,21 @@ function fakeStorage(initial = {}) {
   return mem;
 }
 
-test('prefs: sin nada guardado devuelven el valor neutro; guardar y leer es ida y vuelta', () => {
+test('prefs: with nothing saved they return the neutral value; saving and reading round-trips', () => {
   fakeStorage();
   assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null, mine: null });
   assert.equal(cache.writeSignalPrefs({ listening: true, listenerId: 'oyente-abc123', mine: { id: 'a', token: 't', expiresAt: 5 } }), true);
   assert.deepEqual(cache.readSignalPrefs(), { listening: true, listenerId: 'oyente-abc123', mine: { id: 'a', token: 't', expiresAt: 5 } });
 });
 
-test('prefs: datos dañados o manipulados no rompen nada', () => {
+test('prefs: corrupted or tampered data breaks nothing', () => {
   fakeStorage({ vecinos_rio_hato_signal_v1: '{no es json' });
   assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null, mine: null });
   fakeStorage({ vecinos_rio_hato_signal_v1: JSON.stringify({ listening: 'si', listenerId: '<script>', mine: { id: 5, token: {}, expiresAt: 'x' } }) });
   assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null, mine: null });
 });
 
-test('prefs: con localStorage bloqueado no lanza', () => {
+test('prefs: with localStorage blocked it does not throw', () => {
   const boom = () => { throw new Error('modo privado'); };
   globalThis.localStorage = { getItem: boom, setItem: boom, removeItem: boom };
   const warn = console.warn; console.warn = () => {};
@@ -97,9 +97,9 @@ test('prefs: con localStorage bloqueado no lanza', () => {
   console.warn = warn;
 });
 
-// ---------- el servicio ----------
+// ---------- the service ----------
 
-test('arranque: una sola lectura, sin sondeo, y la función queda habilitada', async () => {
+test('startup: a single read, no polling, and the feature ends up enabled', async () => {
   const r = rig({ serverSignals: [sig('a')] });
   await r.service.start();
   assert.deepEqual(r.calls, ['state']);
@@ -110,7 +110,7 @@ test('arranque: una sola lectura, sin sondeo, y la función queda habilitada', a
   assert.equal(r.state().listening, false);
 });
 
-test('sin servidor configurado no hace ninguna petición y queda deshabilitada', async () => {
+test('with no server configured it makes no request and ends up disabled', async () => {
   const r = rig({ enabled: false });
   await r.service.start();
   await r.service.setListening(true);
@@ -120,22 +120,22 @@ test('sin servidor configurado no hace ninguna petición y queda deshabilitada',
   assert.equal(r.state().listening, false);
 });
 
-test('escuchar: se activa, se guarda en el navegador y se retoma al recargar', async () => {
+test('listen: it turns on, is saved in the browser and resumes on reload', async () => {
   const r = rig();
   await r.service.start();
   await r.service.setListening(true);
   assert.equal(r.state().listening, true);
   assert.equal(r.wrote.at(-1).listening, true);
   assert.ok(r.calls.includes('poll'));
-  // "recarga": nueva instancia con lo guardado
+  // "reload": new instance with what was saved
   const again = rig({ saved: r.wrote.at(-1) });
   await again.service.start();
   assert.equal(again.state().listening, true);
   assert.deepEqual(again.calls, ['state', 'poll']);
-  assert.equal(again.service.listenerId, r.service.listenerId, 'misma identidad de oyente tras recargar');
+  assert.equal(again.service.listenerId, r.service.listenerId, 'same listener identity after reloading');
 });
 
-test('dejar de escuchar avisa al servidor y se recuerda', async () => {
+test('stopping listening notifies the server and is remembered', async () => {
   const r = rig();
   await r.service.setListening(true);
   await r.service.setListening(false);
@@ -144,32 +144,32 @@ test('dejar de escuchar avisa al servidor y se recuerda', async () => {
   assert.equal(r.wrote.at(-1).listening, false);
 });
 
-test('el identificador de oyente es aleatorio, cumple lo que pide el servidor y se reutiliza', () => {
+test('the listener id is random, meets what the server requires and is reused', () => {
   const a = rig(); const b = rig();
   assert.match(a.service.listenerId, /^[A-Za-z0-9_-]{8,64}$/);
   assert.notEqual(a.service.listenerId, b.service.listenerId);
-  assert.equal(a.wrote[0].listenerId, a.service.listenerId, 'se guarda desde el primer momento');
+  assert.equal(a.wrote[0].listenerId, a.service.listenerId, 'it is saved from the very first moment');
   assert.equal(rig({ saved: { listening: false, listenerId: 'guardado-xyz123', mine: null } }).service.listenerId, 'guardado-xyz123');
 });
 
-test('enviar: usa la posición del GPS, guarda el token para cancelar y NO lo expone en el estado', async () => {
+test('send: uses the GPS position, stores the cancel token and does NOT expose it in the state', async () => {
   const r = rig();
   const res = await r.service.send();
   assert.equal(res.ok, true);
   assert.deepEqual(r.calls[0], ['send', { lat: 7.005, lng: -73.064 }]);
   assert.deepEqual(r.state().mine, { id: 'mia1', expiresAt: NOW + 30 * MIN });
-  assert.doesNotMatch(JSON.stringify(r.store.get()), /tok-secreto/, 'el token solo vive en el navegador, no en el estado de la pantalla');
+  assert.doesNotMatch(JSON.stringify(r.store.get()), /tok-secreto/, 'the token only lives in the browser, not in the screen state');
   assert.equal(r.wrote.at(-1).mine.token, 'tok-secreto');
 });
 
-test('enviar sin ubicación: no se manda nada y se explica por qué', async () => {
+test('send without a location: nothing is sent and the reason is explained', async () => {
   const none = rig({ gpsFix: null, gpsError: 'timeout' });
   assert.deepEqual(await none.service.send(), { ok: false, error: 'no_gps' });
   assert.equal(none.calls.length, 0);
   assert.deepEqual(await rig({ gpsFix: null, gpsError: 'denied' }).service.send(), { ok: false, error: 'gps_denied' });
 });
 
-test('enviar con error del servidor: se devuelve el error y no se guarda ninguna señal propia', async () => {
+test('send with a server error: the error is returned and no own signal is saved', async () => {
   const r = rig({ sendResult: { ok: false, status: 422, error: 'outside_area' } });
   const res = await r.service.send();
   assert.deepEqual([res.ok, res.error], [false, 'outside_area']);
@@ -177,7 +177,7 @@ test('enviar con error del servidor: se devuelve el error y no se guarda ninguna
   assert.equal(r.wrote.at(-1).mine, null);
 });
 
-test('cancelar: retira mi señal con su token; sin señal propia no hace nada', async () => {
+test('cancel: withdraws my signal with its token; with no own signal it does nothing', async () => {
   const r = rig();
   assert.deepEqual(await r.service.cancel(), { ok: false, error: 'nothing_to_cancel' });
   await r.service.send();
@@ -188,15 +188,15 @@ test('cancelar: retira mi señal con su token; sin señal propia no hace nada', 
   assert.equal(r.wrote.at(-1).mine, null);
 });
 
-test('mi señal guardada se recupera al recargar si sigue vigente, y se descarta si venció', () => {
+test('my saved signal is recovered on reload if still valid, and discarded if it expired', () => {
   const live = rig({ saved: { listening: false, listenerId: 'guardado-xyz123', mine: { id: 'a', token: 't', expiresAt: NOW + MIN } } });
   assert.deepEqual(live.state().mine, { id: 'a', expiresAt: NOW + MIN });
   const dead = rig({ saved: { listening: false, listenerId: 'guardado-xyz123', mine: { id: 'a', token: 't', expiresAt: NOW - 1 } } });
   assert.equal(dead.state().mine, null);
-  assert.equal(dead.wrote.at(-1).mine, null, 'y se borra de lo guardado');
+  assert.equal(dead.wrote.at(-1).mine, null, 'and it is removed from what was saved');
 });
 
-test('mi propia señal no dispara el aviso de "alguien pidió ayuda"', async () => {
+test('my own signal does not trigger the "alguien pidió ayuda" alert', async () => {
   const r = rig();
   await r.service.send();
   const handler = r.feeds[0].opts.onNew;
@@ -204,7 +204,7 @@ test('mi propia señal no dispara el aviso de "alguien pidió ayuda"', async () 
   assert.deepEqual(r.fresh, [['otra']]);
 });
 
-test('el estado de conexión del sondeo llega al estado de la pantalla', () => {
+test('the polling connection status reaches the screen state', () => {
   const r = rig();
   r.feeds[0].opts.onStatus('error');
   assert.equal(r.state().status, 'error');

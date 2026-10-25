@@ -96,7 +96,7 @@
 }
 .fab:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 #000; }
 
-/* ---------- Atribución OSM ---------- */
+/* ---------- OSM attribution ---------- */
 .map-credit {
   position: fixed;
   left: 8px;
@@ -112,7 +112,7 @@
 }
 .map-credit:active { background: rgba(255, 255, 255, 0.85); }
 
-/* En pantallas anchas el dock queda centrado: la atribución va en la esquina inferior izquierda. */
+/* On wide screens the dock is centred: the attribution goes in the bottom-left corner. */
 @media (min-width: 680px) {
   .map-credit {
     bottom: max(4px, env(safe-area-inset-bottom));
@@ -231,7 +231,7 @@
   box-shadow: 3px 3px 0 #000;
   font: 700 0.72rem var(--font-mono);
   text-align: center;
-  z-index: 60; /* por encima de la hoja (50), para que se vea también al confirmar desde la lista */
+  z-index: 60; /* above the sheet (50), so it is also visible when confirming from the list */
   pointer-events: none;
 }
 
@@ -291,7 +291,7 @@
 .boot-error strong { font: 800 1rem var(--font-mono); color: var(--yellow); }
 .boot-error p { max-width: 32ch; font-size: 0.85rem; color: #cbd5e1; }
 
-/* ---------- Señal de ayuda ---------- */
+/* ---------- Help signal ---------- */
 .fab-help { position: relative; background: var(--red); border-color: #ff8a80; color: #fff; }
 .fab-badge {
   position: absolute;

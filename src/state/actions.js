@@ -5,17 +5,17 @@ import { isTranquilityIncident } from '../domain/incident.js';
 import { findIncident } from './selectors.js';
 
 /**
- * Todas las operaciones de la app en un solo lugar. Los componentes de UI
- * solo llaman a estas funciones y leen el store; no se hablan entre sí.
+ * All the app's operations in one place. The UI components
+ * only call these functions and read the store; they do not talk to each other.
  */
 export function createActions({ store, camera, incidents, gps, world, sectorName }) {
   const { home } = world;
-  let draftSession = 0; // identifica cada apertura del formulario, para rellenarlo una sola vez
+  let draftSession = 0; // identifies each opening of the form, to fill it in only once
   const ui = (partial) => store.patch('ui', partial);
 
   const isMobile = () => window.innerWidth < 600;
 
-  // ----- Cámara / selección -------------------------------------------------
+  // ----- Camera / selection -------------------------------------------------
   function goHome(zoom) {
     camera.focusTile(home.x, home.y - 1, zoom ?? (isMobile() ? 1.45 : 1.75));
     store.patch('selection', { pixel: { x: home.x, y: home.y } });
@@ -25,7 +25,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
     store.patch('selection', { pixel: { x, y } });
   }
 
-  /** Centra el mapa en una alerta de ayuda y cierra la hoja para verla. */
+  /** Centres the map on a help alert and closes the sheet so it can be seen. */
   function focusSignal(id) {
     const sig = store.get().signals.active.find((s) => s.id === id);
     if (!sig) return;
@@ -42,7 +42,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
     camera.focusTile(inc.pixelX, inc.pixelY, Math.max(camera.state.zoom, 1.8));
   }
 
-  /** Centra el mapa en la posición del teléfono; reutiliza la lectura reciente en vez de pedir otra. */
+  /** Centres the map on the phone's position; reuses the recent read instead of requesting another. */
   async function locateMe() {
     const fallback = () => {
       selectPixel(home.x, home.y);
@@ -63,7 +63,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
 
   function closeSheet() {
     const { mode } = store.get();
-    if (mode.type === 'pick') return; // la hoja está oculta a propósito mientras se elige un píxel
+    if (mode.type === 'pick') return; // the sheet is hidden on purpose while a pixel is being picked
     store.set({ ui: { ...store.get().ui, sheet: null }, draft: null });
   }
 
@@ -82,7 +82,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
     ui({ popupIncidentId: id });
   }
 
-  // ----- Modos de selección en el mapa --------------------------------------
+  // ----- Selection modes on the map --------------------------------------
   function startMove(inc) {
     store.set({
       mode: { type: 'move', incidentId: inc.id },
@@ -119,7 +119,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
           category: incident.category || DEFAULT_CATEGORY,
           severity: incident.severity || 4,
           date: incident.date || toIsoDate(state.settings.referenceDate),
-          time: incident.timeConfirmed || incident.time !== '12:00' ? incident.time || '' : '', // las 12:00 sin confirmar eran un relleno
+          time: incident.timeConfirmed || incident.time !== '12:00' ? incident.time || '' : '', // the 12:00 without confirmation was filler
           pickDate: false,
           dateConfirmed: Boolean(incident.dateConfirmed),
           timeConfirmed: Boolean(incident.timeConfirmed),
@@ -135,8 +135,8 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
           impactType: 'seguridad',
           category: DEFAULT_CATEGORY,
           severity: 4,
-          // Sin fecha ni hora hasta que la persona las elija: así nunca se guarda el día del REPORTE
-          // como si fuera el día del HECHO (eso es lo que cuenta "días desde el último incidente").
+          // No date or time until the person chooses them: that way the day of the REPORT is never saved
+          // as if it were the day of the EVENT (which is what "days since the last incident" counts).
           date: '',
           time: '',
           pickDate: false,
@@ -155,9 +155,9 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
     const next = { ...draft, ...partial };
     if ('category' in partial) {
       const cat = CATEGORIES.find((c) => c.value === partial.category);
-      if (cat && !('impactType' in partial)) next.impactType = cat.impact; // el color sale de la categoría
+      if (cat && !('impactType' in partial)) next.impactType = cat.impact; // the colour comes from the category
     }
-    // Elegir una fecha u hora la confirma; dejarla vacía la deja sin confirmar.
+    // Choosing a date or time confirms it; leaving it empty leaves it unconfirmed.
     if ('date' in partial) {
       if (!('dateConfirmed' in partial)) next.dateConfirmed = Boolean(partial.date);
       if (!('pickDate' in partial)) next.pickDate = false;
@@ -195,7 +195,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
     return saved;
   }
 
-  // ----- Toques sobre el mapa ----------------------------------------------
+  // ----- Taps on the map ----------------------------------------------
   async function tapTile(x, y, hitIncident) {
     selectPixel(x, y);
     const { mode, draft } = store.get();

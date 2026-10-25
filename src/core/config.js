@@ -8,7 +8,7 @@ export const SEVERITY_NAMES = {
   5: '5 / 5 (Crítica)'
 };
 
-/** Agregar una categoría aquí la hace disponible en el formulario. */
+/** Adding a category here makes it available in the form. */
 export const CATEGORIES = [
   { value: 'Violencia / Robo y Lesiones', label: 'Violencia / Robo y Lesiones', impact: 'seguridad' },
   { value: 'Hurto a Residencia', label: 'Hurto a Residencia', impact: 'seguridad' },

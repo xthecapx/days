@@ -12,7 +12,7 @@ function lodVisible(lod, zoom) {
   return zoom >= 2.2;
 }
 
-/** Texto con halo claro: legible sobre cualquier fondo, sin cajas. */
+/** Text with a light halo: legible on any background, no boxes. */
 function haloText(ctx, text, x, y, color, size, weight = 700) {
   ctx.font = `${weight} ${size}px ${FONT}`;
   ctx.lineJoin = 'round';
@@ -23,12 +23,12 @@ function haloText(ctx, text, x, y, color, size, weight = 700) {
   ctx.fillText(text, x, y);
 }
 
-/** El tamaño en pantalla se mantiene casi constante: se compensa el zoom de la cámara. */
+/** The on-screen size stays almost constant: the camera zoom is compensated. */
 const screenSize = (px, zoom) => px / Math.max(0.8, Math.min(zoom, 3));
 
 const CANDIDATE_T = [0.5, 0.35, 0.65, 0.2, 0.8, 0.12, 0.88];
 
-/** ¿El punto (en tiles) cae sobre una calle de igual o mayor jerarquía que no sea la propia? */
+/** Does the point (in tiles) fall on a street of equal or higher hierarchy that is not its own? */
 function onOtherRoad(world, label, x, y) {
   const ownOrder = ROAD_STYLES[label.kind]?.order ?? -1;
   for (const r of world.roads) {
@@ -42,9 +42,9 @@ function onOtherRoad(world, label, x, y) {
 }
 
 /**
- * Busca el primer punto del propio trazo donde TODO el texto (no solo su centro) queda
- * libre de otras calles. El ancho del texto depende del zoom, así que el resultado se
- * guarda por nivel de zoom. Devuelve null si no hay lugar libre.
+ * Finds the first point along the street's own path where ALL of the text (not just its centre) is
+ * clear of other streets. The text width depends on the zoom, so the result is
+ * cached per zoom level. Returns null if there is no free spot.
  */
 function placeLabel(world, label, halfTiles, zoomKey) {
   if (label.placed.has(zoomKey)) return label.placed.get(zoomKey);
@@ -69,7 +69,7 @@ function placeLabel(world, label, halfTiles, zoomKey) {
   return spot;
 }
 
-/** Una etiqueta por calle con nombre (dos si es muy larga), tomada de los tramos más largos. */
+/** One label per named street (two if very long), taken from the longest segments. */
 function buildRoadLabels(world) {
   const byName = new Map();
   const add = (kind, f) => {
@@ -152,7 +152,7 @@ function drawHome(ctx, home, zoom, phase) {
   haloText(ctx, home.label, cx, cy - r - 2 * s, '#1d4ed8', 9 * s, 800);
 }
 
-/** Capa de etiquetas, lugares y casa. Se construye una vez por mapa. */
+/** Layer of labels, places and house. Built once per map. */
 export function createLabelLayer(world) {
   const roadLabels = buildRoadLabels(world);
 
@@ -166,11 +166,11 @@ export function createLabelLayer(world) {
       for (const label of roadLabels) {
         if (!lodVisible(label.lod, zoom)) continue;
         const width = label.text.length * size * 0.58;
-        if (label.len * TILE_SIZE < width * 1.1) continue; // la calle no alcanza para el texto
+        if (label.len * TILE_SIZE < width * 1.1) continue; // the street is not long enough for the text
         const zoomKey = Math.round(zoom * 4);
         const halfTiles = width / TILE_SIZE / 2;
         const p = placeLabel(world, label, halfTiles, zoomKey);
-        if (!p) continue; // sin un tramo libre, mejor no escribir encima de otra calle
+        if (!p) continue; // without a free stretch, better not to write over another street
         const wx = (p.x + 0.5) * TILE_SIZE;
         const wy = (p.y + 0.5) * TILE_SIZE;
         if (placed.some((q) => Math.hypot(q.x - wx, q.y - wy) < (q.w + width) * 0.45)) continue;

@@ -2,7 +2,7 @@ import { GRID_WIDTH, GRID_HEIGHT } from './gpsGrid.js';
 import { calculateDaysSince, isTranquilityIncident } from '../domain/incident.js';
 
 /**
- * Factor de peso según la fecha del incidente.
+ * Weight factor according to the incident date.
  */
 export function getTemporalWeight(daysAgo, decayMode = 'actual') {
   if (decayMode === 'historico') {
@@ -16,20 +16,20 @@ export function getTemporalWeight(daysAgo, decayMode = 'actual') {
 }
 
 /**
- * Radio equilibrado (~2.5 a ~4.4 píxeles vecinos) para destacar la zona de alerta sin tapar el mapa
+ * Balanced radius (~2.5 to ~4.4 neighbouring pixels) to highlight the alert zone without covering the map
  */
 function getIncidentPixelRadius(severity = 3, daysAgo = 0, decayMode = 'actual', isTranquility = false) {
   const sev = Math.max(1, Math.min(5, Number(severity) || 3));
   if (isTranquility) {
     return 1.6 + sev * 0.48; // ~2.5 px alrededor del incidente #3 (amarillo claro)
   }
-  const baseRadius = 1.25 + sev * 0.64; // De ~1.9 a ~4.45 píxeles vecinos
+  const baseRadius = 1.25 + sev * 0.64; // From ~1.9 to ~4.45 neighbouring pixels
   const timeFactor = decayMode === 'historico' ? 1.0 : (daysAgo <= 7 ? 1.02 : daysAgo <= 30 ? 0.92 : 0.85);
   return baseRadius * timeFactor;
 }
 
 /**
- * Genera la matriz de calor (GRID_WIDTH × GRID_HEIGHT) con radio compacto para no tapar el mapa
+ * Generates the heat matrix (GRID_WIDTH × GRID_HEIGHT) with a compact radius so as not to cover the map
  */
 export function computePixelHeatmap(incidents = [], options = {}) {
   const {

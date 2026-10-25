@@ -8,12 +8,12 @@ import { drawIncidentMarkers, drawSelection } from './render/markers.js';
 import { drawHelpSignals } from './render/helpSignals.js';
 
 /**
- * Lienzo del tamaño de la pantalla (nítido en retina). La cámara se aplica
- * como transformación del contexto, así textos y marcadores se rasterizan a
- * resolución real en vez de escalarse por CSS.
+ * Screen-sized canvas (crisp on retina). The camera is applied
+ * as a context transform, so texts and markers are rasterised at
+ * real resolution instead of being scaled by CSS.
  *
- * Cada capa vive en `render/` como función (ctx, datos) → dibujo; para sumar
- * una capa nueva basta con importarla y agregarla a `frame()`.
+ * Each layer lives in `render/` as a function (ctx, data) → drawing; to add
+ * a new layer just import it and add it to `frame()`.
  */
 export function createMapRenderer(canvas, world) {
   const ctx = canvas.getContext('2d');
@@ -54,7 +54,7 @@ export function createMapRenderer(canvas, world) {
       labels.drawRoadLabels(ctx, zoom);
       labels.drawPlaces(ctx, zoom, phase);
       drawIncidentMarkers(ctx, incidents, selection.incidentId, phase, zoom);
-      drawHelpSignals(ctx, helpSignals, mineHelpId, phase, zoom); // al final: una alerta de ayuda debe verse por encima de todo
+      drawHelpSignals(ctx, helpSignals, mineHelpId, phase, zoom); // last: a help alert must be visible above everything
     }
   };
 }

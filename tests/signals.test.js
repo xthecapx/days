@@ -9,7 +9,7 @@ const sig = (id, at = 1000, o = {}) => ({ id, x: 92, y: 120, at, expiresAt: at +
 
 // ---------- domain ----------
 
-test('ageLabel: del "ahora" a las horas', () => {
+test('ageLabel: from "now" to hours', () => {
   const now = 10 * 60 * MIN;
   assert.equal(ageLabel(now, now), 'hace un momento');
   assert.equal(ageLabel(now - 59_000, now), 'hace un momento');
@@ -17,10 +17,10 @@ test('ageLabel: del "ahora" a las horas', () => {
   assert.equal(ageLabel(now - 29 * MIN, now), 'hace 29 min');
   assert.equal(ageLabel(now - 60 * MIN, now), 'hace 1 h');
   assert.equal(ageLabel(now - 65 * MIN, now), 'hace 1 h 5 min');
-  assert.equal(ageLabel(now + 5 * MIN, now), 'hace un momento', 'un reloj adelantado no da "hace -5 min"');
+  assert.equal(ageLabel(now + 5 * MIN, now), 'hace un momento', 'a clock running ahead does not give "hace -5 min"');
 });
 
-test('listenersLabel y sendHint: singular, plural y nadie', () => {
+test('listenersLabel and sendHint: singular, plural and nobody', () => {
   assert.equal(listenersLabel(0), 'Nadie escucha ahora');
   assert.equal(listenersLabel(1), '1 vecino escucha');
   assert.equal(listenersLabel(3), '3 vecinos escuchan');
@@ -41,7 +41,7 @@ test('newSignals, isMine, isActive', () => {
   assert.equal(isActive({ expiresAt: 'x' }, 0), false);
 });
 
-test('normalizeSignals: ordena, descarta lo malformado y no se rompe con basura', () => {
+test('normalizeSignals: sorts, drops malformed entries and does not break on junk', () => {
   const view = normalizeSignals({
     now: 5, listeners: 2.9,
     signals: [sig('viejo', 100), sig('nuevo', 900), { id: 5 }, { id: 'sinXY', at: 1 }, null, 'x', { id: 'f', x: 1.5, y: 2, at: 1 }, { id: 'ok', x: 1, y: 2, at: 500 }]
@@ -49,15 +49,15 @@ test('normalizeSignals: ordena, descarta lo malformado y no se rompe con basura'
   assert.deepEqual(view.signals.map((s) => s.id), ['nuevo', 'ok', 'viejo']);
   assert.equal(view.listeners, 2);
   assert.equal(view.serverNow, 5);
-  assert.equal(view.signals.find((s) => s.id === 'ok').expiresAt, 500 + 30 * MIN, 'sin vencimiento: 30 min');
+  assert.equal(view.signals.find((s) => s.id === 'ok').expiresAt, 500 + 30 * MIN, 'no expiry: 30 min');
   for (const junk of [null, undefined, {}, [], 'x', { signals: 'no', listeners: 'no' }]) assert.deepEqual(normalizeSignals(junk), { signals: [], listeners: 0, serverNow: null });
 });
 
-test('newListenerId: 24 caracteres hex, distintos cada vez', () => {
+test('newListenerId: 24 hex characters, different every time', () => {
   const a = newListenerId(); const b = newListenerId();
   assert.match(a, /^[0-9a-f]{24}$/);
   assert.notEqual(a, b);
-  assert.match(a, /^[A-Za-z0-9_-]{8,64}$/, 'cumple lo que exige el servidor');
+  assert.match(a, /^[A-Za-z0-9_-]{8,64}$/, 'meets what the server requires');
 });
 
 // ---------- api ----------
@@ -73,7 +73,7 @@ function fakeFetch(handler) {
 }
 const reply = (status, data) => ({ ok: status >= 200 && status < 300, status, json: async () => data });
 
-test('api: sin URL configurada no hace nada y lo dice', async () => {
+test('api: with no URL configured it does nothing and says so', async () => {
   const f = fakeFetch(() => { throw new Error('no debería llamar'); });
   for (const baseUrl of [undefined, '', 'no-es-url', null]) {
     const api = createSignalApi({ baseUrl, fetchImpl: f });
@@ -83,7 +83,7 @@ test('api: sin URL configurada no hace nada y lo dice', async () => {
   assert.equal(f.calls.length, 0);
 });
 
-test('api: arma la URL sin dobles barras y sin parámetros, y manda JSON', async () => {
+test('api: builds the URL without double slashes or parameters, and sends JSON', async () => {
   const f = fakeFetch(() => reply(200, { ok: true, signals: [], listeners: 0 }));
   const api = createSignalApi({ baseUrl: 'https://s.example/', fetchImpl: f });
   await api.state();
@@ -101,30 +101,30 @@ test('api: arma la URL sin dobles barras y sin parámetros, y manda JSON', async
   assert.equal(f.calls[2].headers['Content-Type'], 'application/json');
 });
 
-test('api: errores del servidor, de red y de tiempo llegan como resultado, nunca lanzan', async () => {
+test('api: server, network and timeout errors arrive as a result, never thrown', async () => {
   const mk = (handler) => createSignalApi({ baseUrl: 'https://s.example', fetchImpl: fakeFetch(handler), timeoutMs: 20 });
   assert.deepEqual(await mk(() => reply(422, { ok: false, code: 'outside_area', error: 'fuera' })).send({ lat: 1, lng: 1 }), { ok: false, status: 422, error: 'outside_area', message: 'fuera' });
   assert.equal((await mk(() => reply(429, null)).state()).error, 'rate_limited');
   assert.equal((await mk(() => reply(500, null)).state()).error, 'http_error');
-  assert.equal((await mk(() => ({ ok: true, status: 200, json: async () => { throw new Error('html'); } })).state()).error, 'http_error', 'una página que no es JSON');
+  assert.equal((await mk(() => ({ ok: true, status: 200, json: async () => { throw new Error('html'); } })).state()).error, 'http_error', 'a page that is not JSON');
   assert.equal((await mk(() => { throw new TypeError('Failed to fetch'); }).state()).error, 'network');
   const slow = mk((_, init) => new Promise((_res, rej) => init.signal.addEventListener('abort', () => rej(Object.assign(new Error('x'), { name: 'AbortError' })))));
   assert.equal((await slow.state()).error, 'timeout');
 });
 
-test('api: ok:false dentro de un 200 se trata como error', async () => {
+test('api: ok:false inside a 200 is treated as an error', async () => {
   const api = createSignalApi({ baseUrl: 'https://s.example', fetchImpl: fakeFetch(() => reply(200, { ok: false, code: 'x' })) });
   assert.equal((await api.state()).ok, false);
 });
 
-test('apiErrorMessage: un texto en español para cada motivo conocido y uno genérico', () => {
+test('apiErrorMessage: a Spanish text for each known reason and a generic one', () => {
   for (const e of ['not_configured', 'rate_limited', 'outside_area', 'timeout', 'network', 'http_error', 'cualquier-otro']) assert.match(apiErrorMessage(e), /\S{5,}/, e);
   assert.notEqual(apiErrorMessage('network'), apiErrorMessage('timeout'));
 });
 
 // ---------- feed ----------
 
-/** Reloj de pruebas: temporizadores a mano y una pestaña que se puede ocultar. */
+/** Test clock: hand-driven timers and a tab that can be hidden. */
 function rig({ responses } = {}) {
   const timers = [];
   let cleared = 0;
@@ -151,22 +151,22 @@ function rig({ responses } = {}) {
   };
 }
 
-test('feed: sin escuchar, al abrir la página es UNA lectura y ningún temporizador', async () => {
+test('feed: when not listening, opening the page is ONE read and no timer', async () => {
   const r = rig();
   await r.feed.refresh();
   assert.deepEqual(r.calls, ['state']);
-  assert.equal(r.timers.length, 0, 'quien no escucha no sondea');
+  assert.equal(r.timers.length, 0, 'whoever is not listening does not poll');
   assert.equal(r.feed.isListening(), false);
   assert.equal(r.updates.length, 1);
 });
 
-test('feed: refresh simultáneos comparten una sola petición', async () => {
+test('feed: simultaneous refreshes share a single request', async () => {
   const r = rig();
   await Promise.all([r.feed.refresh(), r.feed.refresh(), r.feed.refresh()]);
   assert.deepEqual(r.calls, ['state']);
 });
 
-test('feed: al activar la escucha sondea en el acto y luego cada 30 s', async () => {
+test('feed: turning listening on polls right away and then every 30 s', async () => {
   const r = rig();
   await r.feed.setListening(true);
   assert.deepEqual(r.calls, ['poll']);
@@ -177,7 +177,7 @@ test('feed: al activar la escucha sondea en el acto y luego cada 30 s', async ()
   assert.ok(r.timers.every((t) => t.ms === 30_000));
 });
 
-test('feed: con la pestaña oculta no hay temporizador; al volver sondea de inmediato y reanuda', async () => {
+test('feed: with the tab hidden there is no timer; on return it polls immediately and resumes', async () => {
   const r = rig();
   await r.feed.setListening(true);
   const before = r.calls.length;
@@ -185,11 +185,11 @@ test('feed: con la pestaña oculta no hay temporizador; al volver sondea de inme
   const timersWhileHidden = r.timers.length;
   assert.equal(r.calls.length, before);
   await r.show();
-  assert.equal(r.calls.length, before + 1, 'sondeo inmediato al volver');
-  assert.equal(r.timers.length, timersWhileHidden + 1, 'y se reprograma el de 30 s');
+  assert.equal(r.calls.length, before + 1, 'immediate poll on return');
+  assert.equal(r.timers.length, timersWhileHidden + 1, 'and the 30 s timer is rescheduled');
 });
 
-test('feed: activar la escucha con la pestaña oculta no sondea todavía', async () => {
+test('feed: turning listening on with the tab hidden does not poll yet', async () => {
   const r = rig();
   r.doc.hidden = true;
   await r.feed.setListening(true);
@@ -199,27 +199,27 @@ test('feed: activar la escucha con la pestaña oculta no sondea todavía', async
   assert.deepEqual(r.calls, ['poll']);
 });
 
-test('feed: al apagar la escucha se avisa al servidor una vez y se detiene todo', async () => {
+test('feed: turning listening off notifies the server once and stops everything', async () => {
   const r = rig();
   await r.feed.setListening(true);
   await r.feed.setListening(false);
   assert.deepEqual(r.calls, ['poll', 'leave']);
   const cleared = r.cleared();
   await r.hide(); await r.show();
-  assert.deepEqual(r.calls, ['poll', 'leave'], 'ya no responde a la visibilidad');
+  assert.deepEqual(r.calls, ['poll', 'leave'], 'it no longer reacts to visibility');
   assert.ok(cleared >= 1);
   await r.feed.setListening(false);
-  assert.equal(r.calls.length, 2, 'apagar dos veces no repite el aviso');
+  assert.equal(r.calls.length, 2, 'turning off twice does not repeat the notice');
 });
 
-test('feed: activar dos veces seguidas no duplica sondeos ni temporizadores', async () => {
+test('feed: turning on twice in a row does not duplicate polls or timers', async () => {
   const r = rig();
   await r.feed.setListening(true);
   await r.feed.setListening(true);
   assert.deepEqual(r.calls, ['poll']);
 });
 
-test('feed: si el servidor falla, espacia los intentos (30 s → 60 s → 2 min) y avisa del estado solo al cambiar', async () => {
+test('feed: if the server fails, it spaces out attempts (30 s → 60 s → 2 min) and reports the status only when it changes', async () => {
   let down = false;
   const r = rig({ responses: () => (down ? { ok: false, error: 'network' } : { ok: true, data: { signals: [], listeners: 1 } }) });
   await r.feed.setListening(true);
@@ -227,46 +227,46 @@ test('feed: si el servidor falla, espacia los intentos (30 s → 60 s → 2 min)
   await r.fire(); assert.equal(r.timers.at(-1).ms, BACKOFF_MS[0]);
   await r.fire(); assert.equal(r.timers.at(-1).ms, BACKOFF_MS[1]);
   await r.fire(); assert.equal(r.timers.at(-1).ms, BACKOFF_MS[2]);
-  await r.fire(); assert.equal(r.timers.at(-1).ms, BACKOFF_MS[2], 'el tope es 2 min');
-  assert.deepEqual(r.statuses, ['ok', 'error'], 'un solo aviso de error, no uno por intento');
+  await r.fire(); assert.equal(r.timers.at(-1).ms, BACKOFF_MS[2], 'the cap is 2 min');
+  assert.deepEqual(r.statuses, ['ok', 'error'], 'a single error notice, not one per attempt');
   down = false;
   await r.fire();
-  assert.equal(r.timers.at(-1).ms, 30_000, 'al recuperarse vuelve a 30 s');
+  assert.equal(r.timers.at(-1).ms, 30_000, 'on recovery it goes back to 30 s');
   assert.deepEqual(r.statuses, ['ok', 'error', 'ok']);
   assert.equal(r.feed.failures(), 0);
 });
 
-test('feed: una señal nueva se avisa una sola vez, y la primera lectura no cuenta como "nueva"', async () => {
+test('feed: a new signal is announced only once, and the first read does not count as "new"', async () => {
   const batches = [[sig('a')], [sig('a')], [sig('a'), sig('b', 2000)], [sig('a'), sig('b', 2000)]];
   const r = rig({ responses: (i) => ({ ok: true, data: { signals: batches[Math.min(i, 3)], listeners: 1 } }) });
   await r.feed.refresh();
-  assert.deepEqual(r.fresh, [], 'lo que ya estaba al abrir no suena como alerta');
+  assert.deepEqual(r.fresh, [], 'what was already there on opening does not sound like an alert');
   await r.feed.setListening(true);
   assert.deepEqual(r.fresh, []);
   await r.fire();
   assert.deepEqual(r.fresh, [['b']]);
   await r.fire();
-  assert.deepEqual(r.fresh, [['b']], 'no se repite');
+  assert.deepEqual(r.fresh, [['b']], 'it is not repeated');
 });
 
-test('feed: las actualizaciones llevan señales ordenadas y el conteo', async () => {
+test('feed: updates carry sorted signals and the count', async () => {
   const r = rig({ responses: () => ({ ok: true, data: { signals: [sig('x', 1), sig('y', 9)], listeners: 4, now: 77 } }) });
   await r.feed.refresh();
   assert.deepEqual(r.updates[0].signals.map((s) => s.id), ['y', 'x']);
   assert.equal(r.updates[0].listeners, 4);
 });
 
-test('feed: un fallo en la primera lectura no deja nada a medias y se puede reintentar', async () => {
+test('feed: a failure on the first read leaves nothing half-done and can be retried', async () => {
   let n = 0;
   const r = rig({ responses: () => (n++ === 0 ? { ok: false, error: 'network' } : { ok: true, data: { signals: [sig('a')], listeners: 0 } }) });
   assert.equal((await r.feed.refresh()).ok, false);
   assert.equal(r.updates.length, 0);
   assert.equal((await r.feed.refresh()).ok, true);
   assert.equal(r.updates.length, 1);
-  assert.deepEqual(r.fresh, [], 'tras el primer éxito tampoco es "nueva"');
+  assert.deepEqual(r.fresh, [], 'after the first success it is not "new" either');
 });
 
-test('feed: stop() limpia temporizador y escuchas', async () => {
+test('feed: stop() clears the timer and listeners', async () => {
   const r = rig();
   await r.feed.setListening(true);
   r.feed.stop();
@@ -274,17 +274,17 @@ test('feed: stop() limpia temporizador y escuchas', async () => {
   assert.equal(r.feed.isListening(), false);
 });
 
-// ---------- botón 🆘 con la cifra de oyentes ----------
+// ---------- 🆘 button with the listener count ----------
 import { helpButtonView } from '../src/domain/signals.js';
 
-test('helpButtonView: sin servidor no hay botón; sin primera respuesta no hay cifra (un "0" falso engañaría)', () => {
+test('helpButtonView: no server means no button; no first response means no count (a false "0" would mislead)', () => {
   assert.deepEqual(helpButtonView({ enabled: false, loaded: true, listeners: 5 }).hidden, true);
   const waiting = helpButtonView({ enabled: true, loaded: false, listeners: 0 });
   assert.deepEqual([waiting.hidden, waiting.badgeHidden], [false, true]);
   assert.equal(waiting.label, 'Pedir ayuda a los vecinos');
 });
 
-test('helpButtonView: la cifra, el 0 atenuado, el tope 99+ y la etiqueta para lectores de pantalla', () => {
+test('helpButtonView: the count, the dimmed 0, the 99+ cap and the screen-reader label', () => {
   const some = helpButtonView({ enabled: true, loaded: true, listeners: 3 });
   assert.deepEqual([some.badge, some.badgeDim, some.badgeHidden], ['3', false, false]);
   assert.match(some.label, /3 vecinos escuchan/);

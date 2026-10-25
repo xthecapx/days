@@ -1,10 +1,10 @@
 /**
- * Estilo por clase de vía. Ancho en tiles (~14 m); colores pensados para que
- * cada jerarquía se distinga a simple vista, como en Google Maps:
+ * Style per road class. Width in tiles (~14 m); colours chosen so that
+ * each hierarchy level is distinguishable at a glance, as in Google Maps:
  *   autopista = naranja · colectora = amarillo · arterial = blanca ·
  *   calle = blanca fina · servicio = gris · camino = arena punteado ·
- *   busway = rosado · sendero = marrón punteado.
- * `minZoom` oculta las clases pequeñas al alejar el mapa.
+ *   busway = pink · trail = dotted brown.
+ * `minZoom` hides the small classes when zooming out.
  */
 export const ROAD_STYLES = {
   dirt: { width: 0.45, casing: '#c8b78f', fill: '#e6d9b8', order: 0, dash: [3, 3] },
@@ -17,7 +17,7 @@ export const ROAD_STYLES = {
   highway: { width: 1.2, casing: '#c2711a', fill: '#fbbf6a', order: 7 }
 };
 
-/** Orden de dibujo (menor → mayor jerarquía). */
+/** Drawing order (lower → higher hierarchy). */
 export const ROAD_CLASS_ORDER = Object.keys(ROAD_STYLES).sort((a, b) => ROAD_STYLES[a].order - ROAD_STYLES[b].order);
 
 export const WATER_STYLES = {
@@ -38,7 +38,7 @@ export const TERRAIN_COLORS = {
 
 export const BUILDING_ROOFS = ['#d9a58a', '#c98f7a', '#cdbfa6', '#bdb7ae', '#d8c9a8', '#c4a79a'];
 
-/** Colores y prioridad de las etiquetas de vía (menor rank = se dibuja primero). */
+/** Colours and priority of the road labels (lower rank = drawn first). */
 export const LABEL_STYLES = {
   highway: { color: '#9a4f0c', rank: 0, lod: 1 },
   collector: { color: '#7a5d12', rank: 1, lod: 1 },

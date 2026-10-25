@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Descarga la geometría de OpenStreetMap para el área del juego y la guarda en
- * data/map.json (lat/lng, sin depender de la grilla). Uso: npm run map:update
+ * Downloads the OpenStreetMap geometry for the game area and saves it to
+ * data/map.json (lat/lng, independent of the grid). Usage: npm run map:update
  *
- * Los ajustes manuales viven en data/map-overrides.json y NO se tocan aquí.
- * Datos © OpenStreetMap contributors, licencia ODbL.
+ * Manual adjustments live in data/map-overrides.json and are NOT touched here.
+ * Data © OpenStreetMap contributors, ODbL license.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,7 +14,7 @@ import { GEO_BOUNDS } from '../src/core/geo.js';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'data', 'map.json');
 
-// El área se define una sola vez, en src/core/geo.js (también la usan el mapa y el Worker).
+// The area is defined once, in src/core/geo.js (the map and the Worker use it too).
 const BOUNDS = GEO_BOUNDS;
 
 const SERVERS = [
@@ -52,7 +52,7 @@ async function fetchOverpass() {
         return JSON.parse(text);
       } catch (err) {
         lastError = err;
-        console.log(`falló (${err.message})`);
+        console.log(`failed (${err.message})`);
       }
     }
     await sleep(4000 * (round + 1));
@@ -129,6 +129,6 @@ const data = {
 fs.writeFileSync(OUT, JSON.stringify(data));
 const kb = (fs.statSync(OUT).size / 1024).toFixed(0);
 console.log(
-  `✔ data/map.json (${kb} KB): ${data.roads.length} vías, ${data.water.length} cauces, ` +
-    `${data.waterBodies.length} cuerpos de agua, ${data.areas.length} zonas`
+  `✔ data/map.json (${kb} KB): ${data.roads.length} roads, ${data.water.length} waterways, ` +
+    `${data.waterBodies.length} water bodies, ${data.areas.length} areas`
 );

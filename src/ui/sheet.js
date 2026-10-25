@@ -11,8 +11,8 @@ const TITLES = {
 };
 
 /**
- * Hoja inferior única. Cada panel (incidentes, ajustes, reporte) vive en `panes/` y pinta su contenido;
- * la hoja solo decide cuál mostrar y dibuja el título.
+ * Single bottom sheet. Each panel (incidents, settings, report) lives in `panes/` and paints its content;
+ * the sheet only decides which one to show and draws the title.
  */
 export function mountSheet({ store, actions, signals }) {
   const panes = {

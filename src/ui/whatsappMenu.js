@@ -1,7 +1,7 @@
 import { $, setHidden, showToast } from '../core/dom.js';
 import { pixelToGps } from '../map/gpsGrid.js';
 
-// Punto de estado del GPS sobre el botón: verde = listo, ámbar = buscando o vencido, rojo = no disponible.
+// GPS status dot over the button: green = ready, amber = searching or expired, red = unavailable.
 export const GPS_LABELS = {
   ok: 'GPS listo',
   searching: 'Buscando GPS…',
@@ -10,15 +10,15 @@ export const GPS_LABELS = {
   unavailable: 'GPS no disponible'
 };
 
-/** Mensaje cuando WhatsApp se abrió sin ubicación. Puro: no toca el DOM. */
+/** Message when WhatsApp was opened without a location. Pure: does not touch the DOM. */
 export const noLocationMessage = (error) =>
   `Se abrió WhatsApp sin ubicación: ${
     error === 'denied' ? 'permiso de ubicación denegado (Ajustes > Safari > Ubicación)' : 'sin señal GPS'
   }`;
 
 /**
- * Botón de WhatsApp: el icono abre un menú de dos acciones; nada se envía sin que la persona pulse enviar
- * en WhatsApp. También pinta el punto de estado del GPS.
+ * WhatsApp button: the icon opens a two-action menu; nothing is sent until the person presses send
+ * in WhatsApp. It also paints the GPS status dot.
  */
 export function mountWhatsAppMenu({ store, gps, whatsapp, sectorName }) {
   gps.subscribe((status, fix) => {
@@ -53,8 +53,8 @@ export function mountWhatsAppMenu({ store, gps, whatsapp, sectorName }) {
   $('mapViewport').addEventListener('pointerdown', closeWaMenu);
 
   const clearWaBusy = () => $('waHelp').removeAttribute('aria-busy');
-  // Al volver de WhatsApp Safari restaura la página (bfcache) tal como quedó: sin esto el
-  // botón seguiría "ocupado" y la segunda vez no haría nada.
+  // When returning from WhatsApp, Safari restores the page (bfcache) exactly as it was: without this the
+  // button would stay "busy" and the second time it would do nothing.
   window.addEventListener('pageshow', clearWaBusy);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) clearWaBusy();

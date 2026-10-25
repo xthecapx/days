@@ -1,14 +1,14 @@
 /**
- * Mantiene al día las señales de ayuda. Reglas (todas con prueba):
- *   - Al abrir la página se lee UNA vez (`refresh`); quien no escucha no sondea después.
- *   - Quien activa "escuchar" sondea cada 30 s, y SOLO mientras la página está a la vista. Pestaña oculta = nada.
- *   - Al volver a la pestaña se sondea de inmediato (los temporizadores se atrasan en segundo plano).
- *   - Si el servidor falla, se espacia (30 s → 60 s → 2 min) y no se avisa en cada intento.
- *   - Nada se ejecuta en segundo plano: no hay Service Worker ni notificaciones push.
+ * Keeps the help signals up to date. Rules (all tested):
+ *   - On page open it reads ONCE (`refresh`); whoever is not listening does not poll afterwards.
+ *   - Whoever turns on "listen" polls every 30 s, and ONLY while the page is visible. Hidden tab = nothing.
+ *   - When returning to the tab it polls immediately (timers fall behind in the background).
+ *   - If the server fails, polling backs off (30 s → 60 s → 2 min) and the user is not notified on every attempt.
+ *   - Nothing runs in the background: no Service Worker and no push notifications.
  *
  *   const feed = createSignalFeed({ api, listenerId, onUpdate, onNew, onStatus });
- *   await feed.refresh();            // lectura única al arrancar
- *   feed.setListening(true);         // empieza a sondear cada 30 s mientras se vea
+ *   await feed.refresh();            // single read at startup
+ *   feed.setListening(true);         // starts polling every 30 s while visible
  */
 
 import { newSignals, normalizeSignals } from '../domain/signals.js';
@@ -30,7 +30,7 @@ export function createSignalFeed({
   let timer = null;
   let failures = 0;
   let inFlight = null;
-  let started = false; // ya hubo una lectura: a partir de aquí, lo que aparezca es "nuevo"
+  let started = false; // there has already been a read: from here on, whatever appears is "new"
   let status = 'idle'; // 'idle' | 'ok' | 'error'
   const seen = new Set();
 
@@ -53,7 +53,7 @@ export function createSignalFeed({
     onUpdate(view);
   }
 
-  /** Una lectura ahora. Si ya hay una en curso, la comparte (nunca dos a la vez). */
+  /** One read now. If one is already in progress, it shares it (never two at once). */
   function run(kind) {
     if (inFlight) return inFlight;
     inFlight = (async () => {
@@ -78,7 +78,7 @@ export function createSignalFeed({
   function schedule() {
     clearTimer(timer);
     timer = null;
-    if (!listening || !visible()) return; // sin escucha o con la pestaña oculta, no hay temporizador
+    if (!listening || !visible()) return; // without listening or with the tab hidden, there is no timer
     timer = setTimer(async () => {
       timer = null;
       await run('poll');
@@ -89,7 +89,7 @@ export function createSignalFeed({
   const onVisibility = async () => {
     if (!listening) return;
     if (visible()) {
-      await run('poll'); // al volver se sondea ya
+      await run('poll'); // when returning, poll right away
       schedule();
     } else {
       clearTimer(timer);
@@ -99,10 +99,10 @@ export function createSignalFeed({
   doc?.addEventListener('visibilitychange', onVisibility);
 
   return {
-    /** Lectura pública: no cuenta como oyente. */
+    /** Public read: does not count as a listener. */
     refresh: () => run('state'),
 
-    /** Activa o desactiva la escucha. Al desactivar se avisa al servidor para que deje de contarte. */
+    /** Turns listening on or off. When turned off, the server is told to stop counting you. */
     async setListening(value) {
       const next = Boolean(value);
       if (next === listening) return;
@@ -114,7 +114,7 @@ export function createSignalFeed({
       } else {
         clearTimer(timer);
         timer = null;
-        await api.poll({ listener: listenerId, listening: false }); // sale del conteo al momento
+        await api.poll({ listener: listenerId, listening: false }); // leaves the count immediately
       }
     },
 
@@ -122,7 +122,7 @@ export function createSignalFeed({
     status: () => status,
     failures: () => failures,
 
-    /** Para pruebas y para cerrar limpio. */
+    /** For tests and for a clean shutdown. */
     stop() {
       listening = false;
       clearTimer(timer);

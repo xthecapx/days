@@ -5,7 +5,7 @@ import { createInitialState } from '../src/state/initialState.js';
 import { createIncidentService } from '../src/services/incidentService.js';
 import { planSave, planConfirm } from '../src/domain/storePlans.js';
 
-// Fija el reloj y simula el navegador para ejercitar el flujo real de guardado sin red.
+// Fixes the clock and simulates the browser to exercise the real save flow without a network.
 const NOW = Date.UTC(2026, 9, 23, 15, 0, 0);
 const sent = [];
 
@@ -45,12 +45,12 @@ function setup(opts) {
   return { store, service: createIncidentService(store, { sectorName: () => 'Sector auto' }) };
 }
 
-test('flujo de guardado: crear, editar y confirmar', async () => {
+test('save flow: create, edit and confirm', async () => {
   const { store, service } = setup();
   const data = () => store.get().data;
   const sync = () => store.get().sync;
 
-  // CREAR
+  // CREATE
   const inc = await service.save(input());
   assert.match(inc.id, /^inc-003-[0-9a-z]{3}$/);
   assert.equal(inc.number, 3);
@@ -62,7 +62,7 @@ test('flujo de guardado: crear, editar y confirmar', async () => {
   assert.equal(inc.updatedAt, '2026-10-23T15:00:00.000Z');
   assert.equal(data().incidents.length, 3);
   assert.equal(data().lastUpdated, '2026-10-23T15:00:00.000Z');
-  assert.equal('revisions' in data(), false, 'ya no se guarda historial dentro del JSON');
+  assert.equal('revisions' in data(), false, 'history is no longer stored inside the JSON');
   assert.deepEqual(sync(), { message: 'Enviado para revisión (aparecerá cuando se apruebe)', ok: true });
   const post = sent.at(-1);
   assert.equal(post.body.change.type, 'create');
@@ -72,7 +72,7 @@ test('flujo de guardado: crear, editar y confirmar', async () => {
     'pixelX', 'pixelY', 'resolvedBy', 'sector', 'severity', 'time', 'timeConfirmed'
   ]);
 
-  // EDITAR
+  // EDIT
   const edited = await service.save(input({ description: 'Editado', severity: 2, resolvedBy: null }), inc.id);
   assert.equal(edited.number, 3);
   assert.equal(edited.description, 'Editado');
@@ -82,7 +82,7 @@ test('flujo de guardado: crear, editar y confirmar', async () => {
   assert.equal(sent.at(-1).body.change.type, 'edit');
   assert.match(sent.at(-1).body.commitMessage, /Edición de incidente #3/);
 
-  // CONFIRMAR
+  // CONFIRM
   await service.confirm('inc-002');
   assert.equal(data().incidents.find((i) => i.id === 'inc-002').confirmations, 3);
   assert.deepEqual(sent.at(-1).body.change, { type: 'confirm', id: 'inc-002' });
@@ -91,7 +91,7 @@ test('flujo de guardado: crear, editar y confirmar', async () => {
   mock.timers.reset();
 });
 
-test('el aviso de sincronización refleja el fallo (para el toast)', async () => {
+test('the sync notice reflects the failure (for the toast)', async () => {
   const { store, service } = setup({ bridgeStatus: 429 });
   await service.save(input());
   assert.equal(store.get().sync.ok, false);
@@ -99,7 +99,7 @@ test('el aviso de sincronización refleja el fallo (para el toast)', async () =>
   mock.timers.reset();
 });
 
-test('mover un incidente lo guarda como edición con el sector del nuevo punto', async () => {
+test('moving an incident saves it as an edit with the sector of the new point', async () => {
   const { service } = setup();
   const moved = await service.move('inc-001', 100, 100);
   assert.equal([moved.pixelX, moved.pixelY].join(','), '100,100');
@@ -109,21 +109,21 @@ test('mover un incidente lo guarda como edición con el sector del nuevo punto',
   mock.timers.reset();
 });
 
-test('editar un incidente que no existe lanza y no guarda ni envía nada', async () => {
+test('editing an incident that does not exist throws and neither saves nor sends anything', async () => {
   const { store, service } = setup();
-  await assert.rejects(service.save(input(), 'inc-999'), /No existe el incidente inc-999/);
+  await assert.rejects(service.save(input(), 'inc-999'), /Incident inc-999 does not exist/);
   assert.equal(store.get().data.incidents.length, 2);
   assert.equal(sent.length, 0);
   mock.timers.reset();
 });
 
-test('el servicio ya no ofrece revertir, importar ni restaurar', () => {
+test('the service no longer offers revert, import or restore', () => {
   const { service } = setup();
   for (const gone of ['revert', 'importJson', 'resetToSeed']) assert.equal(gone in service, false, gone);
   mock.timers.reset();
 });
 
-test('planSave y planConfirm son puros: no tocan el estado que reciben', () => {
+test('planSave and planConfirm are pure: they do not touch the state they receive', () => {
   const before = base();
   const snapshot = JSON.stringify(before);
   const coords = { pixelX: 85, pixelY: 121, lat: 7.0, lng: -73.06 };

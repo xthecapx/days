@@ -1,7 +1,7 @@
 {
   "name": "vecinos-rio-del-hato-pixel-map",
   "version": "1.0.0",
-  "description": "Monitor vecinal 100% anónimo en 2D Pixel Art para el Sendero Río del Hato y Ciudad Tierrabuena",
+  "description": "100% anonymous neighbourhood monitor in 2D pixel art for the Río del Hato trail and Ciudad Tierrabuena",
   "type": "module",
   "workspaces": [
     "services/*"

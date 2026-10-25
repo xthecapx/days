@@ -8,7 +8,7 @@ import { toIsoDate } from '../src/core/dom.js';
 
 const at = (y, m, d, h = 12, min = 0, s = 0) => new Date(y, m - 1, d, h, min, s);
 
-/** Reloj y temporizadores falsos: el test avanza el tiempo a mano. */
+/** Fake clock and timers: the test advances time by hand. */
 function rig(start = at(2026, 10, 23, 15)) {
   const state = { now: start, timers: [], listeners: [], cleared: 0, hidden: false };
   const store = createStore(createInitialState(start));
@@ -25,23 +25,23 @@ function rig(start = at(2026, 10, 23, 15)) {
   return { state, store, deps, today: () => toIsoDate(store.get().settings.referenceDate) };
 }
 
-test('startOfDay fija el mediodía del día local', () => {
+test('startOfDay pins noon of the local day', () => {
   const d = startOfDay(at(2026, 10, 23, 23, 59, 59));
   assert.deepEqual([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()], [2026, 9, 23, 12]);
 });
 
-test('msUntilNextDay: faltan horas por la tarde, 1 s mínimo, y cruza fin de mes', () => {
+test('msUntilNextDay: hours left in the evening, 1 s minimum, and crosses month end', () => {
   assert.equal(msUntilNextDay(at(2026, 10, 23, 23, 0, 0)), 3601_000);
   assert.equal(msUntilNextDay(at(2026, 10, 23, 23, 59, 59)), 2000);
   assert.ok(msUntilNextDay(at(2026, 10, 31, 12)) > 0);
 });
 
-test('createInitialState usa la fecha real (no una fija)', () => {
+test('createInitialState uses the real date (not a fixed one)', () => {
   assert.equal(toIsoDate(createInitialState(at(2031, 1, 5)).settings.referenceDate), '2031-01-05');
   assert.equal('referenceOverride' in createInitialState().settings, false);
 });
 
-test('el reloj pasa a mañana a medianoche y el contador sube un día', () => {
+test('the clock rolls over to tomorrow at midnight and the counter goes up a day', () => {
   const { state, store, deps, today } = rig(at(2026, 10, 23, 23, 30));
   const incidents = [{ id: 'a', number: 1, date: '2026-10-22' }];
   startDayClock(store, deps);
@@ -52,32 +52,32 @@ test('el reloj pasa a mañana a medianoche y el contador sube un día', () => {
   state.timers.at(-1).fn();
   assert.equal(today(), '2026-10-24');
   assert.equal(alertSummary(incidents, store.get().settings.referenceDate).days, '02');
-  assert.equal(state.timers.length, 2, 'se programa la medianoche siguiente');
+  assert.equal(state.timers.length, 2, 'the next midnight is scheduled');
 });
 
-test('pestaña en segundo plano varios días: al volver se actualiza y se reprograma', () => {
+test('tab in the background for several days: on return it updates and reschedules', () => {
   const { state, store, deps, today } = rig(at(2026, 10, 23, 15));
   startDayClock(store, deps);
   state.now = at(2026, 10, 27, 9);
   state.hidden = true;
   state.listeners[0]();
-  assert.equal(today(), '2026-10-23', 'oculta: no hace nada');
+  assert.equal(today(), '2026-10-23', 'hidden: does nothing');
   state.hidden = false;
   state.listeners[0]();
   assert.equal(today(), '2026-10-27');
   assert.equal(state.timers.length, 2);
 });
 
-test('no repinta si el día no cambió', () => {
+test('does not repaint if the day did not change', () => {
   const { state, store, deps } = rig(at(2026, 10, 23, 8));
   startDayClock(store, deps);
   const before = store.get().settings;
   state.now = at(2026, 10, 23, 20);
   state.timers.at(-1).fn();
-  assert.equal(store.get().settings, before, 'misma referencia: ningún suscriptor se entera');
+  assert.equal(store.get().settings, before, 'same reference: no subscriber is notified');
 });
 
-test('stop cancela el temporizador y deja de escuchar la pestaña', () => {
+test('stop cancels the timer and stops listening to the tab', () => {
   const { state, store, deps } = rig();
   const stop = startDayClock(store, deps);
   const cleared = state.cleared;

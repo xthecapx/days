@@ -10,9 +10,9 @@ const longest = (roads, n) => [...roads].sort((a, b) => b.len - a.len).slice(0, 
 const reversed = (pts) => [...pts].reverse();
 
 /**
- * Autos, buses y peatones decorativos, generados a partir de las vías reales:
- * los tramos más largos de cada clase y las calles/senderos del Río del Hato.
- * Velocidades en tiles por segundo (se convierten a fracción del tramo).
+ * Decorative cars, buses and pedestrians, generated from the real roads:
+ * the longest segments of each class and the streets/trails of Río del Hato.
+ * Speeds in tiles per second (converted to a fraction of the segment).
  */
 function buildActors(world) {
   const roads = world.roads;

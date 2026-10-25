@@ -20,28 +20,28 @@ test.after(async () => {
 
 const text = (page, sel) => page.$eval(sel, (e) => e.textContent);
 
-test('el sitio publicado arranca, dibuja el mapa y no rompe la política de seguridad', { skip }, async () => {
+test('the published site starts, draws the map and does not break the security policy', { skip }, async () => {
   const { page, problems } = await openApp(browser, site.url);
   await loadApp(page, site.url);
   await page.waitForFunction(() => document.getElementById('gpsDot').dataset.status === 'ok');
 
   assert.match(await text(page, '#daysValue'), /^\d\d$/);
-  assert.ok(Number(await text(page, '#navCount')) >= 1, 'debe mostrar los incidentes cargados');
+  assert.ok(Number(await text(page, '#navCount')) >= 1, 'must show the loaded incidents');
   assert.equal(await page.$eval('#gpsDot', (e) => e.dataset.status), 'ok');
-  // El lienzo tiene que tener más de un color: si solo hay un color, el mapa no se dibujó.
+  // The canvas must have more than one colour: if there is only one colour, the map was not drawn.
   const colors = await page.$eval('#mapCanvas', (c) => {
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
     const set = new Set();
     for (let i = 0; i < d.length; i += 4 * 997) set.add(`${d[i] >> 5},${d[i + 1] >> 5},${d[i + 2] >> 5}`);
     return set.size;
   });
-  assert.ok(colors > 10, `el mapa parece vacío (${colors} colores)`);
-  assert.equal(await page.evaluate(() => Boolean(window.__app)), false, 'el sitio publicado no expone el depurador');
+  assert.ok(colors > 10, `the map looks empty (${colors} colours)`);
+  assert.equal(await page.evaluate(() => Boolean(window.__app)), false, 'the published site does not expose the debugger');
   assert.deepEqual(problems, []);
   await page.close();
 });
 
-test('las hojas abren y cierran, y Ajustes solo trae lo público', { skip }, async () => {
+test('the sheets open and close, and Settings only brings what is public', { skip }, async () => {
   const { page, problems } = await openApp(browser, site.url);
   await loadApp(page, site.url);
 
@@ -62,7 +62,7 @@ test('las hojas abren y cierran, y Ajustes solo trae lo público', { skip }, asy
   await page.close();
 });
 
-test('"Ver" en la lista centra el mapa y abre la tarjeta del incidente', { skip }, async () => {
+test('"Ver" in the list centres the map and opens the incident card', { skip }, async () => {
   const { page } = await openApp(browser, site.url);
   await loadApp(page, site.url);
   await page.click('#navIncidents');
@@ -75,12 +75,12 @@ test('"Ver" en la lista centra el mapa y abre la tarjeta del incidente', { skip 
   await page.close();
 });
 
-test('el menú de WhatsApp abre WhatsApp con el mensaje y la ubicación', { skip }, async () => {
+test('the WhatsApp menu opens WhatsApp with the message and the location', { skip }, async () => {
   const hits = [];
-  // Capturamos la navegación a wa.me en vez de salir de la página.
+  // We capture the navigation to wa.me instead of leaving the page.
   const intercept = (r) => {
     if (!r.url().startsWith('https://wa.me/')) return false;
-    if (r.isNavigationRequest()) hits.push(r.url()); // (Chrome también pide el favicon de la página falsa: no cuenta)
+    if (r.isNavigationRequest()) hits.push(r.url()); // (Chrome also requests the favicon of the fake page: it does not count)
     r.respond({ status: 200, contentType: 'text/html', body: 'wa' });
     return true;
   };
@@ -97,7 +97,7 @@ test('el menú de WhatsApp abre WhatsApp con el mensaje y la ubicación', { skip
   await page.close();
 });
 
-test('si el mapa no carga, se muestra un aviso con botón de reintentar (no una pantalla en blanco)', { skip }, async () => {
+test('if the map fails to load, a notice with a retry button is shown (not a blank screen)', { skip }, async () => {
   const { page } = await openApp(browser, site.url, { blockMap: true });
   await page.goto(site.url, { waitUntil: 'load' });
   await page.waitForSelector('#bootError:not(.hidden)', { timeout: 15000 });
@@ -106,9 +106,9 @@ test('si el mapa no carga, se muestra un aviso con botón de reintentar (no una 
   await page.close();
 });
 
-test('reportar: sin fecha no deja guardar; con "Ayer" guarda una sola vez y el contador sube', { skip }, async () => {
-  // El sitio de prueba corre en 127.0.0.1 (la app lo toma por "local" e intenta guardar en disco, algo que solo
-  // existe en `vite dev`): se contesta aquí para poder contar cuántas veces se intenta guardar.
+test('report: without a date it will not save; with "Ayer" it saves once and the counter goes up', { skip }, async () => {
+  // The test site runs on 127.0.0.1 (the app takes it for "local" and tries to save to disk, something that only
+  // exists in `vite dev`): it is answered here so we can count how many times a save is attempted.
   const saves = [];
   const intercept = (r) => {
     if (!r.url().endsWith('/api/local-wiki-save')) return false;
@@ -123,7 +123,7 @@ test('reportar: sin fecha no deja guardar; con "Ayer" guarda una sola vez y el c
   await page.click('#navReport');
   await waitHidden(page, '#paneReport', false);
   await page.type('#repDescription', 'Prueba E2E del formulario');
-  // Sin fecha no se puede guardar, y se marca qué falta.
+  // Without a date it cannot be saved, and what is missing is flagged.
   await page.evaluate(() => document.getElementById('paneReport').requestSubmit());
   await page.waitForFunction(() => document.getElementById('repWhen').closest('.field').classList.contains('field-error'));
   assert.equal(await page.$eval('#repWhen', (e) => e.closest('.field').classList.contains('field-error')), true);
@@ -131,23 +131,23 @@ test('reportar: sin fecha no deja guardar; con "Ayer" guarda una sola vez y el c
 
   await page.click('[data-when="yesterday"]');
   await page.select('#repCategory', 'Ruido Excesivo / Convivencia');
-  // Un triple envío seguido tiene que guardar un solo incidente.
+  // A triple submit in a row must save a single incident.
   await page.evaluate(() => { const f = document.getElementById('paneReport'); f.requestSubmit(); f.requestSubmit(); f.requestSubmit(); });
   await waitHidden(page, '#sheet', true);
   assert.equal(Number(await text(page, '#navCount')), before + 1);
-  assert.equal(saves.length, 1, 'tres envíos seguidos = un solo guardado');
+  assert.equal(saves.length, 1, 'three submits in a row = a single save');
   const saved = saves[0].incidents.at(-1);
-  assert.equal(saved.impactType, 'tranquilidad', 'el color sale de la categoría');
+  assert.equal(saved.impactType, 'tranquilidad', 'the colour comes from the category');
   assert.equal(saved.dateConfirmed, true);
   assert.equal(saved.timeConfirmed, false);
   assert.match(saved.dateLabel, /Hora por confirmar$/);
-  assert.equal(await page.$eval('#sheet', (e) => e.classList.contains('hidden')), true, 'la hoja se cierra al guardar');
+  assert.equal(await page.$eval('#sheet', (e) => e.classList.contains('hidden')), true, 'the sheet closes on save');
   assert.deepEqual(problems, []);
   await page.close();
 });
 
-test('con las fuentes de Google permitidas, la política de seguridad no bloquea nada', { skip }, async () => {
-  // Las demás pruebas bloquean internet a propósito; aquí se deja pasar solo lo que la CSP autoriza.
+test('with Google fonts allowed, the security policy blocks nothing', { skip }, async () => {
+  // The other tests block the internet on purpose; here only what the CSP allows is let through.
   const { page, problems } = await openApp(browser, site.url, { intercept: (r) => {
     if (!/fonts\.(googleapis|gstatic)\.com/.test(r.url())) return false;
     r.continue();
@@ -156,11 +156,11 @@ test('con las fuentes de Google permitidas, la política de seguridad no bloquea
   const fontsLoaded = [];
   page.on('response', (r) => { if (/fonts\.gstatic\.com/.test(r.url()) && r.ok()) fontsLoaded.push(r.url()); });
   await loadApp(page, site.url);
-  await new Promise((r) => setTimeout(r, 1500)); // las fuentes tardan en pedirse tras pintar; única pausa fija, y es el punto de la prueba
+  await new Promise((r) => setTimeout(r, 1500)); // fonts take a while to be requested after painting; the only fixed pause, and it is the point of the test
   assert.deepEqual(problems.filter((p) => /CSP|Content Security/i.test(p)), []);
-  // Si hay internet, las fuentes tienen que haber cargado; si no hay, la prueba no puede afirmar nada.
+  // If there is internet, the fonts must have loaded; if not, the test cannot assert anything.
   const online = await page.evaluate(() => document.fonts.size > 0);
-  if (online) assert.ok(fontsLoaded.length > 0, 'las fuentes no cargaron bajo la CSP');
+  if (online) assert.ok(fontsLoaded.length > 0, 'the fonts did not load under the CSP');
   await page.close();
 });
 

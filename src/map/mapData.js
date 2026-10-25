@@ -2,9 +2,9 @@ import { geoToTileF, METERS_PER_TILE_AVG, distanceToPolyline } from './gpsGrid.j
 
 /**
  * Modelo del mapa en coordenadas de tile, construido a partir de:
- *   data/map.json            → geometría de OpenStreetMap (npm run map:update)
- *   data/map-overrides.json  → ajustes manuales (lugares, clases, vías extra…)
- * Todo vive en lat/lng en disco; aquí se proyecta a la grilla una sola vez.
+ *   data/map.json            → OpenStreetMap geometry (npm run map:update)
+ *   data/map-overrides.json  → manual adjustments (places, classes, extra roads…)
+ * Everything lives in lat/lng on disk; here it is projected onto the grid once.
  */
 
 async function fetchJson(url, fallback) {
@@ -14,11 +14,11 @@ async function fetchJson(url, fallback) {
     return await res.json();
   } catch (err) {
     if (fallback !== undefined) return fallback;
-    throw new Error(`No se pudo cargar ${url}: ${err.message}`);
+    throw new Error(`Could not load ${url}: ${err.message}`);
   }
 }
 
-/** Intenta de nuevo si falla (una señal móvil floja suele recuperarse en un segundo). */
+/** Retries if it fails (a weak mobile signal often recovers within a second). */
 async function withRetry(fn, { tries = 3, delayMs = 800, wait = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
   let lastError;
   for (let i = 0; i < tries; i++) {
@@ -133,7 +133,7 @@ function nearest(features, x, y, maxDist, accept = () => true) {
   return best;
 }
 
-/** Nombre del sector de un tile: sectores manuales → calle cercana → lugar cercano → río → zona. */
+/** Sector name of a tile: manual sectors → nearby street → nearby place → river → zone. */
 export function detectSectorName(world, px, py) {
   if (!world) return 'Sector Piedecuesta';
 
@@ -162,5 +162,5 @@ export function detectSectorName(world, px, py) {
   return nearest(world.roads, px, py, 6) ? 'Sector Piedecuesta' : 'Zona verde / Cuenca Río del Hato';
 }
 
-/** `(px, py) => nombre` ya atado a un mapa: es lo que se le pasa a la UI y a los servicios. */
+/** `(px, py) => name` already bound to a map: this is what is passed to the UI and the services. */
 export const createSectorNamer = (world) => (px, py) => detectSectorName(world, px, py);

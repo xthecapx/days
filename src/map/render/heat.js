@@ -1,11 +1,11 @@
 import { TILE_SIZE } from '../worldSize.js';
 /**
- * Convierte el valor de calor de un píxel en un color RGBA equilibrado que deja ver el mapa debajo
+ * Converts a pixel's heat value into a balanced RGBA colour that lets the map show through underneath
  */
 export function getHeatPixelColor(cell, pulsePhase = 0) {
   if (!cell) return null;
 
-  // 1. Seguridad (Rojo compacto y translúcido para distinguir el mapa)
+  // 1. Security (compact, translucent red so the map stays distinguishable)
   if (cell.heat > 0.08) {
     const h = cell.heat;
     const fresh = cell.maxFreshness;

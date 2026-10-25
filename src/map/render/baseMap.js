@@ -4,13 +4,13 @@ import { pointInPolygon, tileHash } from '../geometry.js';
 import { ROAD_STYLES, ROAD_CLASS_ORDER, WATER_STYLES, TERRAIN_COLORS, BUILDING_ROOFS } from '../data/roadStyles.js';
 
 /**
- * El mapa base se pinta una sola vez en un lienzo grande. Con 200×200 tiles el
- * lienzo mide 1600×1600 por BASE_SCALE², así que se limita a 2× (3200×3200).
+ * The base map is painted once on a large canvas. With 200×200 tiles the
+ * canvas measures 1600×1600 times BASE_SCALE², so it is capped at 2× (3200×3200).
  */
 export const BASE_SCALE = 2;
 
 const T = TILE_SIZE * BASE_SCALE;
-const tc = (v) => (v + 0.5) * T; // coordenada de tile (continua) → píxel del lienzo base
+const tc = (v) => (v + 0.5) * T; // (continuous) tile coordinate → base canvas pixel
 
 function path(ctx, pts) {
   ctx.beginPath();
@@ -50,7 +50,7 @@ const AREA_KINDS = {
   pitch: 'park'
 };
 
-/** Máscara por tile: 0 = campo, 1 = bosque, 2 = urbano, 3 = industrial, 4 = suelo abierto, 5 = parque. */
+/** Mask per tile: 0 = field, 1 = forest, 2 = urban, 3 = industrial, 4 = open ground, 5 = park. */
 function buildLandMask(world) {
   const mask = new Uint8Array(GRID_WIDTH * GRID_HEIGHT);
   const code = { grass: 0, forest: 1, urban: 2, industrial: 3, openLand: 4, park: 5 };
@@ -58,7 +58,7 @@ function buildLandMask(world) {
   const polys = world.areas
     .filter((a) => a.pts.length > 3 && AREA_KINDS[a.kind])
     .map((a) => ({ a, code: code[AREA_KINDS[a.kind]] }))
-    // los grandes primero para que los pequeños queden encima
+    // big ones first so the small ones end up on top
     .sort((p, q) => area(q.a) - area(p.a));
   for (const { a, code: c } of polys) {
     const x0 = Math.max(0, Math.floor(a.bbox.x0));
@@ -72,7 +72,7 @@ function buildLandMask(world) {
   return mask;
 }
 
-/** Distancia aproximada (en tiles) de cada tile a la vía/cauce más cercano, para no poner casas encima. */
+/** Approximate distance (in tiles) from each tile to the nearest road/watercourse, to avoid placing houses on top of them. */
 function buildClearance(world) {
   const clearance = new Float32Array(GRID_WIDTH * GRID_HEIGHT).fill(99);
   const stamp = (pts, half) => {
@@ -144,7 +144,7 @@ function paintTrees(ctx, mask, clearance) {
   }
 }
 
-/** Casas procedurales: OSM no trae edificios aquí. Solo en suelo urbano y lejos de las vías. */
+/** Procedural houses: OSM has no buildings here. Only on urban ground and away from roads. */
 function paintBuildings(ctx, mask, clearance) {
   for (let y = 0; y < GRID_HEIGHT; y++) {
     for (let x = 0; x < GRID_WIDTH; x++) {
@@ -192,8 +192,8 @@ function paintWater(ctx, world) {
 function paintRoads(ctx, world) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  // Por clase de menor a mayor; dentro de cada clase primero bordes y luego rellenos,
-  // así las intersecciones quedan limpias y las vías grandes pasan por encima de las pequeñas.
+  // By class from lowest to highest; within each class, outlines first and then fills,
+  // so intersections come out clean and big roads pass over small ones.
   for (const cls of ROAD_CLASS_ORDER) {
     const s = ROAD_STYLES[cls];
     const group = world.roads.filter((r) => r.cls === cls);
@@ -213,7 +213,7 @@ export function createBaseMap(world) {
   paintTerrain(ctx, mask);
   paintTrees(ctx, mask, clearance);
   paintBuildings(ctx, mask, clearance);
-  paintWater(ctx, world); // el agua va debajo: las vías la cruzan como puentes
+  paintWater(ctx, world); // water goes underneath: roads cross it like bridges
   paintRoads(ctx, world);
   return canvas;
 }

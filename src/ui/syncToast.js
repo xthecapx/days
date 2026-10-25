@@ -1,11 +1,11 @@
 import { showToast } from '../core/dom.js';
 
-/** Cuánto dura el aviso: los fallos se quedan más tiempo para que se alcancen a leer. */
+/** How long the notice lasts: failures stay longer so they can be read. */
 export const syncToastMs = (ok) => (ok === false ? 7000 : 4500);
 
 /**
- * Avisa en pantalla qué pasó al guardar ("Enviado para revisión…", "demasiados reportes pendientes…").
- * Se suscribe al objeto `sync` completo para que dos guardados seguidos con el mismo mensaje avisen dos veces.
+ * Tells the user on screen what happened on save ("Enviado para revisión…", "demasiados reportes pendientes…").
+ * It subscribes to the whole `sync` object so that two consecutive saves with the same message notify twice.
  */
 export function mountSyncToast({ store, toast = showToast }) {
   store.subscribe(

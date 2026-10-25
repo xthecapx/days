@@ -1,29 +1,29 @@
 /**
- * Grilla del juego sobre coordenadas reales.
+ * Game grid over real coordinates.
  *
- * lat/lng es la fuente de verdad (así se guardan los incidentes); la grilla
- * (200×200 tiles de ~14 m) es solo una vista sobre esas coordenadas.
- * Cambiar GEO_BOUNDS o el tamaño de grilla NO mueve ningún incidente.
+ * lat/lng is the source of truth (that is how incidents are stored); the grid
+ * (200×200 tiles of ~14 m) is just a view over those coordinates.
+ * Changing GEO_BOUNDS or the grid size does NOT move any incident.
  *
- * Convención de tiles: el centro del tile de índice i está en la coordenada
+ * Tile convention: the centre of the tile with index i is at the coordinate
  * continua i (por eso geoToTileF resta 0.5).
  */
 
-// El área y el tamaño de la grilla se definen una sola vez, en core/geo.js.
+// The area and the grid size are defined once, in core/geo.js.
 import { GEO_BOUNDS, GRID_WIDTH, GRID_HEIGHT } from '../core/geo.js';
 export { GEO_BOUNDS, GRID_WIDTH, GRID_HEIGHT };
 
 const LNG_SPAN = GEO_BOUNDS.east - GEO_BOUNDS.west;
 const LAT_SPAN = GEO_BOUNDS.north - GEO_BOUNDS.south;
 
-/** Metros por tile (aprox., en el centro del mapa). */
+/** Metres per tile (approx., at the centre of the map). */
 const METERS_PER_TILE = {
   x: (LNG_SPAN * 111320 * Math.cos((((GEO_BOUNDS.north + GEO_BOUNDS.south) / 2) * Math.PI) / 180)) / GRID_WIDTH,
   y: (LAT_SPAN * 110574) / GRID_HEIGHT
 };
 export const METERS_PER_TILE_AVG = (METERS_PER_TILE.x + METERS_PER_TILE.y) / 2;
 
-/** lat/lng → coordenada continua de tile (convención: centro del tile i = i). */
+/** lat/lng → continuous tile coordinate (convention: centre of tile i = i). */
 export function geoToTileF(lat, lng) {
   return [
     ((lng - GEO_BOUNDS.west) / LNG_SPAN) * GRID_WIDTH - 0.5,
@@ -60,7 +60,7 @@ export function gpsToPixel(lat, lng) {
   };
 }
 
-/** Distancia (en tiles) de un punto a una polilínea. */
+/** Distance (in tiles) from a point to a polyline. */
 export function distanceToPolyline(px, py, polyline) {
   let min = Infinity;
   for (let i = 0; i < polyline.length - 1; i++) {

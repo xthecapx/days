@@ -8,9 +8,9 @@ export function bannerText(signal, count, now) {
 }
 
 /**
- * Aviso rojo bajo la tarjeta de días mientras haya una alerta de OTRO vecino que no hayas descartado. Descartarlo solo lo
- * oculta en tu pantalla (la alerta sigue en el mapa y en la hoja de ayuda). Aparece aunque no estés escuchando: lo que se
- * ve al abrir la página es parte de la idea ("quien recarga ve lo que hay ahora").
+ * Red notice under the days card while there is an alert from ANOTHER neighbour that you have not dismissed. Dismissing it only
+ * hides it on your screen (the alert stays on the map and in the help sheet). It appears even if you are not listening: what is
+ * seen when opening the page is part of the idea ("whoever reloads sees what is there now").
  */
 export function mountHelpBanner({ store, actions, now = () => Date.now() }) {
   const dismissed = new Set();
@@ -24,7 +24,7 @@ export function mountHelpBanner({ store, actions, now = () => Date.now() }) {
   }
 
   store.subscribe((s) => [s.signals.active, s.signals.mine], render);
-  setInterval(render, 30_000); // "hace 3 min" se actualiza sin sondear al servidor
+  setInterval(render, 30_000); // "hace 3 min" updates without polling the server
   $('btnHelpBannerClose').addEventListener('click', () => {
     store.get().signals.active.forEach((s) => dismissed.add(s.id));
     render();

@@ -1,10 +1,10 @@
 /**
- * Store mínimo con suscripción por selectores.
+ * Minimal store with selector-based subscription.
  *
  *   const unsub = store.subscribe(s => [s.ui.sheet], ([sheet]) => ...);
  *
- * El selector devuelve un arreglo de dependencias; el callback solo corre
- * cuando alguna cambia (Object.is), así cada componente reacciona a lo suyo.
+ * The selector returns an array of dependencies; the callback only runs
+ * when one of them changes (Object.is), so each component reacts only to its own.
  */
 export function createStore(initialState) {
   let state = initialState;
@@ -19,7 +19,7 @@ export function createStore(initialState) {
     for (const sub of [...subs]) sub(state);
   }
 
-  /** Actualiza un sub-objeto del estado: patch('ui', { sheet: null }). */
+  /** Updates a sub-object of the state: patch('ui', { sheet: null }). */
   function patch(key, partial) {
     set((s) => ({ [key]: { ...s[key], ...partial } }));
   }

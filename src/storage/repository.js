@@ -1,6 +1,6 @@
 import { isLocalhost } from '../core/env.js';
 
-/** Lee data/incidents.json del repositorio: primero GitHub (lo último aprobado), luego el archivo servido. */
+/** Reads data/incidents.json from the repository: first GitHub (the latest approved), then the served file. */
 
 async function getJson(url, label) {
   try {
@@ -8,12 +8,12 @@ async function getJson(url, label) {
     if (res.ok) return await res.json();
     console.warn(`${label}: HTTP ${res.status}`);
   } catch (err) {
-    console.warn(`${label}: no se pudo cargar`, err);
+    console.warn(`${label}: could not load`, err);
   }
   return null;
 }
 
-/** null si no hay conexión a ninguna de las dos fuentes. */
+/** null if there is no connection to either source. */
 export async function loadFromRepository({ githubRepo }) {
   if (!isLocalhost() && githubRepo) {
     const raw = await getJson(

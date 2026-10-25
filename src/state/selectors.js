@@ -7,7 +7,7 @@ export function findIncident(state, id) {
   return selectIncidents(state).find((i) => i.id === id) || null;
 }
 
-/** El borrador del formulario se dibuja como "fantasma" en el mapa mientras se edita. */
+/** The form draft is drawn as a "ghost" on the map while being edited. */
 function draftToPreview(draft, fallbackDate) {
   if (!draft || Number.isNaN(draft.pixelX) || Number.isNaN(draft.pixelY)) return null;
   return {
@@ -21,8 +21,8 @@ function draftToPreview(draft, fallbackDate) {
 }
 
 /**
- * Clave de lo que el borrador aporta al mapa de calor (ubicación, gravedad, fecha, tipo). Escribir la
- * descripción o el sector NO la cambia, así que no obliga a recalcular los 40 000 tiles.
+ * Key of what the draft contributes to the heat map (location, severity, date, type). Typing the
+ * description or the sector does NOT change it, so it does not force recomputing the 40,000 tiles.
  */
 export function selectPreviewKey(s) {
   const p = draftToPreview(s.draft, toIsoDate(s.settings.referenceDate));
@@ -31,7 +31,7 @@ export function selectPreviewKey(s) {
 
 let heatCache = { deps: null, value: null };
 
-/** Mapa de calor memoizado: solo se recalcula si cambia alguna de sus entradas. */
+/** Memoised heat map: recomputed only if any of its inputs changes. */
 export function selectHeatmap(s) {
   const deps = [s.data.incidents, s.settings.decayMode, s.settings.referenceDate, selectPreviewKey(s)];
   if (heatCache.deps && deps.every((d, i) => Object.is(d, heatCache.deps[i]))) {

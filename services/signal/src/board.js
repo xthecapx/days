@@ -1,17 +1,17 @@
 import { gpsToPixel } from '../../../src/map/gpsGrid.js';
 
 /**
- * Reglas de la señal de ayuda. Sin red, sin Cloudflare y sin reloj propio: el almacén, la hora y los generadores de
- * id entran por parámetros, así todo se prueba en milisegundos. Para llevarlo a otro proveedor (Lambda, Cloud Run)
- * solo cambia quien llama a este archivo y el almacén.
+ * Rules of the help signal. No network, no Cloudflare and no clock of its own: the storage, the time and the id
+ * generators come in as parameters, so everything is tested in milliseconds. To move it to another provider (Lambda,
+ * Cloud Run) only the caller of this file and the storage change.
  *
- * Privacidad: de una señal solo se guarda y se devuelve la CASILLA del mapa (~14 m), nunca las coordenadas
- * exactas ni la precisión. El identificador del cliente y el token de cancelación nunca salen en una respuesta.
+ * Privacy: of a signal only the map TILE (~14 m) is stored and returned, never the exact coordinates or the
+ * accuracy. The client identifier and the cancel token never appear in a response.
  */
 
 export const DEFAULTS = Object.freeze({
-  signalTtlMs: 30 * 60_000, // una señal dura 30 min
-  listenerTtlMs: 75_000, // quien escucha cuenta mientras haya sondeado en los últimos 75 s (sondea cada 30 s)
+  signalTtlMs: 30 * 60_000, // a signal lasts 30 min
+  listenerTtlMs: 75_000, // a listener counts as long as they have polled in the last 75 s (they poll every 30 s)
   maxSignals: 20,
   maxListeners: 1000
 });
@@ -35,7 +35,7 @@ const randomHex = (bytes) => {
   return [...buf].map((b) => b.toString(16).padStart(2, '0')).join('');
 };
 
-/** Comparación que no se corta en la primera diferencia (no delata cuántos caracteres acertó el que adivina). */
+/** Comparison that does not stop at the first difference (it does not reveal how many characters the guesser got right). */
 export function safeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
   let diff = 0;
@@ -44,8 +44,8 @@ export function safeEqual(a, b) {
 }
 
 /**
- * Número de una coordenada. Acepta número o texto: los Atajos de iPhone mandan números como texto y, en un teléfono en
- * español, con coma decimal ("7,005"). Cualquier otra cosa da NaN.
+ * Number from a coordinate. Accepts a number or text: iPhone Shortcuts send numbers as text and, on a phone set to
+ * Spanish, with a decimal comma ("7,005"). Anything else gives NaN.
  */
 export function parseCoordinate(value) {
   let n = value;
@@ -67,7 +67,7 @@ export function createBoard({
   config = {}
 }) {
   const cfg = { ...DEFAULTS, ...config };
-  /** quien escucha → cuándo deja de contar. Solo en memoria: si el servidor se reinicia, se recupera en ≤30 s. */
+  /** listener → when they stop counting. In memory only: if the server restarts, it recovers in ≤30 s. */
   const listeners = new Map();
 
   function sweep() {
@@ -86,16 +86,16 @@ export function createBoard({
   }
 
   return {
-    /** Estado público. NO registra a nadie como oyente. */
+    /** Public state. Does NOT register anyone as a listener. */
     state,
 
-    /** Un sondeo. `listening: true` te cuenta como oyente; `false` te saca. */
+    /** A poll. `listening: true` counts you as a listener; `false` removes you. */
     poll({ listener, listening } = {}) {
       if (typeof listener !== 'string' || !LISTENER_ID.test(listener)) {
-        throw new BoardError(400, 'bad_listener', 'Identificador de oyente inválido.');
+        throw new BoardError(400, 'bad_listener', 'Invalid listener identifier.');
       }
       if (typeof listening !== 'boolean') {
-        throw new BoardError(400, 'bad_listening', 'Falta indicar si estás escuchando (true o false).');
+        throw new BoardError(400, 'bad_listening', 'Missing whether you are listening (true or false).');
       }
       sweep();
       if (!listening) listeners.delete(listener);
@@ -103,24 +103,24 @@ export function createBoard({
       return state();
     },
 
-    /** Crea la señal de `client` (reemplaza la que ya tuviera). Devuelve el token para poder cancelarla. */
+    /** Creates the signal of `client` (replacing any it already had). Returns the token needed to cancel it. */
     send({ client, lat, lng } = {}) {
       if (typeof client !== 'string' || !CLIENT_ID.test(client)) {
-        throw new BoardError(400, 'bad_client', 'No se pudo identificar el envío.');
+        throw new BoardError(400, 'bad_client', 'The sender could not be identified.');
       }
       const la = parseCoordinate(lat);
       const ln = parseCoordinate(lng);
       if (!(Math.abs(la) <= 90 && Math.abs(ln) <= 180)) {
-        throw new BoardError(400, 'bad_coordinates', 'La ubicación no es válida.');
+        throw new BoardError(400, 'bad_coordinates', 'The location is not valid.');
       }
       const tile = gpsToPixel(la, ln);
       if (!tile.insideBounds) {
-        throw new BoardError(422, 'outside_area', 'Esa ubicación está fuera del área del mapa.');
+        throw new BoardError(422, 'outside_area', 'That location is outside the map area.');
       }
 
       sweep();
-      for (const s of storage.list()) if (s.client === client) storage.remove(s.id); // una por persona
-      // Si el tablero está lleno cae la más antigua: una señal real nunca debe rechazarse por estar lleno.
+      for (const s of storage.list()) if (s.client === client) storage.remove(s.id); // one per person
+      // If the board is full the oldest one drops: a real signal must never be rejected because the board is full.
       const rest = storage.list().sort((a, b) => a.at - b.at);
       while (rest.length >= cfg.maxSignals) storage.remove(rest.shift().id);
 
@@ -130,20 +130,20 @@ export function createBoard({
       return { id: signal.id, cancelToken: signal.token, x: signal.x, y: signal.y, at, expiresAt: signal.expiresAt, listeners: listeners.size };
     },
 
-    /** Retira una señal con el token que recibió quien la envió. */
+    /** Removes a signal using the token its sender received. */
     cancel({ id, token } = {}) {
       if (typeof id !== 'string' || !SIGNAL_ID.test(id) || typeof token !== 'string' || !token) {
-        throw new BoardError(400, 'bad_cancel', 'Faltan el id o el token de la señal.');
+        throw new BoardError(400, 'bad_cancel', 'The signal id or token is missing.');
       }
       sweep();
       const signal = storage.list().find((s) => s.id === id);
-      if (!signal) throw new BoardError(404, 'not_found', 'Esa señal ya no existe.');
-      if (!safeEqual(signal.token, token)) throw new BoardError(403, 'bad_token', 'No puedes cancelar esa señal.');
+      if (!signal) throw new BoardError(404, 'not_found', 'That signal no longer exists.');
+      if (!safeEqual(signal.token, token)) throw new BoardError(403, 'bad_token', 'You cannot cancel that signal.');
       storage.remove(id);
       return state();
     },
 
-    /** Cuándo vence la primera señal (para programar la limpieza), o null si no hay ninguna. */
+    /** When the first signal expires (to schedule cleanup), or null if there are none. */
     nextExpiry() {
       sweep();
       const times = storage.list().map((s) => s.expiresAt);

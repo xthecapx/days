@@ -3,8 +3,8 @@ import { planSave, planConfirm } from '../domain/storePlans.js';
 import { loadStore, persistStore } from '../storage/incidentStore.js';
 
 /**
- * Casos de uso sobre los incidentes: arma el cambio con las reglas de `domain/`, lo guarda con
- * `storage/` y deja el resultado en el store. La UI nunca toca el almacenamiento.
+ * Use cases over incidents: builds the change with the rules from `domain/`, saves it with
+ * `storage/` and leaves the result in the store. The UI never touches storage.
  */
 export function createIncidentService(store, { sectorName = () => 'Sector Piedecuesta' } = {}) {
   const commit = ({ store: data, syncStatus }) => {

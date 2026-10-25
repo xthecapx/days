@@ -1,9 +1,9 @@
 /**
- * Cliente del servidor de la señal de ayuda. NUNCA lanza: siempre devuelve { ok: true, data } o
- * { ok: false, error, status? }, para que la pantalla decida qué mostrar sin try/catch por todos lados.
+ * Client for the help-signal server. NEVER throws: always returns { ok: true, data } or
+ * { ok: false, error, status? }, so the screen can decide what to show without try/catch everywhere.
  *
  *   const api = createSignalApi({ baseUrl });
- *   const r = await api.state();          // lectura pública, no cuenta como oyente
+ *   const r = await api.state();          // public read, does not count as a listener
  *   await api.poll({ listener, listening });
  *   await api.send({ lat, lng });
  *   await api.cancel({ id, token });
@@ -31,7 +31,7 @@ export function createSignalApi({ baseUrl, fetchImpl = globalThis.fetch?.bind(gl
       try {
         data = await res.json();
       } catch {
-        /* respuesta sin JSON (p. ej. una página de error de Cloudflare) */
+        /* response without JSON (e.g. a Cloudflare error page) */
       }
       if (res.ok && data?.ok) return { ok: true, data };
       return { ok: false, status: res.status, error: data?.code || (res.status === 429 ? 'rate_limited' : 'http_error'), message: data?.error };

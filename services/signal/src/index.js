@@ -5,8 +5,8 @@ import { handle } from './http.js';
 import { runBoard } from './rpc.js';
 
 /**
- * Una sola instancia. Las señales viven en el SQLite del objeto (se escriben poco); quién escucha
- * vive solo en memoria (se escribe en cada sondeo, y si el objeto se reinicia se recupera en ≤30 s).
+ * A single instance. Signals live in the object's SQLite (they are written rarely); who is listening
+ * lives only in memory (it is written on every poll, and if the object restarts it recovers in ≤30 s).
  */
 export class SignalBoard extends DurableObject {
   constructor(ctx, env) {
@@ -14,14 +14,14 @@ export class SignalBoard extends DurableObject {
     this.board = createBoard({ storage: createSqlStorage(ctx.storage.sql) });
   }
 
-  /** Única puerta de entrada (RPC): { ok, data } o { ok:false, status, code, message }. */
+  /** Single entry point (RPC): { ok, data } or { ok:false, status, code, message }. */
   async run(op, input) {
     const result = runBoard(this.board, op, input);
     await this.#scheduleCleanup();
     return result;
   }
 
-  /** Limpieza de señales vencidas, para que la base no crezca aunque nadie consulte. */
+  /** Cleanup of expired signals, so the database does not grow even if nobody queries it. */
   async alarm() {
     this.board.state();
     await this.#scheduleCleanup();
@@ -38,8 +38,8 @@ export class SignalBoard extends DurableObject {
 export default {
   fetch(request, env) {
     return handle(request, env, {
-      // Un solo tablero. El nombre se queda en "main" para seguir usando el Durable Object que ya está desplegado. Un
-      // `?room=...` de enlaces o atajos antiguos simplemente se ignora.
+      // A single board. The name stays "main" so the already-deployed Durable Object keeps being used. A
+      // `?room=...` from old links or shortcuts is simply ignored.
       getBoard: () => {
         const stub = env.SIGNAL_BOARD.get(env.SIGNAL_BOARD.idFromName('main'));
         return { run: (op, input) => stub.run(op, input) };

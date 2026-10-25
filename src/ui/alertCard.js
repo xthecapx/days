@@ -4,7 +4,7 @@ import { selectHeatmap, selectIncidents, selectPreviewKey } from '../state/selec
 
 const HEADLINE = 'DÍAS DESDE EL ÚLTIMO INCIDENTE';
 
-/** Lo que muestra la tarjeta superior. Puro: no toca el DOM. */
+/** What the top card shows. Pure: does not touch the DOM. */
 export function alertSummary(incidents, referenceDate) {
   const latest = latestIncident(incidents);
   if (!latest) {
@@ -19,7 +19,7 @@ export function alertSummary(incidents, referenceDate) {
   };
 }
 
-/** Tarjeta "días desde el último incidente": contador, resumen y detalle desplegable. */
+/** "Days since the last incident" card: counter, summary and expandable detail. */
 export function mountAlertCard({ store, actions, measureInsets }) {
   $('alertToggle').addEventListener('click', () => actions.toggleAlert());
 

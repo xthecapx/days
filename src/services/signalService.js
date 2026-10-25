@@ -2,10 +2,10 @@ import { isActive, newListenerId } from '../domain/signals.js';
 import { createSignalFeed } from './signalFeed.js';
 
 /**
- * Casos de uso de la señal de ayuda: junta el cliente del servidor, el sondeo, el GPS y las preferencias del navegador,
- * y deja el resultado en el store. La interfaz solo llama a estas funciones y lee el store.
+ * Use cases of the help signal: ties together the server client, the polling, the GPS and the browser preferences,
+ * and leaves the result in the store. The interface only calls these functions and reads the store.
  *
- * Todo lo externo entra por parámetros (como en gps.js y incidentService.js), para probarlo sin red ni navegador.
+ * Everything external comes in as parameters (as in gps.js and incidentService.js), to test without network or browser.
  */
 export function createSignalService({
   store,
@@ -29,11 +29,11 @@ export function createSignalService({
     api,
     listenerId,
     onUpdate: (view) => {
-      // Los relojes de los teléfonos se desfasan: se mide la diferencia con el servidor para que "hace 3 min" sea cierto.
+      // Phone clocks drift: the difference with the server is measured so that "hace 3 min" is accurate.
       const hasServerClock = Number.isFinite(view.serverNow);
       const skew = hasServerClock ? view.serverNow - now() : store.get().signals.skew;
-      // Mi señal se olvida solo cuando YA VENCIÓ (con la hora del servidor). Si otro dispositivo la canceló, sigue figurando
-      // hasta entonces: es un detalle menor y evita borrar por error una alerta recién enviada.
+      // My signal is forgotten only once it HAS EXPIRED (by server time). If another device cancelled it, it stays listed
+      // until then: a minor detail that avoids wrongly deleting an alert that was just sent.
       if (mine && !isActive(mine, now() + skew)) {
         mine = null;
         persist();
@@ -45,7 +45,7 @@ export function createSignalService({
   });
 
   return {
-    /** Lectura única al abrir la página (no cuenta como oyente). Si la persona dejó la escucha activada, la retoma. */
+    /** Single read on page open (does not count as a listener). If the person left listening on, it resumes it. */
     async start() {
       if (!api.enabled) return;
       await feed.refresh();
@@ -60,8 +60,8 @@ export function createSignalService({
     },
 
     /**
-     * Envía la señal con la posición del teléfono. Devuelve { ok:true, signal } o { ok:false, error }.
-     * `no_gps` = no se pudo leer la ubicación (la persona debe saberlo: sin ubicación no hay señal que enviar).
+     * Sends the signal with the phone's position. Returns { ok:true, signal } or { ok:false, error }.
+     * `no_gps` = the location could not be read (the person must know: without a location there is no signal to send).
      */
     async send() {
       if (!api.enabled) return { ok: false, error: 'not_configured' };
@@ -77,11 +77,11 @@ export function createSignalService({
       return { ok: true, signal: { id, expiresAt }, listeners };
     },
 
-    /** Retira mi señal activa (por si fue una falsa alarma). */
+    /** Withdraws my active signal (in case it was a false alarm). */
     async cancel() {
       if (!mine) return { ok: false, error: 'nothing_to_cancel' };
       const result = await api.cancel({ id: mine.id, token: mine.token });
-      // 404 = ya no existe (venció): para mí es lo mismo que cancelada.
+      // 404 = it no longer exists (expired): for me that is the same as cancelled.
       if (result.ok || result.status === 404) {
         mine = null;
         persist();

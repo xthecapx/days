@@ -1,6 +1,6 @@
 /**
- * Envía un cambio al puente (Cloudflare Worker), que abre un Pull Request. Nada se publica hasta que
- * el dueño lo aprueba. Devuelve siempre un estado de sincronización legible; nunca lanza.
+ * Sends a change to the bridge (Cloudflare Worker), which opens a Pull Request. Nothing is published until
+ * the owner approves it. Always returns a readable sync state; never throws.
  */
 export async function sendChange(bridgeUrl, change, commitSummary) {
   try {
@@ -19,10 +19,10 @@ export async function sendChange(bridgeUrl, change, commitSummary) {
         message: 'Guardado localmente; hay demasiados reportes pendientes, intenta más tarde'
       };
     }
-    console.warn(`El puente respondió HTTP ${res.status}`);
+    console.warn(`The bridge responded with HTTP ${res.status}`);
     return { mode: 'github-error', ok: false, message: 'Guardado localmente (el puente rechazó el reporte)' };
   } catch (err) {
-    console.warn('Sin conexión al puente', err);
+    console.warn('No connection to the bridge', err);
     return { mode: 'github-offline', ok: false, message: 'Guardado localmente (sin conexión al puente)' };
   }
 }

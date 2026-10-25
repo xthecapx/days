@@ -1,16 +1,16 @@
 /**
- * Compartir por WhatsApp. No toca el mapa, la selección ni los incidentes: arma un mensaje y abre WhatsApp
- * con el texto ya escrito. La persona elige el chat y pulsa enviar, así que nada se publica solo.
+ * Sharing via WhatsApp. It does not touch the map, the selection or the incidents: it builds a message and opens WhatsApp
+ * with the text already written. The person picks the chat and presses send, so nothing is published on its own.
  */
 
 /** Formato documentado de Google Maps (Maps URLs): abre un pin en esas coordenadas. */
 export const mapsLink = (lat, lng) =>
   `https://www.google.com/maps/search/?api=1&query=${lat.toFixed(6)}%2C${lng.toFixed(6)}`;
 
-/** wa.me sin número: WhatsApp abre el selector de chats con el texto listo. */
+/** wa.me without a number: WhatsApp opens the chat picker with the text ready. */
 export const whatsappUrl = (text) => `https://wa.me/?text=${encodeURIComponent(text)}`;
 
-/** Texto de la alerta. Sin posición igual avisa, para no perder tiempo en una emergencia. */
+/** Alert text. Without a position it still alerts, so no time is lost in an emergency. */
 export function buildAlertMessage(position, { sector = null, now = new Date() } = {}) {
   const lines = ['🚨 NECESITO AYUDA'];
   if (position) {
@@ -24,7 +24,7 @@ export function buildAlertMessage(position, { sector = null, now = new Date() } 
   return lines.join('\n');
 }
 
-/** Mensaje para compartir un punto del mapa (sin pedir ayuda): sector + enlace de Google Maps. */
+/** Message to share a map point (without asking for help): sector + Google Maps link. */
 export function buildPointMessage(point, sector) {
   const lines = ['📍 Ubicación compartida'];
   if (sector) lines.push(sector);
@@ -33,15 +33,15 @@ export function buildPointMessage(point, sector) {
 }
 
 /**
- * `gps`: servicio de gps.js · `sectorAt(lat, lng)`: nombre del sector o null si está fuera del mapa ·
- * `open(url)`: cómo navegar (se reemplaza en pruebas).
+ * `gps`: service from gps.js · `sectorAt(lat, lng)`: sector name or null if outside the map ·
+ * `open(url)`: how to navigate (replaced in tests).
  */
 export function createWhatsApp({ gps, sectorAt = () => null, open = (url) => window.location.assign(url) }) {
   return {
     /**
-     * Abre WhatsApp con la alerta. iOS Safari solo abre la app si la navegación ocurre dentro del toque:
-     * con una posición reciente se navega en el acto (síncrono, antes de cualquier `await`); si no la hay,
-     * se espera el GPS y se abre igual (mejor esfuerzo).
+     * Opens WhatsApp with the alert. iOS Safari only opens the app if navigation happens inside the tap:
+     * with a recent position it navigates immediately (synchronous, before any `await`); if there is none,
+     * it waits for the GPS and opens anyway (best effort).
      */
     async sendAlert() {
       const position = gps.fix() || (await gps.read());

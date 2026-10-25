@@ -2,12 +2,12 @@ import { $, escapeHtml, toNumber } from '../../core/dom.js';
 import { calculateDaysSince, isTranquilityIncident } from '../../domain/incident.js';
 import { selectIncidents } from '../../state/selectors.js';
 
-/** HTML de una tarjeta de incidente. Puro: recibe datos, devuelve texto (todo lo del usuario va escapado). */
+/** HTML of an incident card. Pure: receives data, returns text (everything from the user is escaped). */
 export function incidentCardHtml(inc, referenceDate) {
   const calm = isTranquilityIncident(inc);
   const ago = calculateDaysSince(inc.date, referenceDate);
   const pending = !inc.dateConfirmed || !inc.timeConfirmed;
-  // Los números también llegan de un JSON que puede editarse a mano: nunca se pintan tal cual.
+  // The numbers also come from a JSON that can be edited by hand: they are never rendered as they are.
   const number = toNumber(inc.number);
   const severity = toNumber(inc.severity, 3);
   const confirmations = toNumber(inc.confirmations, 1) || 1;
@@ -29,7 +29,7 @@ export function incidentCardHtml(inc, referenceDate) {
       </div>`;
 }
 
-/** Lista de incidentes, del más nuevo al más viejo (por número de reporte). */
+/** List of incidents, from newest to oldest (by report number). */
 export function mountIncidentsPane({ store, actions }) {
   const list = $('incidentList');
 

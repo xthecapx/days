@@ -9,7 +9,7 @@ const NOW = new Date(2026, 9, 23, 12);
 const inc = (o) => ({ id: 'x', number: 1, date: '2026-10-22', severity: 4, pixelX: 50, pixelY: 60, category: 'Hurto', description: 'd', ...o });
 const cellAt = (h, x, y) => h.grid[y * GRID_WIDTH + x];
 
-test('heatmap: el centro es epicentro y el calor decae con la distancia', () => {
+test('heatmap: the centre is the epicentre and heat decays with distance', () => {
   const h = computePixelHeatmap([inc()], { now: NOW });
   const center = cellAt(h, 50, 60);
   assert.equal(center.isCenter, true);
@@ -18,7 +18,7 @@ test('heatmap: el centro es epicentro y el calor decae con la distancia', () => 
   assert.ok(h.affectedPixelsCount > 0);
 });
 
-test('heatmap: incidente de tranquilidad no suma calor rojo', () => {
+test('heatmap: a tranquility incident adds no red heat', () => {
   const h = computePixelHeatmap([inc({ impactType: 'tranquilidad' })], { now: NOW });
   const c = cellAt(h, 50, 60);
   assert.equal(c.heat, 0);
@@ -26,12 +26,12 @@ test('heatmap: incidente de tranquilidad no suma calor rojo', () => {
   assert.equal(c.isTranquilityCenter, true);
 });
 
-test('heatmap: incidente fuera de la grilla se ignora; sin incidentes = 0 píxeles', () => {
+test('heatmap: an incident outside the grid is ignored; no incidents = 0 pixels', () => {
   assert.equal(computePixelHeatmap([inc({ pixelX: 999 })], { now: NOW }).affectedPixelsCount, 0);
   assert.equal(computePixelHeatmap([], { now: NOW }).affectedPixelsCount, 0);
 });
 
-test('heatmap: más antiguo = menos calor en modo actual, igual en histórico', () => {
+test('heatmap: older = less heat in current mode, the same in historical', () => {
   const fresh = cellAt(computePixelHeatmap([inc({ date: '2026-10-22' })], { now: NOW }), 50, 60).heat;
   const old = cellAt(computePixelHeatmap([inc({ date: '2026-08-01' })], { now: NOW }), 50, 60).heat;
   const oldHist = cellAt(computePixelHeatmap([inc({ date: '2026-08-01' })], { now: NOW, decayMode: 'historico' }), 50, 60).heat;
@@ -39,14 +39,14 @@ test('heatmap: más antiguo = menos calor en modo actual, igual en histórico', 
   assert.equal(oldHist, computePixelHeatmap([inc({ date: '2026-10-22' })], { now: NOW, decayMode: 'historico' }).grid[60 * GRID_WIDTH + 50].heat);
 });
 
-test('heatmap: la vista previa no se lista como incidente de la celda', () => {
+test('heatmap: the preview is not listed as an incident of the cell', () => {
   const h = computePixelHeatmap([], { now: NOW, previewIncident: inc({ id: 'preview-inc' }) });
   const c = cellAt(h, 50, 60);
   assert.equal(c.isPreview, true);
   assert.equal(c.incidents.length, 0);
 });
 
-test('isTranquilityIncident y getTemporalWeight', () => {
+test('isTranquilityIncident and getTemporalWeight', () => {
   assert.equal(isTranquilityIncident({ impactType: 'tranquilidad' }), true);
   assert.equal(isTranquilityIncident({ category: 'Ruido Excesivo / Convivencia' }), true);
   assert.equal(isTranquilityIncident({ category: 'Hurto a Residencia' }), false);
@@ -55,7 +55,7 @@ test('isTranquilityIncident y getTemporalWeight', () => {
   assert.equal(getTemporalWeight(500, 'historico'), 1);
 });
 
-test('getHeatPixelColor: epicentro, escala de seguridad, tranquilidad y celda vacía', () => {
+test('getHeatPixelColor: epicentre, safety scale, tranquility and empty cell', () => {
   const cell = (o) => ({ heat: 0, tranquilityHeat: 0, maxFreshness: 1, isCenter: false, isTranquilityCenter: false, ...o });
   assert.equal(getHeatPixelColor(null), null);
   assert.equal(getHeatPixelColor(cell({})), null);
@@ -64,6 +64,6 @@ test('getHeatPixelColor: epicentro, escala de seguridad, tranquilidad y celda va
   assert.equal(getHeatPixelColor(cell({ heat: 0.4 })).level, 'MEDIO');
   assert.equal(getHeatPixelColor(cell({ heat: 0.1 })).level, 'PERIFERIA');
   assert.match(getHeatPixelColor(cell({ tranquilityHeat: 0.5, isTranquilityCenter: true })).level, /TRANQUILIDAD/);
-  // lo viejo es más naranja que lo reciente
+  // older is more orange than recent
   assert.notEqual(getHeatPixelColor(cell({ heat: 0.4, maxFreshness: 1 })).fill, getHeatPixelColor(cell({ heat: 0.4, maxFreshness: 0.5 })).fill);
 });

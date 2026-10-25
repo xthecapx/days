@@ -1,4 +1,4 @@
-/** Utilidades geométricas puras (coordenadas en tiles). */
+/** Pure geometric utilities (coordinates in tiles). */
 
 export function pointInPolygon(x, y, polygon) {
   let inside = false;
@@ -11,12 +11,12 @@ export function pointInPolygon(x, y, polygon) {
   return inside;
 }
 
-/** Hash determinista por tile: mismo mapa en cada carga, sin Math.random. */
+/** Deterministic hash per tile: same map on every load, no Math.random. */
 export function tileHash(x, y, salt = 0) {
   return (((x * 73856093) ^ (y * 19349663) ^ (salt * 83492791)) >>> 0);
 }
 
-/** Punto y dirección a lo largo de una polilínea para t ∈ [0, 1] (en tiles). */
+/** Point and direction along a polyline for t ∈ [0, 1] (in tiles). */
 export function samplePolyline(polyline, tNorm) {
   const t = ((tNorm % 1) + 1) % 1;
   const lens = [];

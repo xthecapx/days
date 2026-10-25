@@ -1,18 +1,18 @@
 import { buildIncident, buildSaveChange, buildConfirmChange, confirmedIncident } from './incident.js';
 
 /**
- * Cada función recibe el estado actual y devuelve el estado siguiente MÁS lo que hay que contarle al
- * mundo (nota para el commit y mensaje para el puente). No guarda ni envía nada: eso lo hace el servicio.
- * El historial de cambios lo lleva git (cada reporte es un Pull Request), no la app.
+ * Each function receives the current state and returns the next state PLUS what has to be told to the
+ * world (note for the commit and message for the bridge). It does not save or send anything: the service does that.
+ * The change history is kept by git (each report is a Pull Request), not by the app.
  */
 
 /**
  * Crea (editingId = null) o edita un incidente.
- * `coords` = { pixelX, pixelY, lat, lng } y `sector` ya resuelto por quien llama.
+ * `coords` = { pixelX, pixelY, lat, lng } and `sector` already resolved by the caller.
  */
 export function planSave(store, input, editingId, { coords, sector, now = new Date() }) {
   const existing = editingId ? store.incidents.find((i) => i.id === editingId) : null;
-  if (editingId && !existing) throw new Error(`No existe el incidente ${editingId}.`);
+  if (editingId && !existing) throw new Error(`Incident ${editingId} does not exist.`);
 
   const savedIncident = buildIncident(input, { existing, incidents: store.incidents, coords, sector, now });
   const incidents = existing

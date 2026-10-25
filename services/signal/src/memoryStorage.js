@@ -1,11 +1,11 @@
 /**
- * Almacén de señales en memoria. Sirve para las pruebas y define el contrato que debe cumplir cualquier almacén
- * real (el del Durable Object usa SQLite): todo es síncrono y devuelve copias, nunca referencias internas.
+ * In-memory signal storage. It serves the tests and defines the contract any real storage must meet
+ * (the Durable Object one uses SQLite): everything is synchronous and returns copies, never internal references.
  *
- *   list()                → todas las señales (copias)
- *   save(signal)          → inserta o reemplaza por id
- *   remove(id)            → borra una
- *   removeExpired(now)    → borra las que ya vencieron (expiresAt <= now)
+ *   list()                → all the signals (copies)
+ *   save(signal)          → inserts or replaces by id
+ *   remove(id)            → deletes one
+ *   removeExpired(now)    → deletes those that have already expired (expiresAt <= now)
  */
 export function createMemoryStorage() {
   const rows = new Map();

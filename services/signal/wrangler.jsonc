@@ -1,15 +1,15 @@
 {
-  // Servidor de la señal de ayuda. Independiente del Worker de reportes (../../worker/wrangler.jsonc, nombre "days").
+  // Help signal server. Independent of the reports Worker (../../worker/wrangler.jsonc, name "days").
   "name": "days-signal",
   "main": "src/index.js",
   "compatibility_date": "2026-07-01",
   "workers_dev": true,
 
   "vars": {
-    // Páginas que pueden llamar a este servidor desde un navegador (separadas por coma). Los Atajos del teléfono
-    // no mandan "Origin", así que no se ven afectados.
+    // Pages that may call this server from a browser (comma-separated). Phone Shortcuts
+    // do not send "Origin", so they are not affected.
     "ALLOWED_ORIGINS": "https://xthecapx.github.io",
-    // Solo `npm run dev` lo pone en true (permite localhost y la red local). En producción, siempre false.
+    // Only `npm run dev` sets it to true (allows localhost and the local network). In production, always false.
     "ALLOW_LOCAL": "false"
   },
 
@@ -18,16 +18,16 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SignalBoard"] }],
 
-  // Límites de ritmo por visitante (hash de IP con secreto). Los namespace_id deben ser únicos en tu cuenta de
-  // Cloudflare; el Worker de reportes usa 7421. Mucha gente comparte IP en una red móvil, por eso son holgados.
+  // Rate limits per visitor (IP hash with a secret). The namespace_ids must be unique in your Cloudflare
+  // account; the reports Worker uses 7421. Many people share an IP on a mobile network, which is why they are generous.
   "ratelimits": [
     { "name": "SIGNAL_LIMITER", "namespace_id": "7431", "simple": { "limit": 6, "period": 60 } },
     { "name": "POLL_LIMITER", "namespace_id": "7432", "simple": { "limit": 30, "period": 60 } }
   ],
 
-  // Registros de Cloudflare activados (Workers Logs): un registro por petición, para ver errores y uso mientras es una prueba.
-  // Nuestro código NO escribe nada en el registro (ni coordenadas ni IP): las coordenadas viajan en el cuerpo del POST, no en
-  // la URL. Qué metadatos de la petición añade Cloudflare por su cuenta (p. ej. la IP del cliente) no lo he podido confirmar.
+  // Cloudflare logs enabled (Workers Logs): one record per request, to see errors and usage while this is a trial.
+  // Our code writes NOTHING to the log (no coordinates, no IP): the coordinates travel in the POST body, not in
+  // the URL. Which request metadata Cloudflare adds on its own (e.g. the client IP) I could not confirm.
   "observability": {
     "logs": {
       "enabled": true,

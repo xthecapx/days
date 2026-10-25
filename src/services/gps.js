@@ -1,14 +1,14 @@
 /**
- * GPS del teléfono, sin DOM. Una sola lectura al arrancar (no hay seguimiento continuo): la posición vale
- * `freshMs` y después se vuelve a leer solo cuando alguien la necesita.
+ * Phone GPS, no DOM. A single read at startup (no continuous tracking): the position is valid for
+ * `freshMs` and afterwards it is re-read only when someone needs it.
  *
  *   const gps = createGps();
- *   gps.subscribe((status, fix) => ...);   // se llama al suscribirse y en cada cambio
- *   gps.start();                           // primera lectura (Safari pide el permiso aquí)
+ *   gps.subscribe((status, fix) => ...);   // called on subscribe and on every change
+ *   gps.start();                           // first read (Safari asks for permission here)
  *   const fix = gps.fix() || (await gps.read());
  *
- * Estados: 'ok' (posición vigente) · 'searching' (leyendo) · 'stale' (vencida; se relee al usarla)
- *          · 'denied' | 'unavailable' (no se puede).
+ * States: 'ok' (position valid) · 'searching' (reading) · 'stale' (expired; re-read on use)
+ *          · 'denied' | 'unavailable' (cannot be used).
  */
 
 const DEFAULTS = {
@@ -24,7 +24,7 @@ const toFix = (pos, at) => ({
 });
 const toError = (err) => (err?.code === 1 ? 'denied' : err?.code === 3 ? 'timeout' : 'unavailable');
 
-/** Todo se puede reemplazar en pruebas: `geolocation`, el reloj y los temporizadores. */
+/** Everything can be replaced in tests: `geolocation`, the clock and the timers. */
 export function createGps({
   geolocation = globalThis.navigator?.geolocation,
   now = Date.now,
@@ -35,11 +35,11 @@ export function createGps({
 } = {}) {
   let lastFix = null; // { lat, lng, accuracy, at }
   let lastError = null; // 'denied' | 'unavailable' | 'timeout' | null
-  let pending = null; // lectura en curso, compartida entre quienes la piden
+  let pending = null; // read in progress, shared among those who request it
   let staleTimer = null;
   const listeners = new Set();
 
-  /** Última posición si todavía es reciente (permite actuar al instante, dentro del toque). */
+  /** Last position if it is still recent (allows acting instantly, within the tap). */
   const fix = () => (lastFix && now() - lastFix.at < freshMs ? lastFix : null);
 
   function status() {
@@ -60,13 +60,13 @@ export function createGps({
   function gotFix(pos) {
     lastFix = toFix(pos, now());
     lastError = null;
-    // Este temporizador NO lee el GPS: solo repinta el indicador cuando la posición vence.
+    // This timer does NOT read the GPS: it only repaints the indicator when the position expires.
     clearTimer(staleTimer);
     staleTimer = setTimer(emit, freshMs + 100);
     return lastFix;
   }
 
-  /** Una lectura. Devuelve la posición o null (nunca lanza); el motivo queda en `error()`. */
+  /** One read. Returns the position or null (never throws); the reason is left in `error()`. */
   function read() {
     if (pending) return pending;
     pending = new Promise((resolve) => {
@@ -96,7 +96,7 @@ export function createGps({
     error: () => lastError,
     subscribe,
     read,
-    /** Relee solo si la posición venció o no existe. */
+    /** Re-reads only if the position has expired or does not exist. */
     ensureFresh() {
       if (!fix()) read();
     },

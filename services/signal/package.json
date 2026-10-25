@@ -2,7 +2,7 @@
   "name": "@days/signal",
   "version": "0.1.0",
   "private": true,
-  "description": "Servidor de la señal de ayuda (Cloudflare Worker + Durable Object). Independiente de la interfaz y de los reportes.",
+  "description": "Help signal server (Cloudflare Worker + Durable Object). Independent of the interface and of the reports.",
   "type": "module",
   "scripts": {
     "dev": "npx --yes wrangler@4.152.0 dev --port 8787 --var ALLOW_LOCAL:true --var SIGNAL_PEPPER:pepper-solo-para-desarrollo",

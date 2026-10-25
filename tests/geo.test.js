@@ -11,17 +11,17 @@ const valid = (o = {}) => ({
   pixelX: 90, pixelY: 120, lat: 7.005, lng: -73.064, ...o
 });
 
-test('el mapa y el script de OpenStreetMap leen la misma geografía', () => {
+test('the map and the OpenStreetMap script read the same geography', () => {
   assert.equal(grid.GEO_BOUNDS, GEO_BOUNDS);
   assert.equal(grid.GRID_WIDTH, GRID_WIDTH);
   assert.equal(grid.GRID_HEIGHT, GRID_HEIGHT);
   const script = readFileSync(new URL('../scripts/update-map.mjs', import.meta.url), 'utf8');
   assert.match(script, /from '\.\.\/src\/core\/geo\.js'/);
-  assert.doesNotMatch(script, /south:\s*[\d.]+/, 'el script no debe repetir los límites');
+  assert.doesNotMatch(script, /south:\s*[\d.]+/, 'the script must not repeat the bounds');
 });
 
-test('el Worker acepta el centro de CADA tile de la grilla', () => {
-  // Si los límites del Worker fueran más estrictos que la grilla, un reporte legítimo se rechazaría.
+test('the Worker accepts the centre of EVERY grid tile', () => {
+  // If the Worker's bounds were stricter than the grid, a legitimate report would be rejected.
   for (let y = 0; y < GRID_HEIGHT; y += 1) {
     for (let x = 0; x < GRID_WIDTH; x += 1) {
       const { lat, lng } = grid.pixelToGps(x, y);
@@ -30,7 +30,7 @@ test('el Worker acepta el centro de CADA tile de la grilla', () => {
   }
 });
 
-test('el Worker rechaza fuera del área y fuera de la grilla', () => {
+test('the Worker rejects points outside the area and outside the grid', () => {
   for (const bad of [
     { lat: GEO_BOUNDS.north + 0.001 }, { lat: GEO_BOUNDS.south - 0.001 },
     { lng: GEO_BOUNDS.west - 0.001 }, { lng: GEO_BOUNDS.east + 0.001 },
@@ -40,15 +40,15 @@ test('el Worker rechaza fuera del área y fuera de la grilla', () => {
   }
 });
 
-test('los incidentes y sectores guardados caen dentro del área', () => {
+test('the stored incidents and sectors fall inside the area', () => {
   const { incidents } = JSON.parse(readFileSync(new URL('../data/incidents.json', import.meta.url), 'utf8'));
   for (const inc of incidents) {
-    assert.ok(grid.gpsToPixel(inc.lat, inc.lng).insideBounds, `${inc.id} fuera del área`);
-    sanitizeIncident({ ...inc }); // lo que ya está publicado también pasaría el filtro del Worker
+    assert.ok(grid.gpsToPixel(inc.lat, inc.lng).insideBounds, `${inc.id} is outside the area`);
+    sanitizeIncident({ ...inc }); // what is already published would also pass the Worker's filter
   }
 });
 
-test('normalizeStore: el centro por defecto sale del área, sin píxel inventado', () => {
+test('normalizeStore: the default centre comes from the area, with no invented pixel', () => {
   const { referenceCenter } = normalizeStore({});
   assert.equal(referenceCenter.lat, (GEO_BOUNDS.north + GEO_BOUNDS.south) / 2);
   assert.equal('userPositionPixel' in referenceCenter, false);

@@ -1,21 +1,21 @@
 import { TILE_SIZE } from './worldSize.js';
 
 /**
- * Dónde cae la etiqueta de cada incidente y qué toca un dedo. Es geometría pura (sin canvas ni DOM):
- * la comparten el dibujo (render/markers.js) y los gestos (ui/mapInput.js), así lo que se ve y lo que
- * responde al toque nunca se desfasan.
+ * Where each incident's label falls and what a finger touches. Pure geometry (no canvas or DOM):
+ * shared by drawing (render/markers.js) and gestures (ui/mapInput.js), so what is seen and what
+ * responds to touch never drift apart.
  */
 
 export const markerScale = (zoom) => 1 / Math.max(0.8, Math.min(zoom, 3));
 export const MARKER_BOX = { h: 17 };
 
-/** Ancho de la etiqueta en unidades de pantalla: crece con los dígitos y con el 👮 de los casos resueltos. */
+/** Label width in screen units: grows with the digits and with the 👮 of resolved cases. */
 export function markerWidth(inc) {
   const digits = String(inc.number ?? '').length;
   return 10 + digits * 7 + (inc.resolvedBy === 'policia' ? 10 : 0);
 }
 
-/** Desplazamiento (en unidades de mundo) de la etiqueta de cada incidente; evita que se encimen. */
+/** Offset (in world units) of each incident's label; keeps them from overlapping. */
 export function layoutMarkers(incidents, zoom) {
   const s = markerScale(zoom);
   const sorted = [...incidents].sort((a, b) => a.pixelX - b.pixelX || a.pixelY - b.pixelY);
@@ -34,8 +34,8 @@ export function layoutMarkers(incidents, zoom) {
 }
 
 /**
- * Incidente tocado en el punto `world` ({x, y} en unidades de mundo): el que tiene su etiqueta o su píxel
- * más cerca. Devuelve null si el toque no cae en ninguno.
+ * Incident touched at point `world` ({x, y} in world units): the one whose label or pixel is
+ * closest. Returns null if the touch lands on none of them.
  */
 export function incidentAtPoint(incidents, world, zoom) {
   const offsets = layoutMarkers(incidents, zoom);

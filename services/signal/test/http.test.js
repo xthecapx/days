@@ -10,7 +10,7 @@ import { createSqlStorage } from '../src/sqlStorage.js';
 const GITHUB = 'https://xthecapx.github.io';
 const HOME = { lat: 7.005, lng: -73.064 };
 
-/** Servidor completo en memoria: una sala por nombre, como los Durable Objects. */
+/** Complete in-memory server: one room per name, like Durable Objects. */
 function server(env = {}) {
   const clock = { t: 1_800_000_000_000 };
   const calls = [];
@@ -26,19 +26,19 @@ function server(env = {}) {
 }
 const post = (body, headers) => ({ method: 'POST', body, headers });
 
-// ---------- rutas y formato ----------
+// ---------- routes and format ----------
 
-test('GET / dice que el servicio vive y qué falta configurar (sin revelar secretos)', async () => {
+test('GET / says the service is alive and what is left to configure (without revealing secrets)', async () => {
   const s = server();
   const r = await s.json('/');
   assert.equal(r.status, 200);
   assert.deepEqual([r.body.service, r.body.pepperConfigured], ['days-signal', true]);
-  assert.equal('rooms' in r.body, false, 'ya no hay salas');
+  assert.equal('rooms' in r.body, false, 'there are no rooms any more');
   assert.doesNotMatch(JSON.stringify(r.body), /pimienta/);
   assert.equal((await server({ SIGNAL_PEPPER: '' }).json('/')).body.pepperConfigured, false);
 });
 
-test('todas las respuestas son JSON, sin caché y con nosniff', async () => {
+test('all responses are JSON, uncached and with nosniff', async () => {
   const s = server();
   for (const [path, opts] of [['/', {}], ['/state', {}], ['/nada', {}], ['/poll', {}], ['/signal', post({ lat: 'x', lng: 'y' })]]) {
     const r = await s.call(path, opts);
@@ -48,7 +48,7 @@ test('todas las respuestas son JSON, sin caché y con nosniff', async () => {
   }
 });
 
-test('ruta inexistente = 404; método equivocado = 405 con Allow; barra final tolerada', async () => {
+test('nonexistent route = 404; wrong method = 405 with Allow; trailing slash tolerated', async () => {
   const s = server();
   assert.equal((await s.json('/nada')).status, 404);
   const wrong = await s.call('/poll');
@@ -58,25 +58,25 @@ test('ruta inexistente = 404; método equivocado = 405 con Allow; barra final to
   assert.equal((await s.json('/state/')).status, 200);
 });
 
-// ---------- un solo tablero (sin salas) ----------
+// ---------- a single board (no rooms) ----------
 
-test('hay un solo tablero: lo que se envía lo ve cualquiera, y un ?room=... antiguo se ignora sin error', async () => {
+test('there is a single board: what is sent is seen by anyone, and an old ?room=... is ignored without error', async () => {
   const s = server();
   await s.json('/signal', post({ ...HOME }));
   assert.equal((await s.json('/state')).body.signals.length, 1);
   for (const room of ['dev', 'main', 'prod', '', '../x']) {
     const r = await s.json(`/state?room=${encodeURIComponent(room)}`);
     assert.equal(r.status, 200, `room=${room}`);
-    assert.equal(r.body.signals.length, 1, 'todos los enlaces viejos ven el mismo tablero');
+    assert.equal(r.body.signals.length, 1, 'all old links see the same board');
   }
-  // un atajo antiguo que aún apunte a ?room=dev envía al tablero real
+  // an old shortcut still pointing at ?room=dev sends to the real board
   await s.json('/signal?room=dev', { ...post({ ...HOME }), headers: { 'CF-Connecting-IP': '198.51.100.9' } });
   assert.equal((await s.json('/state')).body.signals.length, 2);
 });
 
-// ---------- flujo completo ----------
+// ---------- full flow ----------
 
-test('flujo: enviar → ver → sondear como oyente → cancelar', async () => {
+test('flow: send → view → poll as listener → cancel', async () => {
   const s = server();
   const sent = await s.json('/signal', post({ ...HOME }));
   assert.equal(sent.status, 200);
@@ -98,18 +98,18 @@ test('flujo: enviar → ver → sondear como oyente → cancelar', async () => {
   assert.equal(ok.body.signals.length, 0);
 });
 
-test('errores de las reglas llegan con su código HTTP y un mensaje en español', async () => {
+test('rule errors arrive with their HTTP code and a message in English', async () => {
   const s = server();
   const fuera = await s.json('/signal', post({ lat: 4.6, lng: -74.07 }));
   assert.deepEqual([fuera.status, fuera.body.code], [422, 'outside_area']);
-  assert.match(fuera.body.error, /fuera del área/);
+  assert.match(fuera.body.error, /outside the map area/);
   assert.equal((await s.json('/poll', post({ listener: 'x', listening: true }))).status, 400);
   assert.equal((await s.json('/signal/cancel', post({ id: 'noexiste1', token: 'lo-que-sea-aqui' }))).status, 404);
 });
 
-// ---------- privacidad y cliente anónimo ----------
+// ---------- privacy and anonymous client ----------
 
-test('el hash del cliente nunca sale en una respuesta, y la IP en claro no llega al tablero', async () => {
+test('the client hash never appears in a response, and the plain IP never reaches the board', async () => {
   const s = server();
   const sent = await s.json('/signal', post({ ...HOME }));
   const state = await s.json('/state');
@@ -117,10 +117,10 @@ test('el hash del cliente nunca sale en una respuesta, y la IP en claro no llega
   const hash = await clientHash(new Request('https://x', { headers: { 'CF-Connecting-IP': '203.0.113.7' } }), { SIGNAL_PEPPER: 'pimienta' });
   assert.doesNotMatch(everything, new RegExp(hash));
   assert.doesNotMatch(everything, /203\.0\.113\.7/);
-  assert.doesNotMatch(JSON.stringify(s.calls), /203\.0\.113\.7/, 'la IP no cruza al Durable Object');
+  assert.doesNotMatch(JSON.stringify(s.calls), /203\.0\.113\.7/, 'the IP does not cross into the Durable Object');
 });
 
-test('el hash depende del secreto: sin conocerlo no se puede adivinar la IP recorriendo las IPv4', async () => {
+test('the hash depends on the secret: without it the IP cannot be guessed by walking the IPv4 space', async () => {
   const req = (ip) => new Request('https://x', { headers: { 'CF-Connecting-IP': ip } });
   const a = await clientHash(req('203.0.113.7'), { SIGNAL_PEPPER: 'uno' });
   assert.notEqual(a, await clientHash(req('203.0.113.7'), { SIGNAL_PEPPER: 'otro' }));
@@ -129,7 +129,7 @@ test('el hash depende del secreto: sin conocerlo no se puede adivinar la IP reco
   assert.match(a, /^[0-9a-f]{32}$/);
 });
 
-test('una señal por persona usa el hash de la conexión: la misma IP reemplaza, otra IP convive', async () => {
+test('one signal per person uses the connection hash: the same IP replaces, another IP coexists', async () => {
   const s = server();
   await s.json('/signal', post({ ...HOME }));
   await s.json('/signal', post({ ...HOME }));
@@ -138,22 +138,22 @@ test('una señal por persona usa el hash de la conexión: la misma IP reemplaza,
   assert.equal((await s.json('/state')).body.signals.length, 2);
 });
 
-test('el cliente nunca se toma del cuerpo: no se puede suplantar a otra persona', async () => {
+test('the client is never taken from the body: another person cannot be impersonated', async () => {
   const s = server();
   await s.json('/signal', post({ ...HOME, client: 'otro-cliente-123' }));
   assert.notEqual(s.calls.at(-1).input.client, 'otro-cliente-123');
   assert.deepEqual(Object.keys(s.calls.at(-1).input).sort(), ['client', 'lat', 'lng']);
 });
 
-test('del cuerpo solo se pasan los campos esperados', async () => {
+test('only the expected fields are passed from the body', async () => {
   const s = server();
   await s.json('/poll', post({ listener: 'oyente-abc123', listening: true, extra: 'x', __proto__: { admin: true } }));
   assert.deepEqual(Object.keys(s.calls.at(-1).input).sort(), ['listener', 'listening']);
 });
 
-// ---------- cuerpo ----------
+// ---------- body ----------
 
-test('cuerpo: demasiado grande = 413 (por Content-Length y por tamaño real)', async () => {
+test('body: too large = 413 (by Content-Length and by actual size)', async () => {
   const s = server();
   const big = JSON.stringify({ lat: 7.005, lng: -73.064, basura: 'x'.repeat(MAX_BODY) });
   assert.equal((await s.json('/signal', { method: 'POST', raw: big, headers: { 'Content-Type': 'application/json' } })).status, 413);
@@ -161,23 +161,23 @@ test('cuerpo: demasiado grande = 413 (por Content-Length y por tamaño real)', a
   assert.equal(s.calls.length, 0);
 });
 
-test('cuerpo: JSON roto, no-objeto o tipo no soportado', async () => {
+test('body: broken JSON, non-object or unsupported type', async () => {
   const s = server();
   const json = (raw) => s.json('/signal', { method: 'POST', raw, headers: { 'Content-Type': 'application/json' } });
   for (const raw of ['{nope', 'null', '[1,2]', '"texto"', '']) assert.equal((await json(raw)).body.code, 'bad_body', JSON.stringify(raw));
   const plain = await s.json('/signal', { method: 'POST', raw: 'lat=7', headers: { 'Content-Type': 'text/plain' } });
   assert.deepEqual([plain.status, plain.body.code], [415, 'bad_content_type']);
-  // Sin cabecera, el contenido decide; un tipo equivocado sigue rechazado.
+  // Without a header, the content decides; a wrong type is still rejected.
   const none = (raw, ip) => s.json('/signal', { method: 'POST', raw, headers: { 'Content-Type': '', 'CF-Connecting-IP': ip } });
-  assert.equal((await none('lat=7.005&lng=-73.064', '198.51.100.1')).status, 200, 'formulario sin cabecera');
-  assert.equal((await none('{"lat":7.005,"lng":-73.064}', '198.51.100.2')).status, 200, 'JSON sin cabecera');
-  assert.equal((await none('   {"lat":"7,005","lng":"-73,064"}', '198.51.100.3')).status, 200, 'JSON con espacios delante');
-  assert.equal((await none('basura sin sentido', '198.51.100.4')).status, 400, 'sin lat ni lng: llega al tablero y se rechaza ahí (bad_coordinates)');
-  assert.equal((await none('', '198.51.100.5')).status, 400, 'cuerpo vacío');
+  assert.equal((await none('lat=7.005&lng=-73.064', '198.51.100.1')).status, 200, 'form without header');
+  assert.equal((await none('{"lat":7.005,"lng":-73.064}', '198.51.100.2')).status, 200, 'JSON without header');
+  assert.equal((await none('   {"lat":"7,005","lng":"-73,064"}', '198.51.100.3')).status, 200, 'JSON with leading spaces');
+  assert.equal((await none('basura sin sentido', '198.51.100.4')).status, 400, 'without lat or lng: it reaches the board and is rejected there (bad_coordinates)');
+  assert.equal((await none('', '198.51.100.5')).status, 400, 'empty body');
   assert.equal((await s.json('/signal', { method: 'POST', raw: 'lat=7', headers: { 'Content-Type': 'application/xml' } })).status, 415);
 });
 
-test('Atajos de iPhone: también se acepta un formulario, con números como texto y coma decimal', async () => {
+test('iPhone Shortcuts: a form is also accepted, with numbers as text and a decimal comma', async () => {
   const s = server();
   const form = await s.json('/signal', { method: 'POST', raw: 'lat=7%2C005&lng=-73%2C064', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
   assert.equal(form.status, 200, JSON.stringify(form.body));
@@ -190,7 +190,7 @@ test('Atajos de iPhone: también se acepta un formulario, con números como text
 
 // ---------- CORS ----------
 
-test('CORS: el sitio de GitHub Pages puede llamar y recibe sus cabeceras', async () => {
+test('CORS: the GitHub Pages site can call and receives its headers', async () => {
   const s = server();
   const r = await s.call('/state', { headers: { Origin: GITHUB } });
   assert.equal(r.status, 200);
@@ -202,7 +202,7 @@ test('CORS: el sitio de GitHub Pages puede llamar y recibe sus cabeceras', async
   assert.equal(pre.headers.get('Access-Control-Allow-Headers'), 'Content-Type');
 });
 
-test('CORS: un origen desconocido se rechaza (403), también en la precomprobación', async () => {
+test('CORS: an unknown origin is rejected (403), also on the preflight', async () => {
   const s = server();
   for (const origin of ['https://malo.example', 'https://xthecapx.github.io.malo.example', 'http://xthecapx.github.io', 'null']) {
     const r = await s.json('/state', { headers: { Origin: origin } });
@@ -213,30 +213,30 @@ test('CORS: un origen desconocido se rechaza (403), también en la precomprobaci
   assert.equal(s.calls.length, 0);
 });
 
-test('sin cabecera Origin (Atajos del teléfono, curl) se atiende', async () => {
+test('without an Origin header (phone Shortcuts, curl) the request is served', async () => {
   const s = server();
   assert.equal((await s.json('/signal', post({ ...HOME }))).status, 200);
 });
 
-test('localhost y la red local solo se permiten con ALLOW_LOCAL (solo en desarrollo)', () => {
+test('localhost and the local network are only allowed with ALLOW_LOCAL (development only)', () => {
   const local = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://192.168.68.54:5173', 'http://10.1.2.3:5173', 'http://172.20.0.5:5173', 'http://mi-mac.local:5173'];
   for (const o of local) {
-    assert.equal(originAllowed(o, { ALLOW_LOCAL: 'false' }), false, `producción rechaza ${o}`);
-    assert.equal(originAllowed(o, { ALLOW_LOCAL: 'true' }), true, `desarrollo acepta ${o}`);
+    assert.equal(originAllowed(o, { ALLOW_LOCAL: 'false' }), false, `production rejects ${o}`);
+    assert.equal(originAllowed(o, { ALLOW_LOCAL: 'true' }), true, `development accepts ${o}`);
   }
   for (const o of ['http://8.8.8.8:5173', 'http://172.32.0.1', 'https://192.168.1.1', 'http://evil.com', 'not a url']) assert.equal(originAllowed(o, { ALLOW_LOCAL: 'true' }), false, o);
   assert.equal(originAllowed(GITHUB, {}), true);
   assert.equal(originAllowed('https://otro.example', { ALLOWED_ORIGINS: 'https://otro.example, https://mas.example' }), true);
 });
 
-// ---------- límites de ritmo ----------
+// ---------- rate limits ----------
 
 function limiter(allowed) {
   const keys = [];
   return { keys, limit: async ({ key }) => { keys.push(key); return { success: allowed(keys.length) }; } };
 }
 
-test('límite de ritmo: pasado el tope, 429 con Retry-After, y el tablero ni se entera', async () => {
+test('rate limit: past the cap, 429 with Retry-After, and the board never finds out', async () => {
   const SIGNAL_LIMITER = limiter((n) => n <= 2);
   const s = server({ SIGNAL_LIMITER });
   assert.equal((await s.json('/signal', post({ ...HOME }))).status, 200);
@@ -247,7 +247,7 @@ test('límite de ritmo: pasado el tope, 429 con Retry-After, y el tablero ni se 
   assert.equal(s.calls.length, 2);
 });
 
-test('los límites se miden por hash de cliente, no por IP en claro, y por tipo de operación', async () => {
+test('limits are measured by client hash, not plain IP, and by operation type', async () => {
   const SIGNAL_LIMITER = limiter(() => true);
   const POLL_LIMITER = limiter(() => true);
   const s = server({ SIGNAL_LIMITER, POLL_LIMITER });
@@ -255,27 +255,27 @@ test('los límites se miden por hash de cliente, no por IP en claro, y por tipo 
   await s.json('/state');
   await s.json('/poll', post({ listener: 'oyente-abc123', listening: true }));
   await s.json('/signal/cancel', post({ id: 'abcd', token: 'zzzzzzzz' }));
-  assert.equal(SIGNAL_LIMITER.keys.length, 2, 'enviar y cancelar comparten límite');
-  assert.equal(POLL_LIMITER.keys.length, 2, 'state y poll comparten límite');
+  assert.equal(SIGNAL_LIMITER.keys.length, 2, 'send and cancel share a limit');
+  assert.equal(POLL_LIMITER.keys.length, 2, 'state and poll share a limit');
   assert.ok([...SIGNAL_LIMITER.keys, ...POLL_LIMITER.keys].every((k) => /^[0-9a-f]{32}$/.test(k)));
 });
 
-test('si el limitador falla o no existe, una petición de ayuda NO se bloquea', async () => {
-  const roto = { limit: async () => { throw new Error('caído'); } };
+test('if the limiter fails or does not exist, a help request is NOT blocked', async () => {
+  const roto = { limit: async () => { throw new Error('down'); } };
   assert.equal((await server({ SIGNAL_LIMITER: roto }).json('/signal', post({ ...HOME }))).status, 200);
   assert.equal((await server({}).json('/signal', post({ ...HOME }))).status, 200);
 });
 
-test('GET / no cuenta contra ningún límite', async () => {
+test('GET / does not count against any limit', async () => {
   const SIGNAL_LIMITER = limiter(() => false);
   const POLL_LIMITER = limiter(() => false);
   assert.equal((await server({ SIGNAL_LIMITER, POLL_LIMITER }).json('/')).status, 200);
   assert.equal(SIGNAL_LIMITER.keys.length + POLL_LIMITER.keys.length, 0);
 });
 
-// ---------- errores inesperados ----------
+// ---------- unexpected errors ----------
 
-test('un fallo interno da 500 genérico: no filtra el mensaje ni la traza', async () => {
+test('an internal failure gives a generic 500: it does not leak the message or the trace', async () => {
   const err = await handle(new Request('https://signal.test/state'), {}, { getBoard: () => ({ run: async () => { throw new Error('SECRETO: clave=abc'); } }) });
   assert.equal(err.status, 500);
   const text = await err.text();
@@ -283,9 +283,9 @@ test('un fallo interno da 500 genérico: no filtra el mensaje ni la traza', asyn
   assert.equal(JSON.parse(text).code, 'internal');
 });
 
-// ---------- almacén SQL (contra una base falsa que imita a exec().toArray()) ----------
+// ---------- SQL storage (against a fake database that imitates exec().toArray()) ----------
 
-/** SQLite mínimo en memoria para comprobar el SQL que genera sql Storage: no valida el motor, sí la forma de las llamadas. */
+/** Minimal in-memory SQLite to check the SQL that sql Storage generates: it does not validate the engine, only the shape of the calls. */
 function fakeSql() {
   const rows = new Map();
   const log = [];
@@ -301,7 +301,7 @@ function fakeSql() {
   };
 }
 
-test('almacén SQL: crea la tabla y cumple el mismo contrato que el de memoria', () => {
+test('SQL storage: creates the table and meets the same contract as the in-memory one', () => {
   const sql = fakeSql();
   const store = createSqlStorage(sql);
   assert.match(sql.log[0][0], /^CREATE TABLE IF NOT EXISTS signals/);
@@ -314,7 +314,7 @@ test('almacén SQL: crea la tabla y cumple el mismo contrato que el de memoria',
   store.remove('a1b2'); assert.equal(store.list().length, 0);
 });
 
-test('almacén SQL: todo valor va como parámetro (?), nunca pegado dentro de la consulta', () => {
+test('SQL storage: every value goes as a parameter (?), never pasted into the query', () => {
   const sql = fakeSql();
   const store = createSqlStorage(sql);
   const evil = "x'); DROP TABLE signals;--";
@@ -323,7 +323,7 @@ test('almacén SQL: todo valor va como parámetro (?), nunca pegado dentro de la
   for (const [q] of sql.log) assert.doesNotMatch(q, /DROP TABLE|x'\)/, q);
 });
 
-test('el tablero funciona igual con el almacén SQL que con el de memoria', () => {
+test('the board works the same with the SQL storage as with the in-memory one', () => {
   const clock = { t: 1_800_000_000_000 };
   for (const storage of [createMemoryStorage(), createSqlStorage(fakeSql())]) {
     const board = createBoard({ storage, now: () => clock.t });
@@ -334,45 +334,45 @@ test('el tablero funciona igual con el almacén SQL que con el de memoria', () =
   }
 });
 
-// ---------- configuración ----------
+// ---------- configuration ----------
 
-test('wrangler.jsonc: nombre propio, Durable Object con SQLite, límites con namespace_id propios y registros de Cloudflare activos', () => {
+test('wrangler.jsonc: own name, Durable Object with SQLite, limits with own namespace_ids and Cloudflare logs enabled', () => {
   const raw = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
   const cfg = JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ''));
   assert.equal(cfg.name, 'days-signal');
   assert.equal(cfg.main, 'src/index.js');
   assert.deepEqual(cfg.durable_objects.bindings, [{ name: 'SIGNAL_BOARD', class_name: 'SignalBoard' }]);
   assert.deepEqual(cfg.migrations[0].new_sqlite_classes, ['SignalBoard']);
-  assert.equal(cfg.vars.ALLOW_LOCAL, 'false', 'producción no acepta localhost');
+  assert.equal(cfg.vars.ALLOW_LOCAL, 'false', 'production does not accept localhost');
   assert.deepEqual(cfg.observability, { logs: { enabled: true, invocation_logs: true } });
   const root = JSON.parse(readFileSync(new URL('../../../worker/wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
   const ids = [...root.ratelimits, ...cfg.ratelimits].map((r) => r.namespace_id);
-  assert.equal(new Set(ids).size, ids.length, 'ningún namespace_id repetido entre los dos Workers');
-  for (const r of cfg.ratelimits) assert.ok([10, 60].includes(r.simple.period), 'Cloudflare solo admite 10 o 60 s');
+  assert.equal(new Set(ids).size, ids.length, 'no namespace_id repeated between the two Workers');
+  for (const r of cfg.ratelimits) assert.ok([10, 60].includes(r.simple.period), 'Cloudflare only supports 10 or 60 s');
   assert.deepEqual(cfg.ratelimits.map((r) => r.name).sort(), ['POLL_LIMITER', 'SIGNAL_LIMITER']);
   assert.notEqual(cfg.name, root.name);
 });
 
-test('index.js: no hay secretos ni coordenadas escritas, y el Durable Object expone solo `run` y `alarm`', () => {
+test('index.js: no secrets or hard-coded coordinates, and the Durable Object exposes only `run` and `alarm`', () => {
   const src = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
   assert.match(src, /export class SignalBoard extends DurableObject/);
-  assert.match(src, /idFromName\('main'\)/, 'el Durable Object ya desplegado se sigue usando');
-  assert.doesNotMatch(src, /searchParams|\broom\b\s*[,)]/, 'el servidor ya no elige tablero por parámetro');
-  assert.doesNotMatch(src, /SIGNAL_PEPPER\s*=|console\.log/, 'nada que registre datos');
+  assert.match(src, /idFromName\('main'\)/, 'the already-deployed Durable Object keeps being used');
+  assert.doesNotMatch(src, /searchParams|\broom\b\s*[,)]/, 'the server no longer picks a board by parameter');
+  assert.doesNotMatch(src, /SIGNAL_PEPPER\s*=|console\.log/, 'nothing that logs data');
   assert.doesNotMatch(readFileSync(new URL('../src/http.js', import.meta.url), 'utf8'), /console\./);
 });
 
-test('con los registros de Cloudflare activos, NUESTRO código no escribe nada en ellos (ni coordenadas ni IP ni identificadores)', () => {
+test('with Cloudflare logs enabled, OUR code writes nothing to them (no coordinates, no IP, no identifiers)', () => {
   for (const f of ['board.js', 'http.js', 'index.js', 'rpc.js', 'sqlStorage.js', 'memoryStorage.js']) {
     const src = readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
-    assert.doesNotMatch(src, /\bconsole\s*\./, `${f} no debe usar console.*`);
+    assert.doesNotMatch(src, /\bconsole\s*\./, `${f} must not use console.*`);
   }
 });
 
-test('las coordenadas viajan en el cuerpo del POST, nunca en la URL (la URL sí queda en los registros de Cloudflare)', async () => {
+test('coordinates travel in the POST body, never in the URL (the URL does end up in Cloudflare logs)', async () => {
   const s = server();
   const r = await s.call('/signal?lat=7.005&lng=-73.064', { method: 'POST', body: {} });
-  assert.equal(r.status, 400, 'lat/lng en la URL no se leen: sin cuerpo no hay ubicación');
+  assert.equal(r.status, 400, 'lat/lng in the URL are not read: without a body there is no location');
   assert.equal(s.calls.length === 0 || s.calls.at(-1).input.lat === undefined, true);
   const src = readFileSync(new URL('../src/http.js', import.meta.url), 'utf8');
   assert.doesNotMatch(src, /searchParams\.get\(['"](lat|lng)/);

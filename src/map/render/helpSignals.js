@@ -1,8 +1,8 @@
 import { TILE_SIZE } from '../worldSize.js';
 
 /**
- * Señales de ayuda de los vecinos: un anillo rojo que late sobre la casilla, con un 🆘 compensado por el zoom (como los
- * marcadores de incidente) para que se vea y se pueda tocar. `mineId` resalta la que envié yo.
+ * Help signals from neighbours: a red ring that pulses over the tile, with a 🆘 compensated for zoom (like the incident
+ * markers) so it can be seen and tapped. `mineId` highlights the one I sent.
  */
 const markerScale = (zoom) => 1 / Math.max(0.8, Math.min(zoom, 3));
 
@@ -16,7 +16,7 @@ export function drawHelpSignals(ctx, signals, mineId, phase, zoom) {
     const cx = (sig.x + 0.5) * TILE_SIZE;
     const cy = (sig.y + 0.5) * TILE_SIZE;
     const mine = sig.id === mineId;
-    // Dos ondas que se expanden y se desvanecen (sin parpadeo brusco).
+    // Two waves that expand and fade out (no harsh flicker).
     for (const offset of [0, 0.5]) {
       const t = (phase * 0.9 + offset) % 1;
       ctx.globalAlpha = (1 - t) * 0.65;

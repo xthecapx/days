@@ -20,5 +20,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      # Que el sitio se pueda construir es parte de "los tests pasan": un PR que rompe el build no debe llegar a main.
+      # Being able to build the site is part of "the tests pass": a PR that breaks the build must not reach main.
       - run: npm run build

@@ -1,28 +1,28 @@
 /**
- * PUENTE ANÓNIMO CON MODERACIÓN (CLOUDFLARE WORKERS)
+ * ANONYMOUS BRIDGE WITH MODERATION (CLOUDFLARE WORKERS)
  *
- * Recibe un CAMBIO (nuevo incidente, edición o confirmación) y abre un Pull Request
- * contra la rama principal con ese cambio aplicado sobre el data/incidents.json actual.
- * Nada llega a `main` hasta que el dueño del repositorio hace merge del PR.
+ * Receives a CHANGE (new incident, edit or confirmation) and opens a Pull Request
+ * against the main branch with that change applied on top of the current data/incidents.json.
+ * Nothing reaches `main` until the repository owner merges the PR.
  *
- * Variables en Cloudflare (Workers & Pages -> days -> Settings -> Variables and Secrets):
- *   GITHUB_TOKEN  (secreto)  Token fine-grained SOLO para este repositorio, con permisos
- *                            "Contents: Read and write" y "Pull requests: Read and write".
- *   GITHUB_REPO   (opcional) "usuario/repo". Por defecto xthecapx/days.
- *   BASE_BRANCH   (opcional) Rama destino de los PR. Por defecto main.
- *   MAX_OPEN_REPORTS (opcional) Máximo de PR de reportes abiertos a la vez. Por defecto 10.
+ * Variables in Cloudflare (Workers & Pages -> days -> Settings -> Variables and Secrets):
+ *   GITHUB_TOKEN  (secret)   Fine-grained token for THIS repository ONLY, with permissions
+ *                            "Contents: Read and write" and "Pull requests: Read and write".
+ *   GITHUB_REPO   (optional) "user/repo". Defaults to xthecapx/days.
+ *   BASE_BRANCH   (optional) Target branch of the PRs. Defaults to main.
+ *   MAX_OPEN_REPORTS (optional) Maximum number of report PRs open at once. Defaults to 10.
  *
- * Límites anti-spam:
- *   1. Ráfaga por visitante: binding REPORT_LIMITER (ver wrangler.jsonc, en esta misma carpeta). Es aproximado y solo
- *      admite ventanas de 10 o 60 s. La clave es un hash de la IP; la IP no se guarda.
- *   2. Tope de PR abiertos: si ya hay MAX_OPEN_REPORTS sin revisar, se rechazan nuevos reportes.
- *      Es exacto y no depende de quién envía, así que nadie puede llenar tu bandeja de revisión.
+ * Anti-spam limits:
+ *   1. Burst per visitor: REPORT_LIMITER binding (see wrangler.jsonc, in this same folder). It is approximate and only
+ *      supports windows of 10 or 60 s. The key is a hash of the IP; the IP is not stored.
+ *   2. Cap on open PRs: if there are already MAX_OPEN_REPORTS unreviewed, new reports are rejected.
+ *      It is exact and does not depend on who sends, so nobody can fill your review inbox.
  *
- * Despliegue: Cloudflare ejecuta `npx wrangler deploy` en cada push a main (Settings -> Builds).
+ * Deployment: Cloudflare runs `npx wrangler deploy` on every push to main (Settings -> Builds).
  *
- * Cuerpo esperado (POST, JSON):
+ * Expected body (POST, JSON):
  *   { "change": { "type": "create" | "edit" | "confirm", "incident": {...}, "id": "inc-001" },
- *     "commitMessage": "texto corto" }
+ *     "commitMessage": "short text" }
  */
 
 import { GEO_BOUNDS as BOUNDS, GRID_WIDTH, GRID_HEIGHT } from '../src/core/geo.js';
@@ -50,7 +50,7 @@ class HttpError extends Error {
   }
 }
 
-// ---------- utilidades ----------
+// ---------- utilities ----------
 
 const b64encode = (text) => {
   let binary = '';
@@ -70,20 +70,20 @@ const clean = (value, max) =>
 
 const isNum = (n, min, max) => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
 
-/** Deja pasar SOLO los campos conocidos y con la forma esperada: nada de campos inventados. */
+/** Lets through ONLY the known fields with the expected shape: no invented fields. */
 export function sanitizeIncident(raw) {
-  if (!raw || typeof raw !== 'object') throw new HttpError(400, 'Falta el incidente.');
+  if (!raw || typeof raw !== 'object') throw new HttpError(400, 'The incident is missing.');
   const description = clean(raw.description, 500);
-  if (!description) throw new HttpError(400, 'La descripción es obligatoria.');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw.date || '')) throw new HttpError(400, 'Fecha inválida.');
+  if (!description) throw new HttpError(400, 'The description is required.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw.date || '')) throw new HttpError(400, 'Invalid date.');
   const time = /^\d{2}:\d{2}$/.test(raw.time || '') ? raw.time : '12:00';
   const severity = Math.round(Number(raw.severity));
-  if (!(severity >= 1 && severity <= 5)) throw new HttpError(400, 'Gravedad inválida (1 a 5).');
+  if (!(severity >= 1 && severity <= 5)) throw new HttpError(400, 'Invalid severity (1 to 5).');
   if (!Number.isInteger(raw.pixelX) || !Number.isInteger(raw.pixelY) || raw.pixelX < 0 || raw.pixelY < 0 || raw.pixelX >= GRID_WIDTH || raw.pixelY >= GRID_HEIGHT) {
-    throw new HttpError(400, 'Ubicación inválida.');
+    throw new HttpError(400, 'Invalid location.');
   }
   if (!isNum(raw.lat, BOUNDS.south, BOUNDS.north) || !isNum(raw.lng, BOUNDS.west, BOUNDS.east)) {
-    throw new HttpError(400, 'Coordenadas fuera del área.');
+    throw new HttpError(400, 'Coordinates outside the area.');
   }
   return {
     date: raw.date,
@@ -104,9 +104,9 @@ export function sanitizeIncident(raw) {
   };
 }
 
-/** Aplica el cambio al contenido actual de main. Devuelve { data, title, summary }. */
+/** Applies the change to the current content of main. Returns { data, title, summary }. */
 export function applyChange(data, change) {
-  if (!change || typeof change !== 'object') throw new HttpError(400, 'Falta el cambio (change).');
+  if (!change || typeof change !== 'object') throw new HttpError(400, 'The change is missing (change).');
   const incidents = data.incidents;
   const now = new Date().toISOString();
 
@@ -120,7 +120,7 @@ export function applyChange(data, change) {
 
   if (change.type === 'edit') {
     const idx = incidents.findIndex((i) => i.id === change.incident?.id);
-    if (idx < 0) throw new HttpError(404, 'El incidente a editar ya no existe en la rama principal.');
+    if (idx < 0) throw new HttpError(404, 'The incident to edit no longer exists on the main branch.');
     const inc = sanitizeIncident(change.incident);
     const prev = incidents[idx];
     incidents[idx] = { ...prev, ...inc, updatedAt: now };
@@ -129,16 +129,16 @@ export function applyChange(data, change) {
 
   if (change.type === 'confirm') {
     const target = incidents.find((i) => i.id === change.id);
-    if (!target) throw new HttpError(404, 'El incidente a confirmar ya no existe.');
+    if (!target) throw new HttpError(404, 'The incident to confirm no longer exists.');
     target.confirmations = (target.confirmations || 1) + 1;
     target.updatedAt = now;
     return { data, title: `Confirmación del incidente #${target.number}`, summary: 'Confirmación vecinal', number: target.number };
   }
 
-  throw new HttpError(400, 'Tipo de cambio desconocido.');
+  throw new HttpError(400, 'Unknown change type.');
 }
 
-/** El texto del vecino va dentro de un bloque de código: GitHub no avisa menciones (@usuario) ahí. */
+/** The neighbour's text goes inside a code block: GitHub does not notify mentions (@user) there. */
 function buildBody({ summary, inc, number }) {
   const lines = ['Reporte anónimo enviado desde la app. **No se publica hasta que se haga merge.**', '', `**Acción:** ${summary} (#${number})`];
   if (inc) {
@@ -161,7 +161,7 @@ function buildBody({ summary, inc, number }) {
 
 // ---------- anti-spam ----------
 
-/** Hash corto de la IP: sirve de clave del límite sin conservar la dirección. */
+/** Short hash of the IP: serves as the limit key without keeping the address. */
 async function clientKey(request) {
   const ip = request.headers.get('CF-Connecting-IP') || 'desconocida';
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`days-limiter:${ip}`));
@@ -172,9 +172,9 @@ async function clientKey(request) {
 }
 
 async function assertBurstAllowed(request, env) {
-  if (!env || !env.REPORT_LIMITER) return; // sin binding configurado, solo rige el tope de PR abiertos
+  if (!env || !env.REPORT_LIMITER) return; // without a configured binding, only the cap on open PRs applies
   const { success } = await env.REPORT_LIMITER.limit({ key: await clientKey(request) });
-  if (!success) throw new HttpError(429, 'Demasiados reportes seguidos. Intenta de nuevo en un minuto.');
+  if (!success) throw new HttpError(429, 'Too many reports in a row. Try again in a minute.');
 }
 
 async function assertRoomForReports(gh, env, baseBranch) {
@@ -182,7 +182,7 @@ async function assertRoomForReports(gh, env, baseBranch) {
   const open = await gh('LIST_PRS', `/pulls?state=open&base=${encodeURIComponent(baseBranch)}&per_page=100`);
   const pending = open.filter((p) => p.head && String(p.head.ref).startsWith('reporte/')).length;
   if (pending >= max) {
-    throw new HttpError(429, 'Hay muchos reportes pendientes de revisión. Intenta de nuevo más tarde.');
+    throw new HttpError(429, 'There are many reports pending review. Try again later.');
   }
 }
 
@@ -204,7 +204,7 @@ function githubClient(token, repo) {
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new HttpError(502, `GitHub respondió ${res.status} en ${step}`, { step, detail: text.slice(0, 300) });
+      throw new HttpError(502, `GitHub responded ${res.status} at ${step}`, { step, detail: text.slice(0, 300) });
     }
     return res.json();
   };
@@ -218,21 +218,21 @@ async function openPullRequest(env, change, commitMessage) {
     .replace(/^["']|["']$/g, '')
     .replace(/^Bearer\s+/i, '')
     .trim();
-  if (!token) throw new HttpError(500, 'Falta configurar la variable GITHUB_TOKEN en Cloudflare.');
+  if (!token) throw new HttpError(500, 'The GITHUB_TOKEN variable is not configured in Cloudflare.');
   const gh = githubClient(token, repo);
 
   await assertRoomForReports(gh, env, baseBranch);
 
-  // 1. Estado actual de la rama principal y del archivo
+  // 1. Current state of the main branch and of the file
   const ref = await gh('GET_REF', `/git/ref/heads/${baseBranch}`);
   const file = await gh('GET_FILE', `/contents/${FILE_PATH}?ref=${encodeURIComponent(baseBranch)}`);
   const current = JSON.parse(b64decode(file.content));
-  if (!Array.isArray(current.incidents)) throw new HttpError(502, 'El incidents.json de la rama principal no tiene el formato esperado.');
+  if (!Array.isArray(current.incidents)) throw new HttpError(502, 'The incidents.json on the main branch does not have the expected format.');
 
-  // 2. Aplicar el cambio sobre ESE contenido (nunca sobre datos del navegador del vecino)
+  // 2. Apply the change on THAT content (never on data from the neighbour's browser)
   const { data, title, summary, inc, number } = applyChange(current, change);
 
-  // 3. Rama nueva -> commit -> PR
+  // 3. New branch -> commit -> PR
   const branch = `reporte/${new Date().toISOString().slice(0, 10)}-${Math.random().toString(36).slice(2, 8)}`;
   await gh('CREATE_BRANCH', '/git/refs', {
     method: 'POST',
@@ -265,18 +265,18 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
     if (request.method !== 'POST') {
-      return json({ ok: true, message: 'Usa POST para enviar un reporte (se abre un Pull Request).', hasGithubTokenConfigured: Boolean(env && env.GITHUB_TOKEN), burstLimiterConfigured: Boolean(env && env.REPORT_LIMITER) }, 405);
+      return json({ ok: true, message: 'Use POST to submit a report (a Pull Request is opened).', hasGithubTokenConfigured: Boolean(env && env.GITHUB_TOKEN), burstLimiterConfigured: Boolean(env && env.REPORT_LIMITER) }, 405);
     }
 
     try {
       await assertBurstAllowed(request, env);
       const raw = await request.text();
-      if (raw.length > MAX_BODY_BYTES) throw new HttpError(413, 'Solicitud demasiado grande.');
+      if (raw.length > MAX_BODY_BYTES) throw new HttpError(413, 'Request too large.');
       let body;
       try {
         body = JSON.parse(raw);
       } catch {
-        throw new HttpError(400, 'JSON inválido.');
+        throw new HttpError(400, 'Invalid JSON.');
       }
       if (!body || !body.change) throw new HttpError(400, 'Falta "change".');
 

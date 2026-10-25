@@ -3,8 +3,8 @@ import { markerScale, markerWidth, layoutMarkers, MARKER_BOX } from '../markerLa
 import { isTranquilityIncident } from '../../domain/incident.js';
 
 /**
- * Marcadores de incidente. Se dibujan en espacio de mundo pero con tamaño
- * compensado por el zoom, para que sean tocables con el dedo.
+ * Incident markers. They are drawn in world space but with a size
+ * compensated for zoom, so they can be tapped with a finger.
  */
 export function drawIncidentMarkers(ctx, incidents, selectedId, phase, zoom) {
   const s = markerScale(zoom);
@@ -16,7 +16,7 @@ export function drawIncidentMarkers(ctx, incidents, selectedId, phase, zoom) {
   ctx.textBaseline = 'middle';
   ctx.font = `800 ${11 * s}px "JetBrains Mono", monospace`;
 
-  // El seleccionado va último para quedar encima.
+  // The selected one goes last so it ends up on top.
   const ordered = [...incidents].sort((a, b) => (a.id === selectedId) - (b.id === selectedId));
   for (const inc of ordered) {
     const px = (inc.pixelX + 0.5) * TILE_SIZE;
@@ -57,7 +57,7 @@ export function drawIncidentMarkers(ctx, incidents, selectedId, phase, zoom) {
     ctx.fillStyle = selected || calm ? '#0f172a' : '#ffffff';
     const digits = String(inc.number ?? '').length;
     if (resolved) {
-      // 👮 en línea con el número, un poco más pequeño
+      // 👮 inline with the number, a bit smaller
       ctx.font = `${8 * s}px "Space Grotesk", system-ui, sans-serif`;
       ctx.fillText('👮', bx + 10 * s, by + boxH / 2 + 0.5 * s);
       ctx.font = `800 ${11 * s}px "JetBrains Mono", monospace`;

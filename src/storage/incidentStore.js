@@ -6,14 +6,14 @@ import { saveToDisk } from './localDisk.js';
 import { sendChange } from './bridgeClient.js';
 
 /**
- * Fachada de persistencia: junta el repositorio, la copia del navegador, el disco (desarrollo)
- * y el puente. Aquí solo se decide el ORDEN; cada adaptador hace su trabajo.
+ * Persistence facade: ties together the repository, the browser copy, the disk (development)
+ * and the bridge. Only the ORDER is decided here; each adapter does its own job.
  */
 
 /**
- * El archivo del repositorio es la fuente de verdad. La copia del navegador solo sirve de respaldo sin
- * conexión; nunca gana sobre el repositorio, así nadie tiene que "restaurar" tras una publicación y los
- * PR aprobados se ven en la siguiente carga.
+ * The repository file is the source of truth. The browser copy serves only as an offline backup;
+ * it never wins over the repository, so nobody has to "restore" after a publish and approved
+ * PRs show up on the next load.
  */
 export async function loadStore() {
   cache.purgeLegacyStores();
@@ -26,8 +26,8 @@ export async function loadStore() {
 }
 
 /**
- * Guarda el nuevo estado sin ningún dato personal ni IP. Con `change` (crear, editar, confirmar) y fuera de
- * localhost, además lo manda al puente para que se abra un PR; un guardado sin `change` solo queda en el navegador.
+ * Saves the new state with no personal data or IP. With `change` (create, edit, confirm) and outside
+ * localhost, it also sends it to the bridge so a PR is opened; a save without `change` stays only in the browser.
  */
 export async function persistStore(storeData, commitSummary = 'Actualización anónima en incidents.json', change = null) {
   const store = normalizeStore(storeData);

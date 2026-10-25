@@ -1,4 +1,4 @@
-/** Solo en desarrollo: server.mjs escribe el JSON en data/incidents.json. Devuelve true si se guardó. */
+/** Development only: server.mjs writes the JSON to data/incidents.json. Returns true if it was saved. */
 export async function saveToDisk(data) {
   try {
     const res = await fetch('/api/local-wiki-save', {
@@ -8,7 +8,7 @@ export async function saveToDisk(data) {
     });
     return res.ok;
   } catch (err) {
-    console.warn('No se pudo guardar en disco (¿corre npm run dev?)', err);
+    console.warn('Could not save to disk (is npm run dev running?)', err);
     return false;
   }
 }

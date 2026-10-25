@@ -1,7 +1,7 @@
-/** Elemento por id. Si el HTML y el código se desincronizan falla con el nombre del id, no con "null". */
+/** Element by id. If the HTML and the code get out of sync it fails with the id name, not with "null". */
 export function $(id) {
   const el = document.getElementById(id);
-  if (!el) throw new Error(`Falta el elemento #${id} en index.html`);
+  if (!el) throw new Error(`Element #${id} is missing from index.html`);
   return el;
 }
 
@@ -15,13 +15,13 @@ export function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
-/** Número seguro para pintar en HTML: cualquier cosa que no sea un número finito (p. ej. un texto con "<") pasa a `fallback`. */
+/** Number that is safe to render into HTML: anything that is not a finite number (e.g. text containing "<") becomes `fallback`. */
 export function toNumber(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }
 
-/** YYYY-MM-DD en hora local (toISOString usaría UTC y puede correr el día). */
+/** YYYY-MM-DD in local time (toISOString would use UTC and can shift the day). */
 export function toIsoDate(date) {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
