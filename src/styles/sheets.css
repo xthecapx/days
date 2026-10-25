@@ -119,3 +119,11 @@
 @media (min-width: 680px) {
   .sheet { bottom: 16px; border: 3px solid var(--yellow); }
 }
+
+/* ---------- Señal de ayuda ---------- */
+.btn-big { min-height: 56px; font-size: 1rem; width: 100%; }
+.btn-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.help-send { display: flex; flex-direction: column; gap: 10px; }
+.help-mine { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: rgba(255, 23, 68, 0.14); border: 2px solid var(--red); }
+.help-confirm { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; background: var(--bg); border: 2px solid var(--yellow); font-size: 0.78rem; }
+.signal-card { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: var(--card); border: 2px solid var(--red); font: 700 0.76rem var(--font-mono); }

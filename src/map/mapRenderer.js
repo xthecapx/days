@@ -5,6 +5,7 @@ import { drawHeat, drawGrid } from './render/heat.js';
 import { createActorLayer } from './render/actors.js';
 import { createLabelLayer } from './render/labels.js';
 import { drawIncidentMarkers, drawSelection } from './render/markers.js';
+import { drawHelpSignals } from './render/helpSignals.js';
 
 /**
  * Lienzo del tamaño de la pantalla (nítido en retina). La cámara se aplica
@@ -32,7 +33,7 @@ export function createMapRenderer(canvas, world) {
   return {
     resize,
 
-    frame({ camera, heatmap, incidents, selection, settings, phase }) {
+    frame({ camera, heatmap, incidents, selection, settings, phase, helpSignals = [], mineHelpId = null }) {
       const { zoom, panX, panY } = camera;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -53,6 +54,7 @@ export function createMapRenderer(canvas, world) {
       labels.drawRoadLabels(ctx, zoom);
       labels.drawPlaces(ctx, zoom, phase);
       drawIncidentMarkers(ctx, incidents, selection.incidentId, phase, zoom);
+      drawHelpSignals(ctx, helpSignals, mineHelpId, phase, zoom); // al final: una alerta de ayuda debe verse por encima de todo
     }
   };
 }

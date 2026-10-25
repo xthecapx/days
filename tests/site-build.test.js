@@ -17,7 +17,7 @@ const read = (p) => readFileSync(p, 'utf8');
 const html = read(join(out, 'index.html'));
 
 test('el sitio publicado tiene index.html, assets/ y data/, y nada del repositorio', () => {
-  assert.deepEqual(readdirSync(out).sort(), ['assets', 'data', 'favicon.svg', 'index.html']);
+  assert.deepEqual(readdirSync(out).sort(), ['apple-touch-icon.png', 'assets', 'data', 'favicon.svg', 'icon-192.png', 'icon-512-maskable.png', 'icon-512.png', 'index.html', 'manifest.webmanifest']);
   for (const leak of ['worker', 'scripts', 'tests', '.github', 'src', 'package.json', 'vite.config.js', 'wrangler.jsonc', 'node_modules']) {
     assert.equal(existsSync(join(out, leak)), false, `${leak} no debe publicarse`);
   }
@@ -72,7 +72,7 @@ test('el sitio publicado lleva una política de seguridad que permite solo lo qu
   assert.match(csp, /object-src 'none'/);
   // Todo host al que la app llama con fetch tiene que estar permitido en connect-src.
   const connect = csp.match(/connect-src ([^;]+)/)[1];
-  for (const host of ['https://raw.githubusercontent.com', 'https://days.xthecapx.workers.dev']) assert.ok(connect.includes(host), host);
+  for (const host of ['https://raw.githubusercontent.com', 'https://days.xthecapx.workers.dev', 'https://days-signal.xthecapx.workers.dev']) assert.ok(connect.includes(host), host);
   assert.match(read(join(ROOT, 'src/storage/localCache.js')), /days\.xthecapx\.workers\.dev/);
   // En desarrollo no se aplica (el servidor de Vite necesita su WebSocket).
   assert.doesNotMatch(read(join(ROOT, 'index.html')), /Content-Security-Policy/);

@@ -290,3 +290,26 @@
 }
 .boot-error strong { font: 800 1rem var(--font-mono); color: var(--yellow); }
 .boot-error p { max-width: 32ch; font-size: 0.85rem; color: #cbd5e1; }
+
+/* ---------- Señal de ayuda ---------- */
+.fab-help { background: var(--red); border-color: #ff8a80; color: #fff; }
+.help-banner {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  top: calc(var(--alert-bottom, 96px) + 6px);
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--red);
+  border: 2px solid #fff;
+  box-shadow: 3px 3px 0 #000;
+  font: 800 0.76rem var(--font-mono);
+  animation: help-blink 1.2s steps(2) infinite;
+}
+.help-banner-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+@keyframes help-blink { 50% { background: #b3002a; } }
+@media (prefers-reduced-motion: reduce) { .help-banner { animation: none; } }

@@ -1,0 +1,26 @@
+{
+  "name": "Días desde el último incidente — Río del Hato",
+  "short_name": "Río del Hato",
+  "description": "Monitor vecinal anónimo: incidentes del sector y alerta de ayuda entre vecinos.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "./icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Pedir ayuda",
+      "short_name": "🆘 Ayuda",
+      "description": "Abre la pantalla para avisar a los vecinos que escuchan",
+      "url": "./?sos=1",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

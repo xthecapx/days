@@ -25,6 +25,16 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
     store.patch('selection', { pixel: { x, y } });
   }
 
+  /** Centra el mapa en una alerta de ayuda y cierra la hoja para verla. */
+  function focusSignal(id) {
+    const sig = store.get().signals.active.find((s) => s.id === id);
+    if (!sig) return;
+    closeSheet();
+    ui({ popupIncidentId: null, alertExpanded: false });
+    store.patch('selection', { pixel: { x: sig.x, y: sig.y } });
+    camera.focusTile(sig.x, sig.y, Math.max(camera.state.zoom, 2));
+  }
+
   function focusIncident(inc) {
     closeSheet();
     store.patch('selection', { incidentId: inc.id, pixel: { x: inc.pixelX, y: inc.pixelY } });
@@ -48,7 +58,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
 
   // ----- UI -----------------------------------------------------------------
   function openSheet(name) {
-    ui({ sheet: name, popupIncidentId: null, alertExpanded: false });
+    ui({ sheet: name, popupIncidentId: null, alertExpanded: false, helpConfirm: false });
   }
 
   function closeSheet() {
@@ -219,6 +229,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
     goHome,
     selectPixel,
     focusIncident,
+    focusSignal,
     locateMe,
     openSheet,
     closeSheet,

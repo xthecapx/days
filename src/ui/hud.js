@@ -5,6 +5,8 @@ import { mountAlertCard } from './alertCard.js';
 import { mountPeek } from './peek.js';
 import { mountWhatsAppMenu } from './whatsappMenu.js';
 import { mountSyncToast } from './syncToast.js';
+import { mountHelpBanner } from './helpBanner.js';
+import { listenersLabel } from '../domain/signals.js';
 
 /**
  * Barra superior, banner de modo, controles del mapa y zona inferior (tarjeta + navegación).
@@ -16,12 +18,21 @@ export function mountHud({ store, camera, actions, gps, whatsapp, sectorName }) 
   mountPeek({ store, actions, measureInsets, sectorName });
   mountWhatsAppMenu({ store, gps, whatsapp, sectorName });
   mountSyncToast({ store });
+  mountHelpBanner({ store, actions });
 
   // ----- Controles del mapa y navegación --------------------------------------
   $('btnZoomIn').addEventListener('click', () => camera.zoomBy(1.3));
   $('btnZoomOut').addEventListener('click', () => camera.zoomBy(1 / 1.3));
   $('btnHome').addEventListener('click', () => actions.goHome());
   $('btnLocate').addEventListener('click', () => actions.locateMe());
+
+  // 🆘 solo existe si la versión tiene servidor de señal configurado; sin él, la interfaz queda igual que antes.
+  $('btnHelp').addEventListener('click', () => actions.openSheet('help'));
+  store.subscribe((s) => [s.signals.enabled, s.signals.loaded, s.signals.listeners], ([enabled, loaded, n]) => {
+    setHidden($('btnHelp'), !enabled);
+    setHidden($('listenersChip'), !(enabled && loaded));
+    $('listenersChip').textContent = `👂 ${listenersLabel(n)}`;
+  });
   $('btnCancelMode').addEventListener('click', () => actions.cancelMode());
 
   $('navIncidents').addEventListener('click', () => actions.openSheet('incidents'));

@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#090d16" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
   <title>Días Desde el Último Incidente — Sendero Río del Hato</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,10 +41,20 @@
       </div>
       <div class="alert-details-stats">
         <span class="chip chip-green">🛡️ Anónimo</span>
+        <span id="listenersChip" class="chip chip-green hidden">👂 0 escuchan</span>
         <span id="redPixels" class="chip chip-red">🔴 0 px</span>
       </div>
     </div>
   </header>
+
+  <!-- AVISO DE AYUDA: aparece mientras haya una señal de un vecino sin descartar -->
+  <div id="helpBanner" class="help-banner hidden" role="alert">
+    <span id="helpBannerText"></span>
+    <span class="help-banner-actions">
+      <button id="btnHelpBannerView" class="btn btn-sm" type="button">Ver en el mapa</button>
+      <button id="btnHelpBannerClose" class="icon-btn" type="button" aria-label="Descartar aviso">✕</button>
+    </span>
+  </div>
 
   <!-- BANNER DE MODO (mover / elegir píxel) -->
   <div id="modeBanner" class="mode-banner hidden">
@@ -54,6 +66,7 @@
   <div id="mapControls" class="map-controls" aria-label="Controles del mapa">
     <button id="btnZoomIn" class="fab" type="button" aria-label="Acercar">＋</button>
     <button id="btnZoomOut" class="fab" type="button" aria-label="Alejar">－</button>
+    <button id="btnHelp" class="fab fab-help hidden" type="button" aria-label="Pedir ayuda a los vecinos">🆘</button>
     <button id="btnLocate" class="fab" type="button" aria-label="Mi ubicación">📍</button>
     <button id="btnHome" class="fab" type="button" aria-label="Ir a Hogar">🏠</button>
   </div>
@@ -119,7 +132,7 @@
     </nav>
   </div>
 
-  <!-- HOJA INFERIOR ÚNICA (incidentes · ajustes · reporte) -->
+  <!-- HOJA INFERIOR ÚNICA (incidentes · ajustes · reporte · ayuda) -->
   <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
   <aside id="sheet" class="sheet hidden" role="dialog" aria-modal="true">
     <div class="sheet-grabber"><i></i></div>
@@ -131,6 +144,38 @@
     <div id="paneIncidents" class="sheet-pane hidden">
       <p class="hint">Toca un incidente para verlo en el mapa. Todo es 100% anónimo.</p>
       <div id="incidentList" class="card-list"></div>
+    </div>
+
+    <div id="paneHelp" class="sheet-pane hidden">
+      <section class="help-send">
+        <p id="helpHint" class="hint"></p>
+        <div id="helpMine" class="help-mine hidden">
+          <strong>🆘 Tu alerta está activa</strong>
+          <span id="helpMineText" class="muted"></span>
+          <button id="btnHelpCancel" class="btn btn-sm" type="button">Retirar mi alerta</button>
+        </div>
+        <div id="helpConfirm" class="help-confirm hidden">
+          <p>Se enviará tu ubicación aproximada (a ~14 m) a quienes tengan la escucha activa. La alerta dura 30 minutos y no lleva nombre.</p>
+          <div class="btn-pair">
+            <button id="btnHelpNo" class="btn" type="button">Cancelar</button>
+            <button id="btnHelpYes" class="btn btn-danger" type="button">Sí, pedir ayuda</button>
+          </div>
+        </div>
+        <button id="btnHelpSend" class="btn btn-danger btn-big" type="button">🆘 Pedir ayuda</button>
+        <p id="helpError" class="field-hint hidden" role="status"></p>
+      </section>
+      <section class="setting-group">
+        <h3>Escuchar a los vecinos</h3>
+        <label class="switch"><input type="checkbox" id="chkListen" /><span>Avisarme cuando alguien pida ayuda</span></label>
+        <p id="helpListenHint" class="muted"></p>
+        <span id="helpListeners" class="chip chip-green"></span>
+      </section>
+      <section class="setting-group">
+        <h3>Alertas activas</h3>
+        <div id="helpList" class="card-list"></div>
+        <p id="helpEmpty" class="muted">No hay alertas activas.</p>
+      </section>
+      <p class="notice">Esto no reemplaza a los servicios de emergencia: ante un peligro real, llama al <strong>123</strong>.</p>
     </div>
 
     <div id="paneSettings" class="sheet-pane hidden">

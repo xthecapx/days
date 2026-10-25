@@ -33,8 +33,14 @@ export async function serveBuiltSite() {
 }
 
 /** Abre una página móvil con GPS falso y sin salir a internet (GitHub y fuentes se bloquean). */
-export async function openApp(browser, url, { geo = { latitude: 7.005, longitude: -73.064, accuracy: 9 }, blockMap = false, intercept = null } = {}) {
-  const page = await browser.newPage();
+/** Estado por defecto del servidor de señal falso: sin alertas. */
+export const emptySignalState = () => ({ ok: true, now: Date.now(), signals: [], listeners: 0 });
+
+export async function openApp(browser, url, { geo = { latitude: 7.005, longitude: -73.064, accuracy: 9 }, blockMap = false, intercept = null, signalServer = null } = {}) {
+  // Un contexto propio por página: lo que una prueba guarda en el navegador (alerta enviada, escucha activada) no pasa a la siguiente.
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  page.on('close', () => context.close().catch(() => {}));
   await page.setViewport({ width: 390, height: 780, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const problems = [];
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
@@ -48,6 +54,16 @@ export async function openApp(browser, url, { geo = { latitude: 7.005, longitude
   page.on('request', (r) => {
     const u = r.url();
     if (intercept?.(r)) return; // la prueba lo resolvió
+    // El servidor de señal jamás se llama de verdad desde las pruebas: se responde aquí (y se anota qué se pidió).
+    if (u.includes('days-signal.xthecapx.workers.dev') || u.includes(':8787/')) {
+      const pathname = new URL(u).pathname;
+      const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' };
+      // La precomprobación CORS (OPTIONS) del navegador no lleva cuerpo ni cuenta como una petición de la app.
+      if (r.method() === 'OPTIONS') return r.respond({ status: 204, headers: cors });
+      signalServer?.calls.push(`${r.method()} ${pathname}${new URL(u).search}`);
+      const body = signalServer?.respond ? signalServer.respond(pathname, r) : emptySignalState();
+      return r.respond({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify(body) });
+    }
     if (u.includes('raw.githubusercontent.com') || u.includes('fonts.g')) return r.abort();
     if (blockMap && u.includes('/data/map.json')) return r.abort();
     r.continue();

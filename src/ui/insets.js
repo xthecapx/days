@@ -7,6 +7,7 @@ export function mountInsets({ camera }) {
     const dockHidden = $('dock').classList.contains('hidden');
     const dockTop = dockHidden ? window.innerHeight : $('dock').getBoundingClientRect().top;
     camera.setInsets(top, Math.max(0, window.innerHeight - dockTop + 6));
+    document.documentElement.style.setProperty('--alert-bottom', `${Math.round(top - 6)}px`); // el aviso de ayuda se pega debajo de la tarjeta
     document.documentElement.style.setProperty(
       '--controls-bottom',
       `${Math.max(120, window.innerHeight - dockTop + 8)}px`
