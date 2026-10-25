@@ -119,8 +119,18 @@ src/styles/            base.css · hud.css · sheets.css
 | Qué | Dónde | Se publica cuando cambia… | Flujo |
 |---|---|---|---|
 | Interfaz (mapa, reportes) | GitHub Pages | `src/`, `index.html`, `public/`, **`data/`**, `vite.config.js`, dependencias | `deploy-pages.yml` |
-| Servidor de la señal de ayuda | Cloudflare Worker (`days-signal`) | `services/signal/` y los límites del mapa que comparte (`src/core/geo.js`, `src/map/gpsGrid.js`) | `deploy-signal.yml` |
+| Servidor de la señal de ayuda | Cloudflare Worker (`days-signal`) | `services/signal/` y los límites del mapa que comparte (`src/core/geo.js`, `src/map/gpsGrid.js`) | Cloudflare Workers Builds (conexión a GitHub en el panel; ver abajo) |
 | Puente de reportes (abre el Pull Request) | Cloudflare Worker (`days`) | `worker/` | Cloudflare Workers Builds |
+
+**Conectar el servidor de la señal (una sola vez, en el panel de Cloudflare):** Workers & Pages → *Create application* → importar este repositorio, con estos valores:
+
+- Nombre del Worker: `days-signal` (el mismo de `services/signal/wrangler.jsonc`).
+- *Root directory*: `services/signal`.
+- *Deploy command*: el de siempre (`npx wrangler deploy`).
+- *Build watch paths* (incluir): `services/signal/*`, `src/core/geo.js`, `src/map/gpsGrid.js`. Así los cambios de la interfaz no vuelven a construirlo.
+- El secreto `SIGNAL_PEPPER` se crea en el Worker, en *Settings → Variables and Secrets*, como **Secret** (las *Build variables* no llegan al Worker en ejecución).
+
+Las pruebas del servidor corren en cada PR con el resto (`test.yml`); Cloudflare solo construye lo que ya está en `main`.
 
 `data/` está en la lista de la interfaz a propósito: un reporte aprobado cambia `data/incidents.json` y tiene que publicarse (`tests/workflows.test.js` lo comprueba). Las pruebas (`test.yml`) corren siempre. `.npmrc` fija el registro público de npm: sin eso, un registro privado en tu configuración personal se cuela en `package-lock.json` y GitHub Actions no puede instalar (hay una prueba que lo vigila).
 

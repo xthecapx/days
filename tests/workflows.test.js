@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,22 +42,17 @@ test('Pages: se puede lanzar a mano', () => {
   assert.match(read('.github/workflows/deploy-pages.yml'), /workflow_dispatch:/);
 });
 
-test('Servidor de señal: solo se despliega si cambia el servidor o el código de mapa que comparte', () => {
-  const paths = pushPaths(read('.github/workflows/deploy-signal.yml'));
-  assert.ok(paths);
-  for (const f of ['services/signal/src/board.js', 'services/signal/wrangler.jsonc', 'src/core/geo.js', 'src/map/gpsGrid.js']) assert.equal(triggers(paths, f), true, f);
-  for (const f of ['src/ui/hud.js', 'data/incidents.json', 'index.html', 'worker/github-wiki-bridge.js']) assert.equal(triggers(paths, f), false, f);
+test('El servidor de señal se despliega desde Cloudflare Workers Builds, no desde GitHub Actions (un solo camino, sin doble despliegue)', () => {
+  assert.equal(existsSync(join(ROOT, '.github/workflows/deploy-signal.yml')), false);
+  for (const f of readdirSync(join(ROOT, '.github/workflows'))) {
+    assert.doesNotMatch(read(`.github/workflows/${f}`), /wrangler deploy|CLOUDFLARE_API_TOKEN/, `${f} no debe desplegar a Cloudflare`);
+  }
 });
 
-test('Servidor de señal: prueba antes de desplegar, usa secretos y no falla en rojo si aún no hay credenciales', () => {
-  const yml = read('.github/workflows/deploy-signal.yml');
-  assert.ok(yml.indexOf('npm run signal:test') < yml.indexOf('npm run deploy'), 'las pruebas van antes del despliegue');
-  assert.match(yml, /secrets\.CLOUDFLARE_API_TOKEN/);
-  assert.match(yml, /secrets\.CLOUDFLARE_ACCOUNT_ID/);
-  assert.match(yml, /::warning::/);
-  assert.match(yml, /if: steps\.ready\.outputs\.go == 'true'/);
-  assert.match(yml, /timeout-minutes: 10/);
-  assert.doesNotMatch(yml, /CLOUDFLARE_API_TOKEN:\s*[A-Za-z0-9_-]{20,}/, 'ningún token escrito en el archivo');
+test('Las pruebas del servidor de señal corren en cada PR y en cada push (antes de que Cloudflare construya)', () => {
+  const yml = read('.github/workflows/test.yml');
+  assert.match(yml, /run: npm test/);
+  assert.match(read('package.json'), /services\/\*\/test/);
 });
 
 test('Las pruebas (test.yml) siguen corriendo en cada PR y en cada push, sin filtro de rutas', () => {
