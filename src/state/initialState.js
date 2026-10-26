@@ -21,9 +21,9 @@ export function createInitialState(now = new Date()) {
       showGrid: false
     },
     selection: { pixel: { x: 0, y: 0 }, incidentId: 'inc-006', hovered: null },
-    signals: { enabled: false, active: [], listeners: 0, listening: false, status: 'idle', mine: null, loaded: false, skew: 0 },
+    signals: { enabled: false, active: [], listeners: 0, listening: false, status: 'idle', loaded: false, skew: 0 },
     mode: { type: 'browse' },
-    ui: { sheet: null, popupIncidentId: null, alertExpanded: false, settingsOpen: false, helpConfirm: false },
+    ui: { sheet: null, popupIncidentId: null, alertExpanded: false, settingsOpen: false },
     draft: null
   };
 }

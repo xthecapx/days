@@ -4,7 +4,6 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { alertSummary } from '../src/ui/alertCard.js';
 import { peekTitle } from '../src/ui/peek.js';
-import { noLocationMessage, GPS_LABELS } from '../src/ui/whatsappMenu.js';
 import { incidentCardHtml } from '../src/ui/panes/incidents.js';
 import { syncToastMs, mountSyncToast } from '../src/ui/syncToast.js';
 import { createStore } from '../src/state/store.js';
@@ -80,12 +79,6 @@ test('hoverHtml: uses classes (no inline styles) and escapes', () => {
   assert.match(html, /Epicentro en este píxel/);
   assert.match(html, /A 2\.5 px del punto/);
   assert.match(hoverHtml({ x: 1, y: 1 }, undefined, 's'), /tip-sector/);
-});
-
-test('noLocationMessage and GPS_LABELS cover every status', () => {
-  assert.match(noLocationMessage('denied'), /permiso de ubicación denegado/);
-  assert.match(noLocationMessage('timeout'), /sin señal GPS/);
-  for (const s of ['ok', 'searching', 'stale', 'denied', 'unavailable']) assert.ok(GPS_LABELS[s], s);
 });
 
 test('$ fails with the name of the missing id', () => {

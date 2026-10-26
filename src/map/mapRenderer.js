@@ -33,7 +33,7 @@ export function createMapRenderer(canvas, world) {
   return {
     resize,
 
-    frame({ camera, heatmap, incidents, selection, settings, phase, helpSignals = [], mineHelpId = null }) {
+    frame({ camera, heatmap, incidents, selection, settings, phase, helpSignals = [] }) {
       const { zoom, panX, panY } = camera;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -54,7 +54,7 @@ export function createMapRenderer(canvas, world) {
       labels.drawRoadLabels(ctx, zoom);
       labels.drawPlaces(ctx, zoom, phase);
       drawIncidentMarkers(ctx, incidents, selection.incidentId, phase, zoom);
-      drawHelpSignals(ctx, helpSignals, mineHelpId, phase, zoom); // last: a help alert must be visible above everything
+      drawHelpSignals(ctx, helpSignals, phase, zoom); // last: a help alert must be visible above everything
     }
   };
 }

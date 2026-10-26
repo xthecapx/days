@@ -20,21 +20,8 @@ export function listenersLabel(count) {
   return n === 1 ? '1 vecino escucha' : `${n} vecinos escuchan`;
 }
 
-/** Notice shown before sending, depending on whether anyone is listening. */
-export function sendHint(listeners) {
-  return listeners > 0
-    ? `${listenersLabel(listeners)} y verán tu alerta en el mapa.`
-    : 'Nadie tiene la escucha activa ahora. Si es una emergencia, llama al 123 o usa WhatsApp.';
-}
-
 /** Signals that have not been seen yet. `seen` is a Set of ids. */
 export const newSignals = (signals, seen) => signals.filter((s) => !seen.has(s.id));
-
-/** Is it the signal I sent? (`mine` = { id } stored in this browser.) */
-export const isMine = (signal, mine) => Boolean(mine && signal && mine.id === signal.id);
-
-/** Is my latest signal still valid? */
-export const isActive = (mine, now) => Boolean(mine && Number.isFinite(mine.expiresAt) && mine.expiresAt > now);
 
 /**
  * Turns the server response into what the interface stores. Protects the screen from odd data:
@@ -58,7 +45,6 @@ export function newListenerId(random = (n) => crypto.getRandomValues(new Uint8Ar
 /** Production help-signal server (Cloudflare Worker `days-signal`). */
 export const DEFAULT_SIGNAL_URL = 'https://days-signal.xthecapx.workers.dev/';
 
-
 /**
  * Which server this copy of the app uses. There is a single server and everything is real: no rooms, no test mode.
  *   - By default: the published server.
@@ -72,19 +58,6 @@ export function resolveSignalConfig({ dev = false, hostname = 'localhost', overr
   return { baseUrl: DEFAULT_SIGNAL_URL };
 }
 
-/** Text for the person depending on the reason for the failure. */
-export function apiErrorMessage(error) {
-  switch (error) {
-    case 'not_configured': return 'La señal de ayuda no está activada en esta versión.';
-    case 'rate_limited': return 'Demasiados intentos seguidos. Espera un minuto.';
-    case 'outside_area': return 'Tu ubicación está fuera del área del mapa.';
-    case 'timeout': return 'El servidor tardó demasiado en responder.';
-    case 'network': return 'Sin conexión con el servidor de ayuda.';
-    default: return 'No se pudo contactar al servidor de ayuda.';
-  }
-}
-
-
 /**
  * How the map's 🆘 button looks: the number of neighbours listening sits on the button, visible to everyone without opening anything.
  * It only exists if there is a signal server; the number appears once the first response has arrived (before that it would be a false "0").
@@ -97,7 +70,7 @@ export function helpButtonView({ enabled = false, loaded = false, listeners = 0 
     badgeHidden: !(enabled && loaded),
     badge: n > 99 ? '99+' : String(n),
     badgeDim: n === 0, // 0 = nobody is listening: it is dimmed so it does not look like someone is
-    label: `Pedir ayuda a los vecinos${loaded ? `. ${listenersLabel(n)}` : ''}`
+    label: `Alertas de ayuda de los vecinos${loaded ? `. ${listenersLabel(n)}` : ''}`
   };
 }
 

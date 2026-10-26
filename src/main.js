@@ -10,14 +10,12 @@ import { loadMapData, createSectorNamer } from './map/mapData.js';
 import { mountMapInput } from './ui/mapInput.js';
 import { mountHud } from './ui/hud.js';
 import { mountSheet } from './ui/sheet.js';
-import { createGps } from './services/gps.js';
-import { createWhatsApp } from './services/whatsapp.js';
 import { startDayClock } from './core/clock.js';
+import { createGps } from './services/gps.js';
 import { createSignalApi } from './services/signalApi.js';
 import { createSignalService } from './services/signalService.js';
 import { resolveSignalConfig } from './domain/signals.js';
 import { readSignalPrefs, writeSignalPrefs, readSignalOverride } from './storage/localCache.js';
-import { gpsToPixel } from './map/gpsGrid.js';
 
 /**
  * App composition (the only place where the pieces are wired together):
@@ -33,19 +31,13 @@ async function boot() {
   const store = createStore(createInitialState());
   const camera = createCamera();
   const incidents = createIncidentService(store, { sectorName });
+  // GPS only for the 📍 button: it is read when that button is tapped, never on page load (no permission prompt at startup).
   const gps = createGps();
   const actions = createActions({ store, camera, incidents, gps, world, sectorName });
-  const whatsapp = createWhatsApp({
-    gps,
-    sectorAt: (lat, lng) => {
-      const tile = gpsToPixel(lat, lng);
-      return tile.insideBounds ? sectorName(tile.pixelX, tile.pixelY) : null;
-    }
-  });
   // Help signal: separate server, a single board. `vite dev` uses the local server (the published one does not accept localhost).
   const signalConfig = resolveSignalConfig({ dev: Boolean(import.meta.env?.DEV), hostname: location.hostname, override: readSignalOverride() });
   const signals = createSignalService({
-    store, gps,
+    store,
     api: createSignalApi(signalConfig),
     prefs: { read: readSignalPrefs, write: writeSignalPrefs },
     onNew: (fresh) => {
@@ -66,15 +58,13 @@ async function boot() {
   window.addEventListener('resize', fit);
 
   mountMapInput({ viewport, tooltip: $('mapHoverTooltip'), store, camera, actions, sectorName });
-  mountHud({ store, camera, actions, gps, whatsapp, sectorName });
+  mountHud({ store, camera, actions, sectorName });
   mountSheet({ store, actions, signals });
 
   await incidents.load();
   actions.goHome();
   startDayClock(store); // "today" follows the clock (midnight and when returning to the tab)
   signals.start(); // one read on open; polls every 30 s only if the person turned listening on
-  if (new URLSearchParams(location.search).get('sos') === '1' && store.get().signals.enabled) actions.openSheet('help'); // direct access from the icon
-  gps.start(); // a single read on load; afterwards it is re-read only if the position has expired
 
   requestAnimationFrame(function loop(ts) {
     const state = store.get();
@@ -87,14 +77,13 @@ async function boot() {
       selection: state.selection,
       settings: state.settings,
       helpSignals: state.signals.active,
-      mineHelpId: state.signals.mine?.id ?? null,
-      phase: ts / 1000
+            phase: ts / 1000
     });
     requestAnimationFrame(loop);
   });
 
   // Useful for debugging from the console; not exposed on the published site.
-  if (import.meta.env?.DEV) window.__app = { store, camera, actions, gps, world, signals };
+  if (import.meta.env?.DEV) window.__app = { store, camera, actions, world, signals };
 }
 
 /** If something fails at startup, it is reported on screen with a retry button (instead of leaving it blank). */

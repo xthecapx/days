@@ -53,26 +53,24 @@ export const readBridgeConfig = () =>
 
 /**
  * Help-signal preferences in THIS browser: whether the person turned listening on, their listener identifier
- * (random, does not identify them and is erased with the site data) and the last signal they sent, with the token
- * to be able to cancel it. Always returns an object of that shape, even if what is stored is corrupted.
+ * (random, does not identify them and is erased with the site data). Always returns an object of that shape, even if what
+ * is stored is corrupted (or still has the old `mine` field from when the app could send alerts: it is ignored and dropped).
  */
 export const readSignalPrefs = () =>
   attempt('read the signal preferences', null, () => {
     const raw = localStorage.getItem(SIGNAL_PREFS_KEY);
     if (!raw) return null;
     const p = JSON.parse(raw);
-    const mine = p?.mine && typeof p.mine.id === 'string' && typeof p.mine.token === 'string' && Number.isFinite(p.mine.expiresAt) ? p.mine : null;
     return {
       listening: p?.listening === true,
-      listenerId: typeof p?.listenerId === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(p.listenerId) ? p.listenerId : null,
-      mine
+      listenerId: typeof p?.listenerId === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(p.listenerId) ? p.listenerId : null
     };
-  }) ?? { listening: false, listenerId: null, mine: null };
+  }) ?? { listening: false, listenerId: null };
 
 /** Returns true if it could be saved. */
 export const writeSignalPrefs = (prefs) =>
   attempt('save the signal preferences', false, () => {
-    localStorage.setItem(SIGNAL_PREFS_KEY, JSON.stringify({ listening: Boolean(prefs.listening), listenerId: prefs.listenerId ?? null, mine: prefs.mine ?? null }));
+    localStorage.setItem(SIGNAL_PREFS_KEY, JSON.stringify({ listening: Boolean(prefs.listening), listenerId: prefs.listenerId ?? null }));
     return true;
   });
 

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ageLabel, listenersLabel, sendHint, newSignals, isMine, isActive, normalizeSignals, newListenerId, apiErrorMessage } from '../src/domain/signals.js';
+import { ageLabel, listenersLabel, newSignals, normalizeSignals, newListenerId } from '../src/domain/signals.js';
+import * as domain from '../src/domain/signals.js';
 import { createSignalApi } from '../src/services/signalApi.js';
 import { createSignalFeed, POLL_MS, BACKOFF_MS } from '../src/services/signalFeed.js';
 
@@ -20,25 +21,21 @@ test('ageLabel: from "now" to hours', () => {
   assert.equal(ageLabel(now + 5 * MIN, now), 'hace un momento', 'a clock running ahead does not give "hace -5 min"');
 });
 
-test('listenersLabel and sendHint: singular, plural and nobody', () => {
+test('listenersLabel: singular, plural and nobody', () => {
   assert.equal(listenersLabel(0), 'Nadie escucha ahora');
   assert.equal(listenersLabel(1), '1 vecino escucha');
   assert.equal(listenersLabel(3), '3 vecinos escuchan');
   for (const bad of [undefined, null, NaN, -4, 'x']) assert.equal(listenersLabel(bad), 'Nadie escucha ahora', String(bad));
-  assert.match(sendHint(3), /3 vecinos escuchan y verán tu alerta/);
-  assert.match(sendHint(0), /123/);
-  assert.match(sendHint(0), /WhatsApp/);
 });
 
-test('newSignals, isMine, isActive', () => {
+test('newSignals: only the alerts that were not seen before', () => {
   assert.deepEqual(newSignals([sig('a'), sig('b')], new Set(['a'])).map((s) => s.id), ['b']);
-  assert.equal(isMine(sig('a'), { id: 'a' }), true);
-  assert.equal(isMine(sig('a'), { id: 'b' }), false);
-  assert.equal(isMine(sig('a'), null), false);
-  assert.equal(isActive({ expiresAt: 2000 }, 1999), true);
-  assert.equal(isActive({ expiresAt: 2000 }, 2000), false);
-  assert.equal(isActive(null, 0), false);
-  assert.equal(isActive({ expiresAt: 'x' }, 0), false);
+  assert.deepEqual(newSignals([], new Set(['a'])), []);
+  assert.deepEqual(newSignals([sig('a')], new Set()).map((s) => s.id), ['a']);
+});
+
+test('the domain no longer has anything for SENDING alerts (they are sent from the phone, never from the app)', () => {
+  for (const gone of ['sendHint', 'isMine', 'isActive', 'apiErrorMessage']) assert.equal(gone in domain, false, gone);
 });
 
 test('normalizeSignals: sorts, drops malformed entries and does not break on junk', () => {
@@ -88,22 +85,23 @@ test('api: builds the URL without double slashes or parameters, and sends JSON',
   const api = createSignalApi({ baseUrl: 'https://s.example/', fetchImpl: f });
   await api.state();
   await api.poll({ listener: 'abc12345', listening: true });
-  await api.send({ lat: 7.005, lng: -73.064 });
-  await api.cancel({ id: 'i', token: 't' });
   assert.deepEqual(f.calls.map((c) => [c.method, c.url]), [
     ['GET', 'https://s.example/state'],
-    ['POST', 'https://s.example/poll'],
-    ['POST', 'https://s.example/signal'],
-    ['POST', 'https://s.example/signal/cancel']
+    ['POST', 'https://s.example/poll']
   ]);
   assert.deepEqual(f.calls[1].body, { listener: 'abc12345', listening: true });
   assert.equal(f.calls[0].cache, 'no-store');
-  assert.equal(f.calls[2].headers['Content-Type'], 'application/json');
+  assert.equal(f.calls[1].headers['Content-Type'], 'application/json');
+});
+
+test('api: the client is READ-ONLY: it has no way to send or cancel an alert', () => {
+  const api = createSignalApi({ baseUrl: 'https://s.example', fetchImpl: fakeFetch(() => reply(200, { ok: true })) });
+  assert.deepEqual(Object.keys(api).sort(), ['enabled', 'poll', 'state']);
 });
 
 test('api: server, network and timeout errors arrive as a result, never thrown', async () => {
   const mk = (handler) => createSignalApi({ baseUrl: 'https://s.example', fetchImpl: fakeFetch(handler), timeoutMs: 20 });
-  assert.deepEqual(await mk(() => reply(422, { ok: false, code: 'outside_area', error: 'fuera' })).send({ lat: 1, lng: 1 }), { ok: false, status: 422, error: 'outside_area', message: 'fuera' });
+  assert.deepEqual(await mk(() => reply(403, { ok: false, code: 'origin_not_allowed', error: 'no' })).state(), { ok: false, status: 403, error: 'origin_not_allowed', message: 'no' });
   assert.equal((await mk(() => reply(429, null)).state()).error, 'rate_limited');
   assert.equal((await mk(() => reply(500, null)).state()).error, 'http_error');
   assert.equal((await mk(() => ({ ok: true, status: 200, json: async () => { throw new Error('html'); } })).state()).error, 'http_error', 'a page that is not JSON');
@@ -115,11 +113,6 @@ test('api: server, network and timeout errors arrive as a result, never thrown',
 test('api: ok:false inside a 200 is treated as an error', async () => {
   const api = createSignalApi({ baseUrl: 'https://s.example', fetchImpl: fakeFetch(() => reply(200, { ok: false, code: 'x' })) });
   assert.equal((await api.state()).ok, false);
-});
-
-test('apiErrorMessage: a Spanish text for each known reason and a generic one', () => {
-  for (const e of ['not_configured', 'rate_limited', 'outside_area', 'timeout', 'network', 'http_error', 'cualquier-otro']) assert.match(apiErrorMessage(e), /\S{5,}/, e);
-  assert.notEqual(apiErrorMessage('network'), apiErrorMessage('timeout'));
 });
 
 // ---------- feed ----------
@@ -281,7 +274,7 @@ test('helpButtonView: no server means no button; no first response means no coun
   assert.deepEqual(helpButtonView({ enabled: false, loaded: true, listeners: 5 }).hidden, true);
   const waiting = helpButtonView({ enabled: true, loaded: false, listeners: 0 });
   assert.deepEqual([waiting.hidden, waiting.badgeHidden], [false, true]);
-  assert.equal(waiting.label, 'Pedir ayuda a los vecinos');
+  assert.equal(waiting.label, 'Alertas de ayuda de los vecinos');
 });
 
 test('helpButtonView: the count, the dimmed 0, the 99+ cap and the screen-reader label', () => {

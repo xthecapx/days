@@ -10,7 +10,7 @@ const NOW = 1_800_000_000_000;
 const MIN = 60_000;
 const sig = (id, at = NOW, o = {}) => ({ id, x: 92, y: 120, at, expiresAt: at + 30 * MIN, ...o });
 
-function rig({ enabled = true, saved = { listening: false, listenerId: null, mine: null }, gpsFix = { lat: 7.005, lng: -73.064 }, gpsError = null, serverSignals = [], sendResult } = {}) {
+function rig({ enabled = true, saved = { listening: false, listenerId: null }, serverSignals = [] } = {}) {
   const store = createStore(createInitialState());
   const calls = [];
   const wrote = [];
@@ -18,15 +18,12 @@ function rig({ enabled = true, saved = { listening: false, listenerId: null, min
   const api = {
     enabled,
     state: async () => { calls.push('state'); return { ok: true, data: { signals, listeners: 2, now: NOW } }; },
-    poll: async ({ listening }) => { calls.push(listening ? 'poll' : 'leave'); return { ok: true, data: { signals, listeners: listening ? 3 : 2, now: NOW } }; },
-    send: async (p) => { calls.push(['send', p]); return sendResult ?? { ok: true, data: { id: 'mia1', cancelToken: 'tok-secreto', expiresAt: NOW + 30 * MIN, listeners: 2 } }; },
-    cancel: async (p) => { calls.push(['cancel', p]); return { ok: true, data: {} }; }
+    poll: async ({ listening }) => { calls.push(listening ? 'poll' : 'leave'); return { ok: true, data: { signals, listeners: listening ? 3 : 2, now: NOW } }; }
   };
-  const gps = { fix: () => gpsFix, read: async () => gpsFix, error: () => gpsError };
   const fresh = [];
   const feeds = [];
   const service = createSignalService({
-    store, api, gps, now: () => NOW,
+    store, api, now: () => NOW,
     prefs: { read: () => saved, write: (p) => wrote.push(p) },
     onNew: (s) => fresh.push(s.map((x) => x.id)),
     makeFeed: (opts) => {
@@ -75,23 +72,23 @@ function fakeStorage(initial = {}) {
 
 test('prefs: with nothing saved they return the neutral value; saving and reading round-trips', () => {
   fakeStorage();
-  assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null, mine: null });
-  assert.equal(cache.writeSignalPrefs({ listening: true, listenerId: 'oyente-abc123', mine: { id: 'a', token: 't', expiresAt: 5 } }), true);
-  assert.deepEqual(cache.readSignalPrefs(), { listening: true, listenerId: 'oyente-abc123', mine: { id: 'a', token: 't', expiresAt: 5 } });
+  assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null });
+  assert.equal(cache.writeSignalPrefs({ listening: true, listenerId: 'oyente-abc123' }), true);
+  assert.deepEqual(cache.readSignalPrefs(), { listening: true, listenerId: 'oyente-abc123' });
 });
 
 test('prefs: corrupted or tampered data breaks nothing', () => {
   fakeStorage({ vecinos_rio_hato_signal_v1: '{no es json' });
-  assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null, mine: null });
+  assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null });
   fakeStorage({ vecinos_rio_hato_signal_v1: JSON.stringify({ listening: 'si', listenerId: '<script>', mine: { id: 5, token: {}, expiresAt: 'x' } }) });
-  assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null, mine: null });
+  assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null });
 });
 
 test('prefs: with localStorage blocked it does not throw', () => {
   const boom = () => { throw new Error('modo privado'); };
   globalThis.localStorage = { getItem: boom, setItem: boom, removeItem: boom };
   const warn = console.warn; console.warn = () => {};
-  assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null, mine: null });
+  assert.deepEqual(cache.readSignalPrefs(), { listening: false, listenerId: null });
   assert.equal(cache.writeSignalPrefs({ listening: true }), false);
   assert.equal(cache.readSignalOverride(), null);
   console.warn = warn;
@@ -114,7 +111,6 @@ test('with no server configured it makes no request and ends up disabled', async
   const r = rig({ enabled: false });
   await r.service.start();
   await r.service.setListening(true);
-  assert.deepEqual(await r.service.send(), { ok: false, error: 'not_configured' });
   assert.deepEqual(r.calls, []);
   assert.equal(r.state().enabled, false);
   assert.equal(r.state().listening, false);
@@ -149,59 +145,26 @@ test('the listener id is random, meets what the server requires and is reused', 
   assert.match(a.service.listenerId, /^[A-Za-z0-9_-]{8,64}$/);
   assert.notEqual(a.service.listenerId, b.service.listenerId);
   assert.equal(a.wrote[0].listenerId, a.service.listenerId, 'it is saved from the very first moment');
-  assert.equal(rig({ saved: { listening: false, listenerId: 'guardado-xyz123', mine: null } }).service.listenerId, 'guardado-xyz123');
+  assert.equal(rig({ saved: { listening: false, listenerId: 'guardado-xyz123' } }).service.listenerId, 'guardado-xyz123');
 });
 
-test('send: uses the GPS position, stores the cancel token and does NOT expose it in the state', async () => {
+test('the service cannot send or cancel alerts: alerts are sent from the phone, never from the app', () => {
   const r = rig();
-  const res = await r.service.send();
-  assert.equal(res.ok, true);
-  assert.deepEqual(r.calls[0], ['send', { lat: 7.005, lng: -73.064 }]);
-  assert.deepEqual(r.state().mine, { id: 'mia1', expiresAt: NOW + 30 * MIN });
-  assert.doesNotMatch(JSON.stringify(r.store.get()), /tok-secreto/, 'the token only lives in the browser, not in the screen state');
-  assert.equal(r.wrote.at(-1).mine.token, 'tok-secreto');
+  for (const gone of ['send', 'cancel']) assert.equal(gone in r.service, false, gone);
+  assert.equal('mine' in r.state(), false, 'the app does not track "my" alert');
+  assert.equal('send' in { ...rig().service }, false);
 });
 
-test('send without a location: nothing is sent and the reason is explained', async () => {
-  const none = rig({ gpsFix: null, gpsError: 'timeout' });
-  assert.deepEqual(await none.service.send(), { ok: false, error: 'no_gps' });
-  assert.equal(none.calls.length, 0);
-  assert.deepEqual(await rig({ gpsFix: null, gpsError: 'denied' }).service.send(), { ok: false, error: 'gps_denied' });
+test('old saved preferences that still carry a "mine" alert are accepted and the field is dropped on the next save', () => {
+  const r = rig({ saved: { listening: false, listenerId: 'guardado-xyz123', mine: { id: 'a', token: 'secreto-viejo', expiresAt: NOW + MIN } } });
+  assert.equal('mine' in r.wrote.at(-1), false);
+  assert.doesNotMatch(JSON.stringify(r.wrote), /secreto-viejo/, 'the old cancel token is not written back');
 });
 
-test('send with a server error: the error is returned and no own signal is saved', async () => {
-  const r = rig({ sendResult: { ok: false, status: 422, error: 'outside_area' } });
-  const res = await r.service.send();
-  assert.deepEqual([res.ok, res.error], [false, 'outside_area']);
-  assert.equal(r.state().mine, null);
-  assert.equal(r.wrote.at(-1).mine, null);
-});
-
-test('cancel: withdraws my signal with its token; with no own signal it does nothing', async () => {
+test('every alert triggers the "someone asked for help" notice (the app cannot tell who sent it)', () => {
   const r = rig();
-  assert.deepEqual(await r.service.cancel(), { ok: false, error: 'nothing_to_cancel' });
-  await r.service.send();
-  const res = await r.service.cancel();
-  assert.equal(res.ok, true);
-  assert.deepEqual(r.calls.find((c) => c[0] === 'cancel'), ['cancel', { id: 'mia1', token: 'tok-secreto' }]);
-  assert.equal(r.state().mine, null);
-  assert.equal(r.wrote.at(-1).mine, null);
-});
-
-test('my saved signal is recovered on reload if still valid, and discarded if it expired', () => {
-  const live = rig({ saved: { listening: false, listenerId: 'guardado-xyz123', mine: { id: 'a', token: 't', expiresAt: NOW + MIN } } });
-  assert.deepEqual(live.state().mine, { id: 'a', expiresAt: NOW + MIN });
-  const dead = rig({ saved: { listening: false, listenerId: 'guardado-xyz123', mine: { id: 'a', token: 't', expiresAt: NOW - 1 } } });
-  assert.equal(dead.state().mine, null);
-  assert.equal(dead.wrote.at(-1).mine, null, 'and it is removed from what was saved');
-});
-
-test('my own signal does not trigger the "alguien pidió ayuda" alert', async () => {
-  const r = rig();
-  await r.service.send();
-  const handler = r.feeds[0].opts.onNew;
-  handler([sig('mia1'), sig('otra')], {});
-  assert.deepEqual(r.fresh, [['otra']]);
+  r.feeds[0].opts.onNew([sig('a'), sig('b')], {});
+  assert.deepEqual(r.fresh, [['a', 'b']]);
 });
 
 test('the polling connection status reaches the screen state', () => {

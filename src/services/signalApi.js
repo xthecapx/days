@@ -5,8 +5,6 @@
  *   const api = createSignalApi({ baseUrl });
  *   const r = await api.state();          // public read, does not count as a listener
  *   await api.poll({ listener, listening });
- *   await api.send({ lat, lng });
- *   await api.cancel({ id, token });
  */
 
 const TIMEOUT_MS = 8000;
@@ -45,8 +43,6 @@ export function createSignalApi({ baseUrl, fetchImpl = globalThis.fetch?.bind(gl
   return {
     enabled,
     state: () => request('/state'),
-    poll: ({ listener, listening }) => request('/poll', { method: 'POST', body: { listener, listening } }),
-    send: ({ lat, lng }) => request('/signal', { method: 'POST', body: { lat, lng } }),
-    cancel: ({ id, token }) => request('/signal/cancel', { method: 'POST', body: { id, token } })
+    poll: ({ listener, listening }) => request('/poll', { method: 'POST', body: { listener, listening } })
   };
 }

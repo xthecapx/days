@@ -23,11 +23,10 @@ const text = (page, sel) => page.$eval(sel, (e) => e.textContent);
 test('the published site starts, draws the map and does not break the security policy', { skip }, async () => {
   const { page, problems } = await openApp(browser, site.url);
   await loadApp(page, site.url);
-  await page.waitForFunction(() => document.getElementById('gpsDot').dataset.status === 'ok');
 
   assert.match(await text(page, '#daysValue'), /^\d\d$/);
   assert.ok(Number(await text(page, '#navCount')) >= 1, 'must show the loaded incidents');
-  assert.equal(await page.$eval('#gpsDot', (e) => e.dataset.status), 'ok');
+  assert.equal(await page.$('#gpsDot'), null, 'the GPS status dot is gone: the app no longer reads the GPS on load');
   // The canvas must have more than one colour: if there is only one colour, the map was not drawn.
   const colors = await page.$eval('#mapCanvas', (c) => {
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
@@ -75,25 +74,22 @@ test('"Ver" in the list centres the map and opens the incident card', { skip }, 
   await page.close();
 });
 
-test('the WhatsApp menu opens WhatsApp with the message and the location', { skip }, async () => {
-  const hits = [];
-  // We capture the navigation to wa.me instead of leaving the page.
+test('WhatsApp is gone: no WhatsApp button or menu, the app never navigates to wa.me, and the SOS button is in its place', { skip }, async () => {
+  const reachedWhatsApp = [];
   const intercept = (r) => {
-    if (!r.url().startsWith('https://wa.me/')) return false;
-    if (r.isNavigationRequest()) hits.push(r.url()); // (Chrome also requests the favicon of the fake page: it does not count)
+    if (!r.url().includes('wa.me')) return false;
+    reachedWhatsApp.push(r.url());
     r.respond({ status: 200, contentType: 'text/html', body: 'wa' });
     return true;
   };
   const { page } = await openApp(browser, site.url, { intercept });
   await loadApp(page, site.url);
-  await page.waitForFunction(() => document.getElementById('gpsDot').dataset.status === 'ok');
-  await page.click('#btnWhatsapp');
-  await page.click('#waHelp');
-  for (let i = 0; i < 50 && hits.length === 0; i++) await new Promise((r) => setTimeout(r, 100));
-  assert.equal(hits.length, 1);
-  const msg = decodeURIComponent(new URL(hits[0]).searchParams.get('text'));
-  assert.match(msg, /NECESITO AYUDA/);
-  assert.match(msg, /google\.com\/maps\/search\/\?api=1&query=7\.005/);
+  for (const gone of ['btnWhatsapp', 'waMenu', 'waHelp', 'waShare']) assert.equal(await page.$(`#${gone}`), null, `#${gone} must not exist`);
+  assert.doesNotMatch(await page.evaluate(() => document.body.innerText), /WhatsApp/i, 'no WhatsApp text on screen');
+  // The SOS button sits in the bottom card (where the WhatsApp button used to be), not in the map controls.
+  assert.equal(await page.$eval('#btnHelp', (e) => Boolean(e.closest('#peekPixel'))), true);
+  assert.equal(await page.$eval('#btnHelp', (e) => Boolean(e.closest('#mapControls'))), false);
+  assert.deepEqual(reachedWhatsApp, []);
   await page.close();
 });
 

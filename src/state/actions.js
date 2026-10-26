@@ -58,7 +58,7 @@ export function createActions({ store, camera, incidents, gps, world, sectorName
 
   // ----- UI -----------------------------------------------------------------
   function openSheet(name) {
-    ui({ sheet: name, popupIncidentId: null, alertExpanded: false, helpConfirm: false });
+    ui({ sheet: name, popupIncidentId: null, alertExpanded: false });
   }
 
   function closeSheet() {

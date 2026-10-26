@@ -1,15 +1,54 @@
 # Monitor Vecinal — Sendero Río del Hato
 
-A web app that is **100% anonymous** and ready to publish for free on **GitHub Pages**. The app's interface is in Spanish; code, comments, tests and documentation are in English. It shows a map of the area with the incidents reported by neighbors and the days elapsed since the last one. Incidents live in `data/incidents.json`, an open database: each report arrives as a Pull Request and is only published when the owner approves it.
+A web app that is **100% anonymous** and ready to publish for free on **GitHub Pages**. The app's interface is in Spanish; code, comments, tests and documentation are in English. It does two separate things for a neighborhood: it **keeps everyone informed** about what has happened in terms of safety (a map, a history and a counter of days since the last incident), and it **lets neighbors alert each other** in the moment (a help signal). See [What the app is for](#what-the-app-is-for).
+
+## What the app is for
+
+The app has two flows. They are independent, and the screen shows one or the other: **history** or **alerts**.
+
+### 1. Inform: what has happened here
+
+For **everyone**, with nothing to turn on. Opening the app answers one question: *how safe has this area been lately?*
+
+- A **counter of days since the last incident** (`DÍAS DESDE EL ÚLTIMO INCIDENTE`) with a summary of the latest one.
+- A **map** with every reported incident as a numbered marker, and a **heat map** that tints the surroundings by severity and age (red = safety, yellow = noise / coexistence).
+- A **list of incidents** with their date, category, severity and sector.
+- Neighbors can **report** something that already happened (*Reportar*), and **confirm**, **edit** or **move** an existing report. The person chooses *when* it happened (*Hoy / Ayer / Otro día*): the day of the report is never saved as the day of the event.
+- Reports are **moderated**: each one arrives as a Pull Request and is only published when the owner approves it. The history of changes is git's.
+
+This flow is **not live**. It describes the past and is read when the page is opened, straight from GitHub (`data/incidents.json`). Only *sending* a report needs a server: a small Cloudflare Worker (`worker/`) that opens the Pull Request.
+
+### 2. Alert: someone needs help right now
+
+For **neighbors who choose to listen**. It is a signal, not a chat and not tracking.
+
+- A person in trouble sends the alert **from their phone, with a shortcut** (see [Phone shortcuts](#phone-shortcuts)). **The app has no "send alert" button**: nobody is expected to send an alert while using the app.
+- Whoever turns on **«Avisarme cuando alguien pida ayuda»** ("Notify me when someone asks for help") in the 🆘 sheet switches the screen to **listening mode**: the history (days card, incident markers, heat map) is hidden and only alerts are shown. The app asks the server **every 30 s, and only while the screen is in view**. Nothing runs in the background.
+- Everyone sees how many neighbors are listening (the green number on the 🆘 button), and anyone who opens or reloads the app sees the alerts that are active at that moment.
+- An alert shows an approximate point (a ~14 m map cell), disappears after **30 minutes**, and carries no name or text. There are no accounts.
+- It **does not replace 123**, the emergency number: the screen says so.
+
+### How the two fit together
+
+| | Inform (history) | Alert (SOS) |
+|---|---|---|
+| Question it answers | What has happened here? | Does someone need help now? |
+| Who uses it | Everyone | Neighbors who turn on listening |
+| When | Whenever the page is opened | While the screen is open and listening |
+| Who writes to it | Neighbors, through moderated reports | The person in trouble, from a phone shortcut |
+| Data | `data/incidents.json` (git, published by approval; reports go through the `worker/` bridge) | A separate server (`services/signal`), kept 30 min |
+| Screen | Days card, markers, heat map, list | Listening bar, alert banner, pulsing 🆘 on the map |
+
+The two never share data: the report flow does not know the alert server exists, and a server outage does not affect the history (it keeps working, and the 🆘 sheet shows the connection problem).
 
 ## Features
 
 1. **A `DÍAS DESDE EL ÚLTIMO INCIDENTE` ("days since the last incident") counter** with a summary of the latest report and the pixels on alert.
 2. **Area map** (~2.8 × 2.9 km, Piedecuesta) drawn from OpenStreetMap data: streets by hierarchy, rivers, trails, street names, places, and animated cars and pedestrians.
 3. **Heat map** over a 200 × 200 tile grid (~14 m each): every incident tints the neighboring tiles according to severity (1 to 5) and age. Red = safety, yellow = noise/coexistence.
-4. **Open, moderated incident reports**: report, edit, confirm and move from the app itself. The change history is git's (one Pull Request per report).
+4. **Open, moderated incident reports** (flow 1, *inform*): report, edit, confirm and move from the app itself. The change history is git's (one Pull Request per report).
 5. Designed for **mobile**: a single bottom sheet, 44 px touch buttons, pinch to zoom.
-6. **Help signal between neighbors** (🆘): one person raises the alert with a tap, and anyone who is listening sees the point on the map. See [Help signal](#help-signal).
+6. **Help signal between neighbors** (🆘, flow 2, *alert*): a person sends it from a phone shortcut, and anyone who is listening sees the point on the map. The app only receives; it never sends. See [Help signal](#help-signal).
 
 ## Local use
 
@@ -98,11 +137,11 @@ src/state/             Store with subscriptions, actions and selectors
 src/core/geo.js        Map area and grid size (single definition)
 src/core/clock.js      The app's "today": follows the device clock
 src/domain/            Pure incident rules (no DOM or network)
-src/services/          Use cases (incidents), help signal (signalApi/Feed/Service) and phone services (gps.js, whatsapp.js)
+src/services/          Use cases (incidents), help signal (signalApi/Feed/Service) and the phone GPS for the 📍 button (gps.js, read only when tapped)
 src/storage/           Adapters: repository, browser copy, local disk and bridge (PR)
 src/map/               Camera, grid, map model (`buildWorld`, `createSectorNamer`), heat map
 src/map/render/        One drawing layer per file (base, heat and its colors, labels, markers…)
-src/ui/                HUD (hud, alertCard, peek, whatsappMenu, syncToast, insets), bottom sheet and map gestures
+src/ui/                HUD (hud, alertCard, peek, helpBanner, syncToast, insets), bottom sheet and map gestures
 src/ui/panes/          One sheet panel per file: incidents, settings, report
 src/styles/            base.css · hud.css · sheets.css
 ```
@@ -117,20 +156,20 @@ src/styles/            base.css · hud.css · sheets.css
 
 ## Help signal
 
-A «necesito ayuda aquí» ("I need help here") alert between neighbors. **It does not replace 123** (the emergency number): the screen itself says so. It is a proof of concept.
+The second of the app's two flows (see [What the app is for](#what-the-app-is-for)): a «necesito ayuda aquí» ("I need help here") alert between neighbors. **It does not replace 123** (the emergency number): the screen itself says so. It is a proof of concept.
 
 **How it works**
 
-1. Someone taps 🆘 in the app, or uses a phone shortcut (see [Phone shortcuts](#phone-shortcuts)). Only their position is sent.
+1. Someone sends the alert **from their phone** with a shortcut (see [Phone shortcuts](#phone-shortcuts)); only their position is sent. **The app cannot send alerts**: it is for seeing history and for receiving alerts.
 2. When the page is opened or reloaded, the app reads the server **once**: if there is an active alert, a red notice appears along with a 🆘 pulsing on the map.
-3. Whoever turns on **«Avisarme cuando alguien pida ayuda»** ("Notify me when someone asks for help") (🆘 sheet) asks the server **every 30 s**, and **only while the screen is in view**. With the tab hidden or the phone locked nothing is requested: there are no push notifications and nothing runs in the background.
+3. Whoever turns on **«Avisarme cuando alguien pida ayuda»** ("Notify me when someone asks for help") (🆘 sheet) switches the screen to *listening mode*: the days card, the incident markers and the heat map are hidden and only alerts are shown. It asks the server **every 30 s**, and **only while the screen is in view**. With the tab hidden or the phone locked nothing is requested: there are no push notifications and nothing runs in the background.
 4. The green number above the 🆘 button is how many neighbors are listening right now (visible to everyone). Each listener counts for up to 75 s after their last request.
 
 **What is stored (and what is not)**
 
 - For each alert only the **map cell (~14 m)**, the time and a random identifier are stored. Never the exact coordinates, the accuracy, a name or free text.
 - The IP is not stored: it is turned into a hash with a server secret (`SIGNAL_PEPPER`) only to limit the rate and allow one alert per person. It does not appear in any response.
-- An alert lasts **30 minutes** and then disappears. Whoever sent it from the app can withdraw it earlier; the permission to do so (a token) lives only in their browser.
+- An alert lasts **30 minutes** and then disappears. The sender receives a token in the response that lets them withdraw it earlier with `POST /signal/cancel`; the server keeps no copy of who sent it.
 - There are no accounts or users. Anyone with the address can send or read: this is an accepted risk in this proof of concept (see [Known limits](#known-limits)).
 
 **Server** (`services/signal/`, Cloudflare Worker + Durable Object with SQLite). URL: `https://days-signal.xthecapx.workers.dev/`
@@ -140,7 +179,7 @@ A «necesito ayuda aquí» ("I need help here") alert between neighbors. **It do
 | `GET /` | Service status (is a secret configured?). Carries no data. |
 | `GET /state` | Active alerts and how many are listening. Public, does **not** count you as a listener. |
 | `POST /poll` `{listener, listening}` | Same as `/state`, and counts you in (or out) as a listener. |
-| `POST /signal` `{lat, lng}` | Creates your alert (replaces the previous one from the same connection). Returns the token to withdraw it. |
+| `POST /signal` `{lat, lng}` | Creates an alert (replaces the previous one from the same connection). Returns the token to withdraw it. **Called by the phone shortcut, never by the app.** |
 | `POST /signal/cancel` `{id, token}` | Withdraws an alert with its token. |
 
 **Everything is real: there are no rooms and no test mode.** Whatever you send is seen by anyone who opens the app. (Old links or shortcuts with `?room=…` still work: the parameter is ignored.) Coordinates can arrive as a number or as text, even with a decimal comma (`"7,005"`), and the body can be JSON or a form: this is how iPhone Shortcuts (the «Atajos» app) sends them.
@@ -158,7 +197,7 @@ npm run dev          # the app, pointing at that local server
 
 ### Phone shortcuts
 
-To ask for help without opening the app. **They have to be created once on each phone.**
+This is the only way to send an alert: the app itself has no "ask for help" button. **A shortcut has to be created once on each phone.**
 
 **Everything is real.** A shortcut sends a real alert: it shows up in the published app for 30 minutes and anyone who opens it sees it. Warn the people around you before testing, or test yourself with two phones.
 
@@ -175,8 +214,6 @@ To ask for help without opening the app. **They have to be created once on each 
 
 **Android** — the free app [HTTP Shortcuts](https://http-shortcuts.rmy.ch/): a shortcut with a POST method to the same URL (`…/signal`) and a body with `lat` and `lng`; add it as a widget on the home screen. *I have not been able to verify whether it lets you insert the current location in the body*; if it does not, use the app icon (next item).
 
-**Home screen icon (iPhone and Android):** open the app at `https://xthecapx.github.io/days/?sos=1` → *Share → Add to Home Screen*. Opening it lands directly on the help screen, with the confirm button already showing. On Android (Chrome) the installed icon also offers «Pedir ayuda» ("Ask for help") when you long-press it.
-
 **Traccar Client and OwnTracks do not work here.** They are continuous trackers that send your position in the background and identify themselves with a device id: the opposite of a one-off, anonymous signal. I also did not find a "send now" button in Traccar Client.
 
 ### Known limits
@@ -184,8 +221,9 @@ To ask for help without opening the app. **They have to be created once on each 
 - **Anyone with the address can send a false alert**: there are no accounts or keys. The map area, the rate limit, one alert per person and the 30-minute lifetime slow it down; they do not prevent it. If this reaches real users, the next step is a key in the shortcut or a role.
 - **Anyone who opens the app sees the active alerts** (at ~14 m), even if they are not listening.
 - **With the screen locked or the tab hidden nothing is received.** There are no push notifications.
-- **An alert sent from a shortcut cannot be withdrawn from the app** (the token stays in the shortcut); it expires on its own after 30 min or is replaced by sending another.
-- **If the Cloudflare free plan runs out**, the signal stops responding until 00:00 UTC; the app shows this and reminds you to call 123 or use WhatsApp.
+- **An alert cannot be withdrawn from the app**: it expires on its own after 30 min, is replaced by sending another from the same connection, or can be withdrawn with the token from the send response.
+- **Android has no verified way to send yet.** The HTTP Shortcuts app's README does not mention inserting the current location, and I could not confirm it in its documentation. Until that is checked on a real phone, only iPhone Shortcuts is a tested path.
+- **If the Cloudflare free plan runs out**, the signal stops responding until 00:00 UTC; the 🆘 sheet shows the connection problem and always reminds you to call 123.
 - The listener count is approximate and can be faked.
 
 ## Two independent deployments
@@ -231,7 +269,7 @@ The server tests run on every PR together with the rest (`test.yml`); Cloudflare
 npm test
 ```
 
-It uses `node --test` (no test libraries) and runs on every PR together with `npm run build` (`.github/workflows/test.yml`). Besides the logic tests, `tests/e2e/` builds the site, serves it and opens it in a real Chrome with fake GPS: it checks that the map is drawn, that the sheets open, that WhatsApp receives the message and that the retry notice appears when there is no map. If Chrome is not installed they skip themselves (or set `CHROME_PATH`). They cover the incident rules, storage, GPS, WhatsApp, the heat map, sector names, the clock and the Worker's validation.
+It uses `node --test` (no test libraries) and runs on every PR together with `npm run build` (`.github/workflows/test.yml`). Besides the logic tests, `tests/e2e/` builds the site, serves it and opens it in a real Chrome with fake GPS: it checks that the map is drawn, that the sheets open, that the SOS listening mode works (alerts appear, the history is hidden, the app never asks for your location on its own) and that the retry notice appears when there is no map. If Chrome is not installed they skip themselves (or set `CHROME_PATH`). They cover the incident rules, storage, GPS, the help signal, the heat map, sector names, the clock and the Worker's validation.
 
 ## Credits and data license
 

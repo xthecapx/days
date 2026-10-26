@@ -19,34 +19,22 @@ test.after(async () => {
 });
 
 const text = (page, sel) => page.$eval(sel, (e) => e.textContent);
+const visible = (page, sel) => page.$eval(sel, (e) => !e.classList.contains('hidden'));
 
 /** Opens the help sheet and waits until it is truly on screen (it enters with an animation). */
 async function openHelp(page) {
   await page.click('#btnHelp');
   await waitHidden(page, '#paneHelp', false);
-  await page.waitForSelector('#btnHelpSend', { visible: true });
+  await page.waitForSelector('#chkListen', { visible: true });
 }
-/** Presses "Pedir ayuda" and waits for the confirmation to appear. */
-async function askForHelp(page) {
-  await page.click('#btnHelpSend');
-  await waitHidden(page, '#helpConfirm', false);
-  await page.waitForSelector('#btnHelpYes', { visible: true });
-}
-const visible = (page, sel) => page.$eval(sel, (e) => !e.classList.contains('hidden'));
-
 /** Fake signal server with mutable state and a log of what was requested. */
 function fakeServer(initial = {}) {
   const server = { calls: [], signals: [], listeners: 0, ...initial };
   server.respond = (pathname, request) => {
-    if (pathname === '/signal' && request.method() === 'POST') {
-      const body = JSON.parse(request.postData());
-      server.sent = body;
-      const s = { id: 'mia00001', x: 92, y: 120, at: Date.now(), expiresAt: Date.now() + 30 * 60_000 };
-      server.signals = [s, ...server.signals];
-      return { ok: true, id: s.id, cancelToken: 'token-de-prueba-123', x: s.x, y: s.y, at: s.at, expiresAt: s.expiresAt, listeners: server.listeners };
+    if (pathname === '/poll') {
+      const b = JSON.parse(request.postData());
+      server.listeners = b.listening ? 3 : Math.max(0, server.listeners - 1);
     }
-    if (pathname === '/signal/cancel') { server.signals = server.signals.filter((s) => s.id !== JSON.parse(request.postData()).id); }
-    if (pathname === '/poll') { const b = JSON.parse(request.postData()); server.listeners = b.listening ? 3 : Math.max(0, server.listeners - 1); }
     return { ok: true, now: Date.now(), signals: server.signals, listeners: server.listeners };
   };
   return server;
@@ -91,64 +79,6 @@ test('the banner can be dismissed and "Ver en el mapa" centres the alert and clo
   await page.close();
 });
 
-test('ask for help: confirmation, sending with the phone location, and it can be withdrawn', async () => {
-  const signalServer = fakeServer({ listeners: 2 });
-  const { page, problems } = await openApp(browser, site.url, { signalServer });
-  await loadApp(page, site.url);
-  await page.waitForFunction(() => document.getElementById('gpsDot').dataset.status === 'ok');
-  await page.click('#btnHelp');
-  await waitHidden(page, '#paneHelp', false);
-  assert.match(await text(page, '#sheetTitle'), /Ayuda entre vecinos/);
-  assert.match(await text(page, '#helpHint'), /2 vecinos escuchan y verán tu alerta/);
-
-  await page.click('#btnHelpSend');
-  await waitHidden(page, '#helpConfirm', false);
-  assert.equal(await visible(page, '#btnHelpSend'), false, 'the red button is hidden while confirming');
-  await page.click('#btnHelpNo');
-  await waitHidden(page, '#helpConfirm', true);
-  assert.equal(signalServer.sent, undefined, 'cancelling the confirmation sends nothing');
-
-  await page.click('#btnHelpSend');
-  await page.click('#btnHelpYes');
-  await waitHidden(page, '#helpMine', false);
-  assert.deepEqual(signalServer.sent, { lat: 7.005, lng: -73.064 });
-  assert.match(await text(page, '#helpMineText'), /Vence en \d+ min/);
-  assert.equal(await visible(page, '#btnHelpSend'), false, 'with an active alert, sending another is not offered');
-
-  await page.click('#btnHelpCancel');
-  await waitHidden(page, '#helpMine', true);
-  assert.ok(signalServer.calls.some((c) => c.startsWith('POST /signal/cancel')));
-  assert.equal(await visible(page, '#btnHelpSend'), true);
-  assert.deepEqual(problems, []);
-  await page.close();
-});
-
-test('the cancel token only lives in the browser of whoever sent', async () => {
-  const signalServer = fakeServer();
-  const { page } = await openApp(browser, site.url, { signalServer });
-  await loadApp(page, site.url);
-  await page.waitForFunction(() => document.getElementById('gpsDot').dataset.status === 'ok');
-  await openHelp(page); await askForHelp(page); await page.click('#btnHelpYes');
-  await waitHidden(page, '#helpMine', false);
-  const dom = await page.evaluate(() => document.documentElement.outerHTML);
-  assert.doesNotMatch(dom, /token-de-prueba-123/, 'the token appears nowhere on screen');
-  const stored = await page.evaluate(() => localStorage.getItem('vecinos_rio_hato_signal_v1'));
-  assert.match(stored, /token-de-prueba-123/);
-  await page.close();
-});
-
-test('a double tap on "Sí, pedir ayuda" sends a single alert', async () => {
-  const signalServer = fakeServer();
-  const { page } = await openApp(browser, site.url, { signalServer });
-  await loadApp(page, site.url);
-  await page.waitForFunction(() => document.getElementById('gpsDot').dataset.status === 'ok');
-  await openHelp(page); await askForHelp(page);
-  await page.evaluate(() => { const b = document.getElementById('btnHelpYes'); b.click(); b.click(); b.click(); });
-  await waitHidden(page, '#helpMine', false);
-  assert.equal(signalServer.calls.filter((c) => c === 'POST /signal').length, 1, `calls: ${signalServer.calls}`);
-  await page.close();
-});
-
 test('listen: it turns on, polls and is remembered on reload; turning it off notifies the server', async () => {
   const signalServer = fakeServer({ listeners: 0 });
   const { page, problems } = await openApp(browser, site.url, { signalServer });
@@ -179,8 +109,8 @@ test('listen: it turns on, polls and is remembered on reload; turning it off not
   await page.close();
 });
 
-test('if the signal server fails, the interface stays alive and says so', async () => {
-  const signalServer = { calls: [], respond: () => { throw new Error('caído'); } };
+test('if the signal server fails, the interface stays alive and the sheet says so (and there is no button to send)', async () => {
+  const signalServer = { calls: [], respond: () => { throw new Error('down'); } };
   const { page } = await openApp(browser, site.url, { signalServer, intercept: (r) => {
     if (!r.url().includes('days-signal') && !r.url().includes(':8787')) return false;
     r.abort();
@@ -188,18 +118,8 @@ test('if the signal server fails, the interface stays alive and says so', async 
   } });
   await loadApp(page, site.url);
   assert.match(await text(page, '#daysValue'), /^\d\d$/, 'the day counter works the same');
-  await openHelp(page); await askForHelp(page); await page.click('#btnHelpYes');
-  await page.waitForFunction(() => !document.getElementById('helpError').classList.contains('hidden'));
-  assert.match(await text(page, '#helpError'), /123/, 'the real alternative always stays in view');
-  await page.close();
-});
-
-test('the ?sos=1 shortcut opens the help screen directly', async () => {
-  const { page } = await openApp(browser, site.url, { signalServer: fakeServer() });
-  await page.goto(`${site.url}?sos=1`, { waitUntil: 'load' });
-  await page.waitForFunction(() => document.getElementById('daysValue').textContent !== '--');
-  await waitHidden(page, '#paneHelp', false);
-  assert.match(await text(page, '#sheetTitle'), /Ayuda entre vecinos/);
+  await openHelp(page);
+  await page.waitForFunction(() => /Sin conexión/.test(document.getElementById('helpListenHint').textContent));
   await page.close();
 });
 
@@ -208,7 +128,7 @@ test('the manifest is valid and the icon can be installed on the home screen', a
   await loadApp(page, site.url);
   const manifest = await page.evaluate(async () => (await fetch(document.querySelector('link[rel=manifest]').href)).json());
   assert.equal(manifest.display, 'standalone');
-  assert.equal(manifest.shortcuts[0].url, './?sos=1');
+  assert.equal('shortcuts' in manifest, false, 'the app cannot send alerts, so there is no "ask for help" shortcut');
   for (const icon of manifest.icons) assert.equal((await fetch(new URL(icon.src, site.url))).status, 200, icon.src);
   assert.equal((await fetch(new URL('apple-touch-icon.png', site.url))).status, 200);
   assert.deepEqual(problems, [], 'no "Manifest" errors in the console');
@@ -343,5 +263,41 @@ test('while listening, reporting an incident brings the history back for the for
   await page.click('#btnCancelReport');
   await waitHidden(page, '#sheet', true);
   await page.waitForFunction(() => !document.getElementById('listenBar').classList.contains('hidden'));
+  await page.close();
+});
+
+test('the app never asks for the phone location on its own: no GPS read on load, none when opening the help sheet', async () => {
+  // Only the 📍 button needs the location. The app no longer sends alerts, so it has no reason to ask on startup.
+  const { page } = await openApp(browser, site.url, { signalServer: fakeServer({ listeners: 1 }) });
+  await page.evaluateOnNewDocument(() => {
+    window.__geoCalls = 0;
+    const real = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+    navigator.geolocation.getCurrentPosition = (...a) => { window.__geoCalls++; return real(...a); };
+    navigator.geolocation.watchPosition = () => { window.__geoCalls++; return 0; };
+  });
+  await loadApp(page, site.url);
+  await openHelp(page);
+  await page.click('#chkListen');
+  await page.waitForFunction(() => !document.getElementById('listenBar').classList.contains('hidden'));
+  assert.equal(await page.evaluate(() => window.__geoCalls), 0, 'no location request at all');
+  await page.click('#btnCloseSheet');
+  await waitHidden(page, '#sheet', true);
+  await page.click('#btnLocate'); // the one place that does read the GPS
+  await page.waitForFunction(() => window.__geoCalls === 1);
+  await page.close();
+});
+
+test('the help sheet is read-only: listen switch, count and the list of alerts; no way to send or withdraw one', async () => {
+  const { page } = await openApp(browser, site.url, { signalServer: fakeServer({ listeners: 2, signals: [other(4)] }) });
+  await loadApp(page, site.url);
+  await openHelp(page);
+  for (const gone of ['btnHelpSend', 'btnHelpYes', 'btnHelpNo', 'btnHelpCancel', 'helpMine', 'helpConfirm', 'helpError', 'helpHint']) {
+    assert.equal(await page.$(`#${gone}`), null, `#${gone} must not exist`);
+  }
+  const sheetText = await page.$eval('#paneHelp', (e) => e.innerText);
+  assert.doesNotMatch(sheetText, /Pedir ayuda|Retirar|Tu alerta/, 'no send/withdraw wording');
+  assert.match(sheetText, /Alguien pidió ayuda/);
+  assert.match(sheetText, /123/, 'the emergency number is still on the sheet');
+  assert.equal(await page.$eval('#btnHelp', (e) => e.getAttribute('aria-label').startsWith('Alertas de ayuda')), true);
   await page.close();
 });

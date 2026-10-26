@@ -3,7 +3,6 @@ import { selectIncidents, findIncident, selectSosMode, selectHistoryVisible } fr
 import { mountInsets } from './insets.js';
 import { mountAlertCard } from './alertCard.js';
 import { mountPeek } from './peek.js';
-import { mountWhatsAppMenu } from './whatsappMenu.js';
 import { mountSyncToast } from './syncToast.js';
 import { mountHelpBanner } from './helpBanner.js';
 import { listenersLabel, helpButtonView, listenBarText } from '../domain/signals.js';
@@ -12,11 +11,10 @@ import { listenersLabel, helpButtonView, listenBarText } from '../domain/signals
  * Top bar, mode banner, map controls and bottom area (card + navigation).
  * Each piece lives in its own file; here they are only wired together and the simple controls remain.
  */
-export function mountHud({ store, camera, actions, gps, whatsapp, sectorName }) {
+export function mountHud({ store, camera, actions, sectorName }) {
   const measureInsets = mountInsets({ camera });
   mountAlertCard({ store, actions, measureInsets });
   mountPeek({ store, actions, measureInsets, sectorName });
-  mountWhatsAppMenu({ store, gps, whatsapp, sectorName });
   mountSyncToast({ store });
   mountHelpBanner({ store, actions });
 

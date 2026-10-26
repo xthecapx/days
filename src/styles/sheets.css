@@ -86,11 +86,9 @@
 }
 .field textarea { resize: none; }
 .field input[type='range'] { width: 100%; height: var(--tap); accent-color: var(--red); }
-.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 .switch { display: flex; align-items: center; gap: 10px; min-height: var(--tap); font: 0.74rem var(--font-mono); color: #cbd5e1; cursor: pointer; }
 .switch input { width: 22px; height: 22px; accent-color: var(--red); }
-.switch-sm { min-height: 32px; font-size: 0.68rem; }
 
 .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .segmented button {
@@ -121,9 +119,4 @@
 }
 
 /* ---------- Help signal ---------- */
-.btn-big { min-height: 56px; font-size: 1rem; width: 100%; }
-.btn-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.help-send { display: flex; flex-direction: column; gap: 10px; }
-.help-mine { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: rgba(255, 23, 68, 0.14); border: 2px solid var(--red); }
-.help-confirm { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; background: var(--bg); border: 2px solid var(--yellow); font-size: 0.78rem; }
 .signal-card { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: var(--card); border: 2px solid var(--red); font: 700 0.76rem var(--font-mono); }

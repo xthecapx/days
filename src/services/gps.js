@@ -1,14 +1,10 @@
 /**
- * Phone GPS, no DOM. A single read at startup (no continuous tracking): the position is valid for
- * `freshMs` and afterwards it is re-read only when someone needs it.
+ * Phone GPS, no DOM. Used only by the 📍 button ("where am I on the map"). There is NO read on page load and no
+ * continuous tracking: the position is requested when the button is tapped and is then reused for `freshMs`.
  *
  *   const gps = createGps();
- *   gps.subscribe((status, fix) => ...);   // called on subscribe and on every change
- *   gps.start();                           // first read (Safari asks for permission here)
- *   const fix = gps.fix() || (await gps.read());
- *
- * States: 'ok' (position valid) · 'searching' (reading) · 'stale' (expired; re-read on use)
- *          · 'denied' | 'unavailable' (cannot be used).
+ *   const fix = gps.fix() || (await gps.read());   // { lat, lng, accuracy, at } or null
+ *   gps.error();                                    // 'denied' | 'unavailable' | 'timeout' | null
  */
 
 const DEFAULTS = {
@@ -24,47 +20,19 @@ const toFix = (pos, at) => ({
 });
 const toError = (err) => (err?.code === 1 ? 'denied' : err?.code === 3 ? 'timeout' : 'unavailable');
 
-/** Everything can be replaced in tests: `geolocation`, the clock and the timers. */
+/** Everything can be replaced in tests: `geolocation` and the clock. */
 export function createGps({
   geolocation = globalThis.navigator?.geolocation,
   now = Date.now,
-  setTimer = setTimeout,
-  clearTimer = clearTimeout,
   freshMs = DEFAULTS.freshMs,
   options = DEFAULTS.options
 } = {}) {
   let lastFix = null; // { lat, lng, accuracy, at }
   let lastError = null; // 'denied' | 'unavailable' | 'timeout' | null
   let pending = null; // read in progress, shared among those who request it
-  let staleTimer = null;
-  const listeners = new Set();
 
-  /** Last position if it is still recent (allows acting instantly, within the tap). */
+  /** Last position if it is still recent (so a second tap does not ask the phone again). */
   const fix = () => (lastFix && now() - lastFix.at < freshMs ? lastFix : null);
-
-  function status() {
-    if (lastError === 'denied' || lastError === 'unavailable') return lastError;
-    if (fix()) return 'ok';
-    if (pending || (!lastFix && !lastError)) return 'searching';
-    return 'stale';
-  }
-
-  const emit = () => listeners.forEach((fn) => fn(status(), lastFix));
-
-  function subscribe(fn) {
-    listeners.add(fn);
-    fn(status(), lastFix);
-    return () => listeners.delete(fn);
-  }
-
-  function gotFix(pos) {
-    lastFix = toFix(pos, now());
-    lastError = null;
-    // This timer does NOT read the GPS: it only repaints the indicator when the position expires.
-    clearTimer(staleTimer);
-    staleTimer = setTimer(emit, freshMs + 100);
-    return lastFix;
-  }
 
   /** One read. Returns the position or null (never throws); the reason is left in `error()`. */
   function read() {
@@ -75,7 +43,11 @@ export function createGps({
         return resolve(null);
       }
       geolocation.getCurrentPosition(
-        (pos) => resolve(gotFix(pos)),
+        (pos) => {
+          lastError = null;
+          lastFix = toFix(pos, now());
+          resolve(lastFix);
+        },
         (err) => {
           lastError = toError(err);
           resolve(null);
@@ -84,22 +56,9 @@ export function createGps({
       );
     }).finally(() => {
       pending = null;
-      emit();
     });
-    emit();
     return pending;
   }
 
-  return {
-    status,
-    fix,
-    error: () => lastError,
-    subscribe,
-    read,
-    /** Re-reads only if the position has expired or does not exist. */
-    ensureFresh() {
-      if (!fix()) read();
-    },
-    start: read
-  };
+  return { fix, read, error: () => lastError };
 }
