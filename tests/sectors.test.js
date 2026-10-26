@@ -54,7 +54,7 @@ test('detectSectorName gives the same result as before on a sample of tiles from
 // ---------- the heatmap is not recomputed when typing in the form ----------
 
 test('selectPreviewKey and selectHeatmap: typing text does not recompute; moving the point does', () => {
-  const store = createStore(createInitialState());
+  const store = createStore(createInitialState(new Date(2026, 9, 23, 12)));
   const base = { session: 1, pixelX: 50, pixelY: 60, severity: 4, date: '2026-10-22', impactType: 'seguridad', description: '', sector: 'a' };
   store.set({ data: { incidents: [], revisions: [] }, draft: base });
   const first = selectHeatmap(store.get());

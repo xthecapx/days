@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findChrome, serveBuiltSite, openApp, loadApp, waitHidden } from './helpers.mjs';
+import { E2E_NOW, findChrome, serveBuiltSite, openApp, loadApp, waitHidden } from './helpers.mjs';
 
 const chrome = findChrome();
 const skip = chrome ? false : 'no hay Chrome instalado (define CHROME_PATH para correr estas pruebas)';
@@ -35,11 +35,11 @@ function fakeServer(initial = {}) {
       const b = JSON.parse(request.postData());
       server.listeners = b.listening ? 3 : Math.max(0, server.listeners - 1);
     }
-    return { ok: true, now: Date.now(), signals: server.signals, listeners: server.listeners };
+    return { ok: true, now: E2E_NOW, signals: server.signals, listeners: server.listeners };
   };
   return server;
 }
-const other = (minAgo = 3) => ({ id: 'otra0001', x: 95, y: 118, at: Date.now() - minAgo * 60_000, expiresAt: Date.now() + (30 - minAgo) * 60_000 });
+const other = (minAgo = 3) => ({ id: 'otra0001', x: 95, y: 118, at: E2E_NOW - minAgo * 60_000, expiresAt: E2E_NOW + (30 - minAgo) * 60_000 });
 
 test('published site: with the server active the 🆘 button and the listener counter appear', async () => {
   const signalServer = fakeServer({ listeners: 2 });

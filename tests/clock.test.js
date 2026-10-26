@@ -38,7 +38,7 @@ test('msUntilNextDay: hours left in the evening, 1 s minimum, and crosses month 
 
 test('createInitialState uses the real date (not a fixed one)', () => {
   assert.equal(toIsoDate(createInitialState(at(2031, 1, 5)).settings.referenceDate), '2031-01-05');
-  assert.equal('referenceOverride' in createInitialState().settings, false);
+  assert.equal('referenceOverride' in createInitialState(at(2031, 1, 5)).settings, false);
 });
 
 test('the clock rolls over to tomorrow at midnight and the counter goes up a day', () => {

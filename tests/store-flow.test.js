@@ -40,7 +40,7 @@ const input = (o = {}) => ({
 function setup(opts) {
   installBrowser(opts);
   mock.timers.enable({ apis: ['Date'], now: NOW });
-  const store = createStore(createInitialState());
+  const store = createStore(createInitialState(new Date(NOW)));
   store.set({ data: base() });
   return { store, service: createIncidentService(store, { sectorName: () => 'Sector auto' }) };
 }

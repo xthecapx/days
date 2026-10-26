@@ -11,6 +11,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "map:update": "node scripts/update-map.mjs",
+    "test:time-travel": "node scripts/test-time-travel.mjs",
     "test": "node --test --test-timeout=60000 \"tests/**/*.test.js\" \"services/*/test/**/*.test.js\"",
     "signal:dev": "npm run dev --workspace @days/signal",
     "signal:test": "npm test --workspace @days/signal"

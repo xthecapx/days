@@ -295,7 +295,7 @@ import { listenBarText } from '../src/domain/signals.js';
 import { createInitialState } from '../src/state/initialState.js';
 
 const withState = (patch = {}) => {
-  const base = createInitialState();
+  const base = createInitialState(new Date(2026, 9, 23, 12));
   return { ...base, ...patch, signals: { ...base.signals, ...(patch.signals || {}) }, ui: { ...base.ui, ...(patch.ui || {}) }, mode: patch.mode || base.mode };
 };
 

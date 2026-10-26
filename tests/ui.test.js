@@ -130,7 +130,7 @@ test('syncToastMs: failures last longer', () => {
 });
 
 test('mountSyncToast notifies on every save, even with the same message, and does not notify at startup', () => {
-  const store = createStore(createInitialState());
+  const store = createStore(createInitialState(new Date(2026, 9, 23, 12)));
   const shown = [];
   mountSyncToast({ store, toast: (m, ms) => shown.push([m, ms]) });
   assert.deepEqual(shown, [], 'no initial message');

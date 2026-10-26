@@ -34,13 +34,30 @@ export async function serveBuiltSite() {
 
 /** Opens a mobile page with fake GPS and no internet access (GitHub and fonts are blocked). */
 /** Default state of the fake signal server: no alerts. */
-export const emptySignalState = () => ({ ok: true, now: Date.now(), signals: [], listeners: 0 });
+/**
+ * The instant every browser page believes it is. The page clock is frozen at this moment and only moves forward from it, so
+ * "days since the last incident", "Ayer", "hace 3 min" and the alert expiry do not depend on the day or hour CI runs.
+ * Fixtures (fake server `now`, alert times) are built from this constant, never from the real clock.
+ */
+export const E2E_NOW = Date.UTC(2026, 9, 26, 15, 0, 0);
+
+export const emptySignalState = () => ({ ok: true, now: E2E_NOW, signals: [], listeners: 0 });
 
 export async function openApp(browser, url, { geo = { latitude: 7.005, longitude: -73.064, accuracy: 9 }, blockMap = false, intercept = null, signalServer = null } = {}) {
   // One context per page: what a test stores in the browser (alert sent, listening on) does not carry over to the next one.
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.on('close', () => context.close().catch(() => {}));
+  await page.evaluateOnNewDocument((start) => {
+    const RealDate = Date;
+    const origin = RealDate.now();
+    const nowFake = () => start + (RealDate.now() - origin);
+    class FakeDate extends RealDate {
+      constructor(...a) { if (a.length === 0) super(nowFake()); else super(...a); }
+      static now() { return nowFake(); }
+    }
+    window.Date = FakeDate;
+  }, E2E_NOW);
   await page.setViewport({ width: 390, height: 780, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const problems = [];
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));

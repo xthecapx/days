@@ -11,7 +11,7 @@ const MIN = 60_000;
 const sig = (id, at = NOW, o = {}) => ({ id, x: 92, y: 120, at, expiresAt: at + 30 * MIN, ...o });
 
 function rig({ enabled = true, saved = { listening: false, listenerId: null }, serverSignals = [] } = {}) {
-  const store = createStore(createInitialState());
+  const store = createStore(createInitialState(new Date(2026, 9, 23, 12)));
   const calls = [];
   const wrote = [];
   let signals = [...serverSignals];
