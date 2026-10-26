@@ -14,6 +14,9 @@ import { startDayClock } from './core/clock.js';
 import { createGps } from './services/gps.js';
 import { createSignalApi } from './services/signalApi.js';
 import { createSignalService } from './services/signalService.js';
+import { createQuakeApi } from './services/quakeApi.js';
+import { createQuakeFeed } from './services/quakeFeed.js';
+import { quakeDetail } from './domain/quakes.js';
 import { resolveSignalConfig } from './domain/signals.js';
 import { readSignalPrefs, writeSignalPrefs, readSignalOverride } from './storage/localCache.js';
 
@@ -45,6 +48,16 @@ async function boot() {
       navigator.vibrate?.([200, 100, 200]);
     }
   });
+  // Earthquakes: public seismic services, read straight from the browser every 60 s while the page is visible.
+  const quakes = createQuakeFeed({
+    api: createQuakeApi(),
+    onUpdate: ({ quakes: items, source }) => store.patch('quakes', { items, source, loaded: true }),
+    onStatus: (status) => store.patch('quakes', { status }),
+    onNew: (fresh) => {
+      showToast(`🌎 ${quakeDetail(fresh[0])}`, 10000);
+      navigator.vibrate?.([300, 150, 300]);
+    }
+  });
   const viewport = $('mapViewport');
   const renderer = createMapRenderer($('mapCanvas'), world);
 
@@ -64,6 +77,7 @@ async function boot() {
   await incidents.load();
   actions.goHome();
   startDayClock(store); // "today" follows the clock (midnight and when returning to the tab)
+  quakes.start();
   signals.start(); // one read on open; polls every 30 s only if the person turned listening on
 
   requestAnimationFrame(function loop(ts) {

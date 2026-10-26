@@ -2,6 +2,7 @@ import { $, setHidden } from '../core/dom.js';
 import { selectIncidents, findIncident, selectSosMode, selectHistoryVisible } from '../state/selectors.js';
 import { mountInsets } from './insets.js';
 import { mountAlertCard } from './alertCard.js';
+import { mountQuakeRow } from './quakeRow.js';
 import { mountPeek } from './peek.js';
 import { mountSyncToast } from './syncToast.js';
 import { mountHelpBanner } from './helpBanner.js';
@@ -14,6 +15,7 @@ import { listenersLabel, helpButtonView, listenBarText } from '../domain/signals
 export function mountHud({ store, camera, actions, sectorName }) {
   const measureInsets = mountInsets({ camera });
   mountAlertCard({ store, actions, measureInsets });
+  mountQuakeRow({ store, measureInsets });
   mountPeek({ store, actions, measureInsets, sectorName });
   mountSyncToast({ store });
   mountHelpBanner({ store, actions });

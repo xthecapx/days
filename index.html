@@ -45,11 +45,29 @@
         <span id="redPixels" class="chip chip-red">🔴 0 px</span>
       </div>
     </div>
+    <!-- Earthquakes: same card, second row. Public data (USGS, EMSC fallback), read by the browser. -->
+    <button id="quakeToggle" class="alert-row quake-row hidden" type="button" aria-expanded="false">
+      <span id="quakeValue" class="alert-digits quake-digits">--</span>
+      <span class="alert-text">
+        <span id="quakeLabel" class="alert-headline">DÍAS DESDE EL ÚLTIMO SISMO</span>
+        <span id="quakePreview" class="alert-preview"></span>
+      </span>
+      <span id="quakeChevron" class="alert-chevron" aria-hidden="true">▾</span>
+    </button>
+    <div id="quakeDetails" class="alert-details hidden">
+      <p id="quakeDate" class="alert-details-date"></p>
+      <p id="quakeDesc" class="alert-details-desc"></p>
+      <div class="alert-details-foot">
+        <span id="quakeSource"></span>
+        <a id="quakeLink" class="btn btn-sm btn-ghost" target="_blank" rel="noopener noreferrer">Ver fuente →</a>
+      </div>
+    </div>
   </header>
 
   <!-- SOS MODE: while listening, this slim bar replaces the days card; tapping it opens the help sheet (to stop listening) -->
   <button id="listenBar" class="listen-bar hidden" type="button" aria-live="polite">
     <span id="listenBarText"></span>
+    <span id="listenBarQuake" class="listen-bar-quake hidden"></span>
     <span class="listen-bar-hint">Toca para dejar de escuchar</span>
   </button>
 

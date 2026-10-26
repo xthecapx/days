@@ -75,7 +75,7 @@ const CSP = [
   "style-src 'self' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
   "img-src 'self' data: blob:",
-  "connect-src 'self' https://raw.githubusercontent.com https://days.xthecapx.workers.dev https://days-signal.xthecapx.workers.dev",
+  "connect-src 'self' https://raw.githubusercontent.com https://days.xthecapx.workers.dev https://days-signal.xthecapx.workers.dev https://earthquake.usgs.gov https://www.seismicportal.eu",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'none'"

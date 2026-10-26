@@ -41,9 +41,15 @@ export async function serveBuiltSite() {
  */
 export const E2E_NOW = Date.UTC(2026, 9, 26, 15, 0, 0);
 
+/** A USGS-shaped earthquake `minAgo` minutes before the frozen test clock (~25 km from the map centre unless moved). */
+export const usgsQuake = (id, minAgo, { mag = 4.6, lat = 6.8, lng = -73.0, depth = 150 } = {}) => ({
+  id, properties: { time: E2E_NOW - minAgo * 60_000, mag, place: 'Cerca de Piedecuesta, Colombia', url: `https://earthquake.usgs.gov/earthquakes/eventpage/${id}` },
+  geometry: { coordinates: [lng, lat, depth] }
+});
+
 export const emptySignalState = () => ({ ok: true, now: E2E_NOW, signals: [], listeners: 0 });
 
-export async function openApp(browser, url, { geo = { latitude: 7.005, longitude: -73.064, accuracy: 9 }, blockMap = false, intercept = null, signalServer = null } = {}) {
+export async function openApp(browser, url, { geo = { latitude: 7.005, longitude: -73.064, accuracy: 9 }, blockMap = false, intercept = null, signalServer = null, quakes = null } = {}) {
   // One context per page: what a test stores in the browser (alert sent, listening on) does not carry over to the next one.
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
@@ -80,6 +86,14 @@ export async function openApp(browser, url, { geo = { latitude: 7.005, longitude
       signalServer?.calls.push(`${r.method()} ${pathname}${new URL(u).search}`);
       const body = signalServer?.respond ? signalServer.respond(pathname, r) : emptySignalState();
       return r.respond({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify(body) });
+    }
+    // Earthquake services are never really called from tests either: `quakes` = { calls: [], features: [] } answers USGS.
+    if (u.includes('earthquake.usgs.gov') || u.includes('seismicportal.eu')) {
+      const cors = { 'Access-Control-Allow-Origin': '*' };
+      if (r.method() === 'OPTIONS') return r.respond({ status: 204, headers: cors });
+      quakes?.calls.push(new URL(u).host);
+      if (quakes?.fail) return r.respond({ status: 503, headers: cors, contentType: 'text/plain', body: 'down' });
+      return r.respond({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ type: 'FeatureCollection', features: quakes?.features ?? [] }) });
     }
     if (u.includes('raw.githubusercontent.com') || u.includes('fonts.g')) return r.abort();
     if (blockMap && u.includes('/data/map.json')) return r.abort();

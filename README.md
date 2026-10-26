@@ -154,6 +154,14 @@ src/styles/            base.css · hud.css · sheets.css
 
 > **Deploy from a branch** also works, but it publishes the whole repository as-is.
 
+## Earthquake notice
+
+The top card has a second row: **days since the last earthquake** within 100 km of the map (M4.0 or above, the range the public catalogs cover for Colombia). Tapping it shows the date, magnitude, distance, depth and a link to the source. A quake from the last 6 hours shows as an alert ("SISMO HACE 12 MIN") with a toast; while listening for SOS only that fresh case appears, as one line in the listening bar.
+
+- **Data:** read straight from the browser, no server of ours and nothing stored: [USGS](https://earthquake.usgs.gov/fdsnws/event/1/) first, [EMSC](https://www.seismicportal.eu/) only if USGS fails. Both allow cross-origin requests. The Colombian Geological Survey (SGC) has no open API we could reach.
+- **Polling:** once on open, then every 60 s (the sources cache for 60 s) and only while the page is visible; it backs off to 5 min if the services fail. Nothing runs in the background, so this is a notice, not an early warning: catalogs publish minutes after the shaking.
+- **Code:** `src/domain/quakes.js` (rules), `src/services/quakeApi.js` (sources), `src/services/quakeFeed.js` (polling), `src/ui/quakeRow.js`. Thresholds are constants at the top of `quakes.js`.
+
 ## Help signal
 
 The second of the app's two flows (see [What the app is for](#what-the-app-is-for)): a «necesito ayuda aquí» ("I need help here") alert between neighbors. **It does not replace 123** (the emergency number): the screen itself says so. It is a proof of concept.

@@ -293,3 +293,10 @@
   cursor: pointer;
 }
 .listen-bar-hint { font-weight: 400; font-size: 0.64rem; color: var(--muted); }
+
+/* ---------- Earthquake row (second row of the top card) ---------- */
+.quake-row { border-top: 1px solid #3b0410; }
+.quake-digits { color: var(--yellow); border-color: #eab308; text-shadow: 2px 2px 0 #422006, 0 0 12px rgba(250, 204, 21, 0.6); }
+.quake-row.fresh .quake-digits { background: #422006; animation: help-blink 1s steps(2) infinite; }
+.listen-bar-quake { font-weight: 700; font-size: 0.68rem; color: var(--yellow); }
+@media (prefers-reduced-motion: reduce) { .quake-row.fresh .quake-digits { animation: none; } }
